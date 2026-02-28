@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chameleon Background Process</title>
+</head>
+
+<body>
+    <script>
+        // We use nodeIntegration here to easily access DesktopCapturer and Socket.io in MVP
+        const { ipcRenderer } = require('electron');
+        const { io } = require('socket.io-client');
+        const QRCode = require('qrcode');
+
+        const SIGNALING_URL = 'http://localhost:3000';
+        let socket = null;
+        let peerConnection = null;
+        let localStream = null;
+        let currentSessionId = null;
+        let dataChannel = null;
+
+        // Initialize connection
+        function initSignaling() {
+            if (socket) socket.disconnect();
+
+            socket = io(SIGNALING_URL);
+
+            socket.on('connect', () => {
+                console.log('Background connected to signaling server');
+            });
+
+            socket.on('agent:session_created', async (data) => {
+                currentSessionId = data.sessionId;
+                const qrUrl = `http://localhost:5173/?sess=${data.sessionId}`;
+
+                try {
+                    const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
+                    ipcRenderer.send('webrtc:qr_payload', {
+                        dataUrl: qrDataUrl,
+                        expiresIn: data.expiresIn
+                    });
+                    ipcRenderer.send('tray:update_status', 'pairing');
+                } catch (e) {
+                    console.error('Failed to generate QR code', e);
+                }
+            });
+
+            socket.on('agent:client_joined', async (data) => {
+                console.log('Client joined session:', data.sessionId);
+                ipcRenderer.send('tray:update_status', 'connected');
+                await startWebRTC();
+            });
+
+            socket.on('session:expired', () => {
+                console.log('Session expired');
+                currentSessionId = null;
+                ipcRenderer.send('tray:update_status', 'idle');
+            });
+
+            socket.on('session:ended', () => {
+                console.log('Session ended');
+                cleanupSession();
+            });
+
+            socket.on('signal:sdp', async (data) => {
+                try {
+                    if (!peerConnection) return;
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                    if (data.sdp.type === 'offer') {
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        socket.emit('signal:sdp', {
+                            sessionId: currentSessionId,
+                            sdp: peerConnection.localDescription,
+                            to: 'client'
+                        });
+                    }
+                } catch (err) {
+                    console.error('SDP Error', err);
+                }
+            });
+
+            socket.on('signal:ice', async (data) => {
+                try {
+                    if (peerConnection && data.candidate) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    }
+                } catch (err) {
+                    console.error('ICE Error', err);
+                }
+            });
+        }
+
+        async function getScreenStream() {
+            const sources = await ipcRenderer.invoke('get-desktop-sources');
+            const primarySource = sources[0]; // Just grab first screen for MVP
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        mandatory: {
+                            chromeMediaSource: 'desktop',
+                            chromeMediaSourceId: primarySource.id,
+                            minWidth: 1280,
+                            maxWidth: 1920,
+                            minHeight: 720,
+                            maxHeight: 1080,
+                            maxFrameRate: 30
+                        }
+                    }
+                });
+                return stream;
+            } catch (e) {
+                console.error('Capture error', e);
+                return null;
+            }
+        }
+
+        async function startWebRTC() {
+            localStream = await getScreenStream();
+            if (!localStream) {
+                console.error("Failed to get screen stream");
+                return;
+            }
+
+            peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' }
+                ]
+            });
+
+            // Add video track
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            // Create DataChannel for receiving input
+            dataChannel = peerConnection.createDataChannel('control');
+            setupDataChannel(dataChannel);
+
+            peerConnection.ondatachannel = (event) => {
+                setupDataChannel(event.channel);
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('signal:ice', {
+                        sessionId: currentSessionId,
+                        candidate: event.candidate,
+                        to: 'client'
+                    });
+                }
+            };
+
+            peerConnection.onconnectionstatechange = () => {
+                console.log('PC State:', peerConnection.connectionState);
+                if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                    cleanupSession();
+                }
+            };
+
+            // Create Offer
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            socket.emit('signal:sdp', {
+                sessionId: currentSessionId,
+                sdp: peerConnection.localDescription,
+                to: 'client'
+            });
+        }
+
+        function setupDataChannel(channel) {
+            channel.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleRemoteInput(data);
+                } catch (e) {
+                    console.error('DataChannel parse error', e);
+                }
+            };
+        }
+
+        function handleRemoteInput(data) {
+            ipcRenderer.send('webrtc:remote_input', data);
+        }
+
+        function cleanupSession() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+                localStream = null;
+            }
+            currentSessionId = null;
+            ipcRenderer.send('tray:update_status', 'idle');
+        }
+
+        // IPC Listeners
+        ipcRenderer.on('session:request_pairing', () => {
+            if (!socket) initSignaling();
+            if (!socket.connected) {
+                socket.connect();
+            }
+            socket.emit('agent:create_session');
+        });
+
+        ipcRenderer.on('session:disconnect', () => {
+            if (socket && currentSessionId) {
+                // Let server know we dropped
+                socket.disconnect();
+                socket.connect(); // reconnect cleanly
+            }
+            cleanupSession();
+        });
+
+        // Initialize socket on boot
+        initSignaling();
+    </script>
+</body>
+
+</html>

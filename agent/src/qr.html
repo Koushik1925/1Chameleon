@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chameleon Agent Pairing</title>
+    <!-- Use Tailwind via CDN for quick MVP UI styling here, or simple CSS -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: #1e293b;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            width: 300px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #38bdf8;
+        }
+
+        #qr-img {
+            display: block;
+            margin: 1rem auto;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            width: 200px;
+            height: 200px;
+        }
+
+        p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .timer {
+            font-weight: bold;
+            color: #facc15;
+        }
+
+        .success-text {
+            color: #4ade80;
+            display: none;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Pair Device</h2>
+        <p>Scan this QR to connect remotely</p>
+
+        <img id="qr-img" alt="QR Code" />
+
+        <p id="timer-text">Expires in <span class="timer" id="timer">60</span>s</p>
+        <div id="success-msg" class="success-text">Connected Successfully!</div>
+    </div>
+
+    <script>
+        let countdownInterval;
+
+        window.electronAPI.onQRCodeData(({ dataUrl, expiresIn }) => {
+            const img = document.getElementById('qr-img');
+
+            // Set QR Image URL
+            img.src = dataUrl;
+
+            // Start countdown
+            const timerEl = document.getElementById('timer');
+            let timeLeft = expiresIn || 60;
+            timerEl.innerText = timeLeft;
+
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                timeLeft -= 1;
+                timerEl.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    timerEl.innerText = "0";
+                    window.electronAPI.closeQRWindow(); // Auto close when expired
+                }
+            }, 1000);
+        });
+
+        window.electronAPI.onConnectionStatus((status) => {
+            if (status === 'connected') {
+                document.getElementById('qr-img').style.opacity = '0.2';
+                document.getElementById('timer-text').style.display = 'none';
+                document.getElementById('success-msg').style.display = 'block';
+                clearInterval(countdownInterval);
+                setTimeout(() => window.electronAPI.closeQRWindow(), 2000);
+            } else if (status === 'disconnected') {
+                window.electronAPI.closeQRWindow();
+            }
+        });
+    </script>
+</body>
+
+</html>
