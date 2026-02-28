@@ -13,7 +13,7 @@
         const { io } = require('socket.io-client');
         const QRCode = require('qrcode');
 
-        const SIGNALING_URL = 'http://localhost:3000';
+        const SIGNALING_URL = 'https://chameleon-j5wf.onrender.com';
         let socket = null;
         let peerConnection = null;
         let localStream = null;
@@ -32,7 +32,7 @@
 
             socket.on('agent:session_created', async (data) => {
                 currentSessionId = data.sessionId;
-                const qrUrl = `http://localhost:5173/?sess=${data.sessionId}`;
+                const qrUrl = `https://chameleon-jet.vercel.app/?sess=${data.sessionId}`;
 
                 try {
                     const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
