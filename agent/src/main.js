@@ -2,6 +2,30 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer } = require('el
 const path = require('path');
 const { mouse, Point, Button, screen: nutScreen, keyboard, Key } = require('@nut-tree-fork/nut-js');
 
+const keyMap = {
+    'Escape': Key.Escape, 'Tab': Key.Tab, 'ShiftLeft': Key.LeftShift, 'ShiftRight': Key.RightShift,
+    'ControlLeft': Key.LeftControl, 'ControlRight': Key.RightControl, 'AltLeft': Key.LeftAlt, 'AltRight': Key.RightAlt,
+    'MetaLeft': Key.LeftSuper, 'MetaRight': Key.RightSuper, 'Enter': Key.Return, 'NumpadEnter': Key.Return,
+    'Backspace': Key.Backspace, 'Space': Key.Space, 'ArrowUp': Key.Up, 'ArrowDown': Key.Down,
+    'ArrowLeft': Key.Left, 'ArrowRight': Key.Right, 'Home': Key.Home, 'End': Key.End,
+    'PageUp': Key.PageUp, 'PageDown': Key.PageDown, 'Delete': Key.Delete, 'Insert': Key.Insert, 'CapsLock': Key.CapsLock,
+
+    'KeyA': Key.A, 'KeyB': Key.B, 'KeyC': Key.C, 'KeyD': Key.D, 'KeyE': Key.E, 'KeyF': Key.F, 'KeyG': Key.G,
+    'KeyH': Key.H, 'KeyI': Key.I, 'KeyJ': Key.J, 'KeyK': Key.K, 'KeyL': Key.L, 'KeyM': Key.M, 'KeyN': Key.N,
+    'KeyO': Key.O, 'KeyP': Key.P, 'KeyQ': Key.Q, 'KeyR': Key.R, 'KeyS': Key.S, 'KeyT': Key.T, 'KeyU': Key.U,
+    'KeyV': Key.V, 'KeyW': Key.W, 'KeyX': Key.X, 'KeyY': Key.Y, 'KeyZ': Key.Z,
+
+    'Digit1': Key.Num1, 'Digit2': Key.Num2, 'Digit3': Key.Num3, 'Digit4': Key.Num4, 'Digit5': Key.Num5,
+    'Digit6': Key.Num6, 'Digit7': Key.Num7, 'Digit8': Key.Num8, 'Digit9': Key.Num9, 'Digit0': Key.Num0,
+
+    'Numpad1': Key.Num1, 'Numpad2': Key.Num2, 'Numpad3': Key.Num3, 'Numpad4': Key.Num4, 'Numpad5': Key.Num5,
+    'Numpad6': Key.Num6, 'Numpad7': Key.Num7, 'Numpad8': Key.Num8, 'Numpad9': Key.Num9, 'Numpad0': Key.Num0,
+
+    'Minus': Key.Minus, 'Equal': Key.Equal, 'BracketLeft': Key.BracketLeft, 'BracketRight': Key.BracketRight,
+    'Backslash': Key.Backslash, 'Semicolon': Key.Semicolon, 'Quote': Key.Quote, 'Comma': Key.Comma,
+    'Period': Key.Period, 'Slash': Key.Slash, 'Backquote': Key.Grave
+};
+
 let tray = null;
 let qrWindow = null;
 let backgroundWindow = null;
@@ -71,6 +95,16 @@ function createBackgroundWindow() {
             } else if (data.type === 'mouse_up') {
                 const btn = data.button === 2 ? Button.RIGHT : (data.button === 1 ? Button.MIDDLE : Button.LEFT);
                 await mouse.releaseButton(btn);
+            } else if (data.type === 'key_down') {
+                const nutKey = keyMap[data.code];
+                if (nutKey !== undefined) {
+                    await keyboard.pressKey(nutKey);
+                }
+            } else if (data.type === 'key_up') {
+                const nutKey = keyMap[data.code];
+                if (nutKey !== undefined) {
+                    await keyboard.releaseKey(nutKey);
+                }
             }
         } catch (e) {
             console.error('Native Input Error:', e);

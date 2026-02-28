@@ -9,6 +9,7 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream;
+            if (containerRef.current) containerRef.current.focus();
         }
     }, [stream]);
 
@@ -67,7 +68,17 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
     return (
         <div
             ref={containerRef}
-            className="relative w-full h-full bg-slate-950 overflow-hidden flex flex-col"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                // Prevent browser shortcuts like F5 or spacebar scrolling while controlling the remote PC
+                e.preventDefault();
+                if (sendInputEvent) sendInputEvent({ type: 'key_down', code: e.code, key: e.key });
+            }}
+            onKeyUp={(e) => {
+                e.preventDefault();
+                if (sendInputEvent) sendInputEvent({ type: 'key_up', code: e.code, key: e.key });
+            }}
+            className="relative w-full h-full bg-slate-950 overflow-hidden flex flex-col focus:outline-none"
         >
             <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 opacity-0 hover:opacity-100 transition-opacity duration-300 bg-gradient-to-b from-black/80 to-transparent">
                 <div className="flex items-center gap-2 text-green-400">
