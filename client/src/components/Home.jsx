@@ -1,7 +1,25 @@
-import { Link } from 'react-router-dom';
-import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown, Loader2 } from 'lucide-react';
 
 export default function Home() {
+    const [scrolled, setScrolled] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const handleConnectClick = (e) => {
+        e.preventDefault();
+        setIsConnecting(true);
+        setTimeout(() => {
+            navigate('/connect');
+        }, 600); // 600ms fake loading for perceived trust/speed
+    };
     return (
         <div className="min-h-screen bg-[#0b0f14] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
 
@@ -14,7 +32,7 @@ export default function Home() {
             <div className="relative z-10">
 
                 {/* Navigation Bar */}
-                <nav className="fixed top-0 w-full border-b border-white/5 bg-[#0b0f14]/80 backdrop-blur-md z-50">
+                <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0b0f14]/80 backdrop-blur-md border-b border-white/5 py-0' : 'bg-transparent border-transparent py-2'}`}>
                     <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="text-cyan-400" size={24} />
@@ -38,19 +56,38 @@ export default function Home() {
                         Version 1.0.0 Live
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl leading-tight">
-                        Secure Remote Access. <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Instantly.</span>
+                        Secure Remote Access. <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">No IPs. No Complexity.</span>
                     </h1>
-                    <p className="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl leading-relaxed">
+                    <p className="text-lg md:text-xl text-slate-400 mb-10 max-w-3xl mx-auto leading-relaxed">
                         Connect to your desktop from anywhere using encrypted, QR-based pairing. No IP addresses. No complex setup. Just drop-in control.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                        <Link to="/connect" className="group h-12 px-8 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)]">
-                            Connect to Remote Client
-                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                        <a href="#download" className="h-12 px-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium flex items-center justify-center gap-2 transition-all">
-                            Download Desktop App
-                        </a>
+                    <div className="flex flex-col items-center">
+                        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mb-6">
+                            <button onClick={handleConnectClick} disabled={isConnecting} className={`group h-12 px-8 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold flex items-center justify-center gap-2 transition-all ${isConnecting ? 'opacity-80 cursor-wait shadow-[0_0_40px_rgba(6,182,212,0.5)]' : 'shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)]'}`}>
+                                {isConnecting ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        Connecting...
+                                    </>
+                                ) : (
+                                    <>
+                                        Connect to Remote Client
+                                        <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                    </>
+                                )}
+                            </button>
+                            <a href="#download" className="h-12 px-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium flex items-center justify-center gap-2 transition-all">
+                                Download Desktop App
+                            </a>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium tracking-wide">
+                            <span>End-to-End Encrypted</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                            <span>Peer-to-Peer</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-700"></span>
+                            <span>No Data Stored</span>
+                        </div>
                     </div>
                 </section>
 
@@ -158,6 +195,9 @@ export default function Home() {
                                     Download for Windows
                                 </a>
                                 <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.0 • ~85 MB</span>
+                                <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
+                                    <ShieldCheck size={12} /> Verified & Secure
+                                </div>
                             </div>
 
                             {/* macOS Card */}
@@ -172,6 +212,9 @@ export default function Home() {
                                     Download for macOS
                                 </a>
                                 <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.0 • ~95 MB</span>
+                                <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
+                                    <ShieldCheck size={12} /> Verified & Secure
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -188,14 +231,17 @@ export default function Home() {
                     </div>
 
                     <div className="flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto border-t border-white/5 pt-8 text-xs text-slate-600">
-                        <div className="flex items-center gap-2 mb-4 md:mb-0">
-                            <ShieldCheck size={16} className="text-cyan-900" />
-                            <span>© {new Date().getFullYear()} Chameleon Remote.</span>
+                        <div className="flex flex-col items-center md:items-start mb-6 md:mb-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <ShieldCheck size={16} className="text-cyan-900" />
+                                <span className="font-semibold text-slate-400">Chameleon v1.0.0</span>
+                            </div>
+                            <span className="text-slate-600 md:pl-6">© {new Date().getFullYear()} Chameleon Remote. All rights reserved.</span>
                         </div>
-                        <div className="flex gap-6">
-                            <a href="#" className="hover:text-slate-400 transition-colors">Privacy Policy</a>
-                            <a href="#" className="hover:text-slate-400 transition-colors">Terms of Service</a>
-                            <a href="https://github.com/Rithvik-krishna/Chameleon" className="hover:text-slate-400 transition-colors">GitHub Repository</a>
+                        <div className="flex gap-6 font-medium">
+                            <a href="#" className="hover:text-slate-400 transition-colors">Privacy</a>
+                            <a href="#" className="hover:text-slate-400 transition-colors">Terms</a>
+                            <a href="https://github.com/Rithvik-krishna/Chameleon" className="hover:text-slate-400 transition-colors">GitHub</a>
                         </div>
                     </div>
                 </footer>

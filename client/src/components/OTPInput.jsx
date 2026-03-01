@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 
 export default function OTPInput({ length = 6, onComplete }) {
     const [otp, setOtp] = useState(new Array(length).fill(''));
+    const [isSuccess, setIsSuccess] = useState(false);
     const inputRefs = useRef([]);
 
     useEffect(() => {
@@ -23,7 +24,10 @@ export default function OTPInput({ length = 6, onComplete }) {
         // Combine and check completion
         const combinedOtp = newOtp.join('');
         if (combinedOtp.length === length) {
-            onComplete(combinedOtp);
+            setIsSuccess(true);
+            setTimeout(() => onComplete(combinedOtp), 300); // 300ms for animation to play
+        } else {
+            setIsSuccess(false);
         }
 
         // Move to next input if current is filled
@@ -34,27 +38,30 @@ export default function OTPInput({ length = 6, onComplete }) {
 
     const handleKeyDown = (index, e) => {
         if (e.key === 'Backspace') {
+            e.preventDefault(); // Prevent default fast backward jumping
+            setIsSuccess(false);
             const newOtp = [...otp];
-            if (otp[index] === '') {
-                // Move to previous input and clear it
-                if (index > 0 && inputRefs.current[index - 1]) {
-                    newOtp[index - 1] = '';
-                    setOtp(newOtp);
-                    inputRefs.current[index - 1].focus();
-                }
-            } else {
-                // Clear current input
+            if (otp[index]) {
+                // Clear current input if it has a value
                 newOtp[index] = '';
                 setOtp(newOtp);
+            } else if (index > 0) {
+                // If empty, jump left and clear that input
+                newOtp[index - 1] = '';
+                setOtp(newOtp);
+                inputRefs.current[index - 1].focus();
             }
         } else if (e.key === 'ArrowLeft' && index > 0) {
+            e.preventDefault();
             inputRefs.current[index - 1].focus();
         } else if (e.key === 'ArrowRight' && index < length - 1) {
+            e.preventDefault();
             inputRefs.current[index + 1].focus();
         } else if (e.key === 'Enter') {
             const combinedOtp = otp.join('');
             if (combinedOtp.length === length) {
-                onComplete(combinedOtp);
+                setIsSuccess(true);
+                setTimeout(() => onComplete(combinedOtp), 300);
             }
         }
     };
@@ -75,7 +82,10 @@ export default function OTPInput({ length = 6, onComplete }) {
         inputRefs.current[nextFocusIndex].focus();
 
         if (pasteData.length === length) {
-            onComplete(pasteData);
+            setIsSuccess(true);
+            setTimeout(() => onComplete(pasteData), 300);
+        } else {
+            setIsSuccess(false);
         }
     };
 
@@ -92,7 +102,7 @@ export default function OTPInput({ length = 6, onComplete }) {
                         value={data}
                         onChange={(e) => handleChange(index, e)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-10 h-14 sm:w-14 sm:h-16 bg-[#111827] border border-slate-700/50 rounded-lg text-center text-xl sm:text-2xl font-medium text-white shadow-inner focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all duration-200 placeholder-slate-600"
+                        className={`w-10 h-14 sm:w-14 sm:h-16 bg-[#111827] border ${isSuccess ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)] transition-all duration-300 transform scale-105' : 'border-slate-700/50 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 shadow-inner'} rounded-lg text-center text-xl sm:text-2xl font-medium text-white focus:outline-none transition-all duration-200 placeholder-slate-600`}
                         placeholder="-"
                     />
                 );

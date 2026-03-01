@@ -285,7 +285,7 @@ function ClientApp() {
       )}
 
       {status === 'scan' && (
-        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative">
+        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative animate-in fade-in zoom-in-95 duration-500">
           {/* Subtle top glow line to make the glass pop */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50"></div>
 
@@ -297,6 +297,10 @@ function ClientApp() {
 
             <OTPInput length={6} onComplete={(val) => handleJoinSession(val)} />
 
+            <div className="mt-8 text-center text-[11px] text-cyan-400/50 uppercase tracking-[0.2em] animate-pulse font-mono flex items-center justify-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+              Waiting for host link...
+            </div>
           </div>
 
           {errorMsg && (
@@ -308,7 +312,7 @@ function ClientApp() {
       )}
 
       {status === 'connecting' && (
-        <div className="z-10 w-full max-w-md p-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
+        <div className="z-10 w-full max-w-md p-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="max-w-md w-full relative z-10 flex flex-col items-center">
 
             {/* Back Button */}
@@ -342,7 +346,7 @@ function ClientApp() {
       )}
 
       {status === 'disconnected_prompt' && (
-        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
+        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500">
           <div className="w-16 h-16 rounded-full bg-[#111827] flex items-center justify-center mb-6 border border-slate-700 text-slate-400 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
             <Power size={24} />
           </div>
@@ -373,7 +377,7 @@ function ClientApp() {
       )}
 
       {status === 'error' && (
-        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
+        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500">
           <div className="w-20 h-20 rounded-full bg-red-950/40 flex items-center justify-center mb-6 border border-red-500/30 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative">
             <div className="absolute inset-0 rounded-full border border-red-500 animate-ping opacity-20" style={{ animationDuration: '2s' }}></div>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
