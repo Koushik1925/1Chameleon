@@ -13,6 +13,7 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [sessionDuration, setSessionDuration] = useState('');
   const [lastSessionId, setLastSessionId] = useState(() => {
     const saved = localStorage.getItem('chameleon_last_session');
     if (saved) {
@@ -211,6 +212,18 @@ function App() {
       socketRef.current.disconnect();
     }
     cleanupWebRTC();
+
+    // Calculate Duration for the 7-min prompt screen
+    if (sessionStartTime) {
+      const diffMs = Date.now() - sessionStartTime;
+      const mins = Math.floor(diffMs / 60000);
+      const secs = Math.floor((diffMs % 60000) / 1000);
+      setSessionDuration(`Session lasted ${mins}m ${secs}s`);
+    } else {
+      setSessionDuration('');
+    }
+
+    setSessionStartTime(null);
     setStatus('disconnected_prompt');
   };
 
@@ -299,7 +312,8 @@ function App() {
             <Power size={24} />
           </div>
           <h2 className="text-2xl font-bold mb-2">Session Disconnected</h2>
-          <p className="text-slate-400 max-w-md mb-8">You have manually disconnected. The session will be preserved for a few more minutes.</p>
+          <p className="text-slate-400 max-w-md mb-2">You have manually disconnected. The session will be preserved for a few more minutes.</p>
+          {sessionDuration && <p className="text-blue-400 font-medium mb-8">{sessionDuration}</p>}
           <div className="flex gap-4">
             <button
               onClick={() => {

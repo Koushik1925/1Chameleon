@@ -105,7 +105,7 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
                 </div>
             </div>
 
-            <div className="flex-1 flex items-center justify-center relative touch-none">
+            <div className="flex-1 min-h-0 flex items-center justify-center relative touch-none overflow-hidden bg-black">
                 <video
                     ref={videoRef}
                     autoPlay
