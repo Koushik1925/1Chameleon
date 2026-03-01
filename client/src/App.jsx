@@ -190,22 +190,29 @@ function App() {
         <div className="flex flex-col items-center justify-center h-full">
           <QRScanner onScanSuccess={handleScanSuccess} />
 
-          {/* Fallback manual entry for Phase 1 dev testing */}
-          <div className="mt-8 opacity-50 hover:opacity-100 transition-opacity flex flex-col items-center">
-            <p className="text-sm mb-2">Dev Mode: Manual Entry</p>
+          {/* Polished OTP Entry Section */}
+          <div className="mt-8 flex flex-col items-center">
+            <p className="text-sm text-slate-400 mb-3 uppercase tracking-wider font-semibold">Or enter 6-digit code</p>
             <div className="flex gap-2">
               <input
                 id="manual-session"
                 type="text"
-                placeholder="Session ID"
-                className="px-3 py-1 bg-slate-800 rounded border border-slate-700 text-sm"
+                maxLength={6}
+                placeholder="000000"
+                className="px-4 py-3 bg-slate-800 rounded-lg border border-slate-700 text-2xl tracking-widest text-center focus:outline-none focus:border-blue-500 w-48 text-white font-mono"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = document.getElementById('manual-session').value.trim();
+                    if (val && val.length === 6) handleJoinSession(val);
+                  }
+                }}
               />
               <button
                 onClick={() => {
-                  const val = document.getElementById('manual-session').value;
-                  if (val) handleJoinSession(val);
+                  const val = document.getElementById('manual-session').value.trim();
+                  if (val && val.length === 6) handleJoinSession(val);
                 }}
-                className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-500"
+                className="px-6 py-3 bg-blue-600 rounded-lg font-medium hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20"
               >
                 Connect
               </button>

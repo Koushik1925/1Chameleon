@@ -28,7 +28,10 @@ io.on('connection', (socket) => {
 
     // 1. Agent requests a new pairing session
     socket.on('agent:create_session', () => {
-        const sessionId = crypto.randomUUID();
+        let sessionId;
+        do {
+            sessionId = Math.floor(100000 + Math.random() * 900000).toString();
+        } while (sessions.has(sessionId));
 
         sessions.set(sessionId, {
             agentSocketId: socket.id,

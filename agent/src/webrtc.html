@@ -37,6 +37,7 @@
                 try {
                     const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
                     ipcRenderer.send('webrtc:qr_payload', {
+                        sessionId: data.sessionId,
                         dataUrl: qrDataUrl,
                         expiresIn: data.expiresIn
                     });
