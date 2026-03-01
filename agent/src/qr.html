@@ -79,7 +79,7 @@
 
         <img id="qr-img" alt="QR Code" />
 
-        <p id="timer-text">Expires in <span class="timer" id="timer">60</span>s</p>
+        <p id="timer-text">Expires in <span class="timer" id="timer">--</span></p>
         <div id="success-msg" class="success-text">Connected Successfully!</div>
     </div>
 
@@ -97,13 +97,23 @@
 
             // Start countdown
             const timerEl = document.getElementById('timer');
-            let timeLeft = expiresIn || 60;
-            timerEl.innerText = timeLeft;
+            let timeLeft = expiresIn || 7200;
+
+            const formatTime = (seconds) => {
+                const h = Math.floor(seconds / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const s = seconds % 60;
+                if (h > 0) return `${h}h ${m}m ${s}s`;
+                if (m > 0) return `${m}m ${s}s`;
+                return `${s}s`;
+            };
+
+            timerEl.innerText = formatTime(timeLeft);
 
             clearInterval(countdownInterval);
             countdownInterval = setInterval(() => {
                 timeLeft -= 1;
-                timerEl.innerText = timeLeft;
+                timerEl.innerText = formatTime(timeLeft);
                 if (timeLeft <= 0) {
                     clearInterval(countdownInterval);
                     timerEl.innerText = "0";

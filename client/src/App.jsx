@@ -18,8 +18,8 @@ function App() {
     const saved = localStorage.getItem('chameleon_last_session');
     if (saved) {
       const { id, timestamp } = JSON.parse(saved);
-      // Valid for 10 minutes
-      if (Date.now() - timestamp < 10 * 60 * 1000) return id;
+      // Valid for 2 hours
+      if (Date.now() - timestamp < 2 * 60 * 60 * 1000) return id;
     }
     return null;
   });
@@ -343,9 +343,8 @@ function App() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
           </div>
           <h2 className="text-2xl font-bold mb-2">Connection Failed</h2>
-          <p className="text-red-300 max-w-md">{errorMsg}</p>
-          <p className="text-red-300 max-w-md">{errorMsg}</p>
-          <div className="flex gap-4 mt-8">
+          <p className="text-red-300 max-w-md mb-8">{errorMsg}</p>
+          <div className="flex gap-4">
             <button
               onClick={() => {
                 setStatus('scan');

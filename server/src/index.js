@@ -20,8 +20,8 @@ const io = new Server(server, {
 // Structure: sessionId -> { agentSocketId, clientSocketId, createdAt, status }
 const sessions = new Map();
 
-const SESSION_EXPIRY_MS = 60 * 1000; // 60 seconds for pairing
-const RECONNECT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes to grab the same session back
+const SESSION_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours for pairing
+const RECONNECT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours to grab the same session back
 
 io.on('connection', (socket) => {
     console.log(`[INFO] New connection: ${socket.id}`);
