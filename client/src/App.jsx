@@ -203,6 +203,9 @@ function ClientApp() {
           const mins = Math.floor(diffMs / 60000);
           const secs = Math.floor((diffMs % 60000) / 1000);
           durationStr = `after ${mins}m ${secs}s`;
+          setSessionDuration(`Session lasted ${mins}m ${secs}s`);
+        } else {
+          setSessionDuration('');
         }
 
         setErrorMsg(`Peer connection lost ${durationStr}`.trim());
@@ -376,7 +379,8 @@ function ClientApp() {
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
           </div>
           <h2 className="text-2xl font-bold tracking-wide mb-3 text-white">Connection Failed</h2>
-          <p className="text-slate-400 text-sm mb-8 max-w-sm leading-relaxed">{errorMsg}</p>
+          <p className="text-slate-400 text-sm mb-4 max-w-sm leading-relaxed">{errorMsg}</p>
+          {sessionDuration && <p className="text-cyan-400 font-mono tracking-widest text-sm mb-8 bg-cyan-950/20 px-3 py-1 rounded border border-cyan-500/20 inline-block">{sessionDuration}</p>}
 
           <div className="flex flex-col w-full gap-3">
             {lastSessionId && (
