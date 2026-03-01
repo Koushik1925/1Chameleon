@@ -12,6 +12,15 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [lastSessionId, setLastSessionId] = useState(() => {
+    const saved = localStorage.getItem('chameleon_last_session');
+    if (saved) {
+      const { id, timestamp } = JSON.parse(saved);
+      // Valid for 10 minutes
+      if (Date.now() - timestamp < 10 * 60 * 1000) return id;
+    }
+    return null;
+  });
 
   const socketRef = useRef(null);
   const peerRef = useRef(null);
@@ -30,6 +39,13 @@ function App() {
     setSessionId(sid);
     setStatus('connecting');
     setErrorMsg('');
+
+    // Save session id to localStorage for fast reconnect
+    localStorage.setItem('chameleon_last_session', JSON.stringify({
+      id: sid,
+      timestamp: Date.now()
+    }));
+    setLastSessionId(sid);
 
     // 1. Connect to signaling server
     const socket = io(SIGNALING_URL);
@@ -272,15 +288,27 @@ function App() {
           </div>
           <h2 className="text-2xl font-bold mb-2">Connection Failed</h2>
           <p className="text-red-300 max-w-md">{errorMsg}</p>
-          <button
-            onClick={() => {
-              setStatus('scan');
-              setErrorMsg('');
-            }}
-            className="mt-8 px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors font-medium shadow-lg shadow-blue-900/20"
-          >
-            Try Again
-          </button>
+          <p className="text-red-300 max-w-md">{errorMsg}</p>
+          <div className="flex gap-4 mt-8">
+            <button
+              onClick={() => {
+                setStatus('scan');
+                setErrorMsg('');
+              }}
+              className="px-6 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors font-medium border border-slate-700"
+            >
+              Start Over
+            </button>
+
+            {lastSessionId && (
+              <button
+                onClick={() => handleJoinSession(lastSessionId)}
+                className="px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors font-medium shadow-lg shadow-blue-900/20"
+              >
+                Reconnect to {lastSessionId}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

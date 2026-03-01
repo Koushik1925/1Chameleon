@@ -21,6 +21,7 @@ const io = new Server(server, {
 const sessions = new Map();
 
 const SESSION_EXPIRY_MS = 60 * 1000; // 60 seconds for pairing
+const RECONNECT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes to grab the same session back
 
 io.on('connection', (socket) => {
     console.log(`[INFO] New connection: ${socket.id}`);
@@ -66,8 +67,16 @@ io.on('connection', (socket) => {
             return socket.emit('error', { message: 'Session not found or expired' });
         }
 
-        if (session.status !== 'pending_pairing') {
+        if (session.status !== 'pending_pairing' && session.status !== 'detached') {
             return socket.emit('error', { message: 'Session already in use' });
+        }
+
+        // Handle Reconnect Logic
+        if (session.status === 'detached') {
+            clearTimeout(session.reconnectTimer);
+            console.log(`[INFO] Client ${socket.id} RECONNECTED to session ${sessionId}`);
+        } else {
+            console.log(`[INFO] Client ${socket.id} joined new session ${sessionId}`);
         }
 
         // Pair client
@@ -111,16 +120,33 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`[INFO] Disconnected: ${socket.id}`);
 
-        // Find any session this socket was part of
         for (const [sessionId, session] of sessions.entries()) {
-            if (session.agentSocketId === socket.id || session.clientSocketId === socket.id) {
-                // Notify the other party
-                const otherSocketId = session.agentSocketId === socket.id ? session.clientSocketId : session.agentSocketId;
-                if (otherSocketId) {
-                    io.to(otherSocketId).emit('session:ended', { reason: 'Peer disconnected' });
+            // If Agent disconnects, kill the whole session immediately. Host is gone.
+            if (session.agentSocketId === socket.id) {
+                if (session.clientSocketId) {
+                    io.to(session.clientSocketId).emit('session:ended', { reason: 'Host agent disconnected' });
                 }
                 sessions.delete(sessionId);
-                console.log(`[INFO] Session ${sessionId} deleted due to disconnect`);
+                console.log(`[INFO] Session ${sessionId} deleted because Agent disconnected.`);
+            }
+            // If Client disconnects, keep session alive in 'detached' state for 10 mins
+            else if (session.clientSocketId === socket.id) {
+                // Let the agent know the client dropped temporarily
+                io.to(session.agentSocketId).emit('session:ended', { reason: 'Client disconnected (Waiting for reconnect)' });
+
+                // Allow another client (or same one) to rejoin this exact sessionId
+                session.status = 'detached';
+                session.clientSocketId = null;
+
+                session.reconnectTimer = setTimeout(() => {
+                    if (sessions.has(sessionId) && sessions.get(sessionId).status === 'detached') {
+                        io.to(session.agentSocketId).emit('session:ended', { reason: 'Reconnect window expired' });
+                        sessions.delete(sessionId);
+                        console.log(`[INFO] Session ${sessionId} hard deleted after 10m reconnect window.`);
+                    }
+                }, RECONNECT_WINDOW_MS);
+
+                console.log(`[INFO] Session ${sessionId} detached. 10m reconnect window started.`);
             }
         }
     });
