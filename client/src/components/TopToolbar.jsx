@@ -7,7 +7,9 @@ import {
     Maximize2,
     Minimize2,
     Power,
-    ChevronDown
+    GripHorizontal,
+    ChevronRight,
+    ChevronLeft
 } from 'lucide-react';
 
 export default function TopToolbar({
@@ -15,9 +17,61 @@ export default function TopToolbar({
     sendInputEvent,
     onDisconnect,
     isFullscreen,
-    toggleFullscreen,
-    isMouseNearTop
+    toggleFullscreen
 }) {
+    // --- Draggable & Compact State ---
+    const MathMin = Math.min;
+    const MathMax = Math.max;
+
+    // Default position at top center
+    const [position, setPosition] = useState({
+        x: typeof window !== 'undefined' ? window.innerWidth / 2 - 300 : 100,
+        y: 20
+    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isCompact, setIsCompact] = useState(false);
+    const dragOffset = useRef({ x: 0, y: 0 });
+
+    const handleMouseDown = (e) => {
+        // Prevent dragging if interacting with a button or dropdown
+        if (e.target.closest('button') || e.target.closest('.no-drag')) return;
+        setIsDragging(true);
+        dragOffset.current = {
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        };
+    };
+
+    const handleMouseMove = useCallback((e) => {
+        if (isDragging) {
+            let newX = e.clientX - dragOffset.current.x;
+            let newY = e.clientY - dragOffset.current.y;
+
+            // Keep within window bounds
+            newX = MathMax(10, MathMin(newX, window.innerWidth - 100));
+            newY = MathMax(10, MathMin(newY, window.innerHeight - 50));
+
+            setPosition({ x: newX, y: newY });
+        }
+    }, [isDragging]);
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    useEffect(() => {
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        } else {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, handleMouseMove]);
     const [stats, setStats] = useState({ ping: 0, fps: 0, bitrate: 0 });
     const [sessionTime, setSessionTime] = useState(0);
     const [showModifiers, setShowModifiers] = useState(false);
@@ -129,47 +183,61 @@ export default function TopToolbar({
         setShowSettings(false);
     };
 
-    // Render classes
-    const isVisible = !isFullscreen || isMouseNearTop;
-
     return (
         <div
-            className={`absolute top-0 left-0 right-0 z-50 flex justify-between items-start transition-all duration-300 ease-in-out p-4 pointer-events-none ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-                }`}
+            className={`absolute z-50 flex items-center transition-transform ${isDragging ? 'duration-0 opacity-90' : 'duration-300 ease-in-out'}`}
+            style={{ left: position.x, top: position.y }}
+            onMouseDown={handleMouseDown}
         >
             {/* Toolbar Container */}
-            <div className="w-full max-w-7xl mx-auto flex items-center justify-between pointer-events-auto bg-[#0b0f14]/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-2 px-4 shadow-lg shadow-black/50">
+            <div className={`flex items-center pointer-events-auto bg-[#0b0f14]/90 backdrop-blur-lg border border-slate-700/80 rounded-full p-2 gap-2 shadow-2xl shadow-black/80 transition-all duration-300 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} !select-none`}>
 
-                {/* Left: Status & Timer */}
-                <div className="flex items-center gap-4 w-1/4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse box-shadow-cyan"></div>
-                        <span className="text-xs font-semibold text-white tracking-widest uppercase">Connected</span>
-                    </div>
-                    <div className="h-4 w-[1px] bg-slate-700"></div>
-                    <span className="text-sm font-mono text-cyan-400 font-medium tracking-wider">
-                        {formatTime(sessionTime)}
-                    </span>
+                {/* Drag Handle & Collapse Toggle */}
+                <div className="flex items-center gap-1 pl-2 text-slate-500 hover:text-slate-300 transition-colors">
+                    <GripHorizontal size={18} />
+                    <button
+                        onClick={() => setIsCompact(!isCompact)}
+                        className="hover:bg-white/10 p-1 rounded-full transition-colors"
+                        title={isCompact ? "Expand Toolbar" : "Collapse Toolbar"}
+                    >
+                        {isCompact ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    </button>
                 </div>
 
-                {/* Center: Live Stats */}
-                <div className="flex-1 flex justify-center items-center gap-6">
-                    <div className="flex items-center gap-2 text-xs font-mono">
-                        <span className="text-slate-500 uppercase tracking-widest text-[10px]">Ping</span>
-                        <span className="text-white font-medium">{stats.ping}ms</span>
+                {!isCompact && (
+                    <div className="flex items-center gap-3 pr-2 overflow-hidden transition-all duration-300">
+                        <div className="w-[1px] h-6 bg-slate-700 mx-1"></div>
+
+                        {/* Status & Timer */}
+                        <div className="flex items-center gap-3 shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse box-shadow-cyan"></div>
+                            <span className="text-sm font-mono text-cyan-400 font-medium tracking-wider">
+                                {formatTime(sessionTime)}
+                            </span>
+                        </div>
+
+                        {/* Live Stats */}
+                        <div className="flex items-center gap-4 px-2 shrink-0">
+                            <div className="flex items-center gap-1.5 text-xs font-mono">
+                                <span className="text-slate-500 uppercase tracking-widest text-[10px]">Ping</span>
+                                <span className="text-white font-medium">{stats.ping}ms</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-mono">
+                                <span className="text-slate-500 uppercase tracking-widest text-[10px]">FPS</span>
+                                <span className="text-white font-medium">{stats.fps}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-mono">
+                                <span className="text-slate-500 uppercase tracking-widest text-[10px]">Bitrate</span>
+                                <span className="text-white font-medium">{stats.bitrate} Mbps</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-mono">
-                        <span className="text-slate-500 uppercase tracking-widest text-[10px]">FPS</span>
-                        <span className="text-white font-medium">{stats.fps}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-mono">
-                        <span className="text-slate-500 uppercase tracking-widest text-[10px]">Bitrate</span>
-                        <span className="text-white font-medium">{stats.bitrate} Mbps</span>
-                    </div>
-                </div>
+                )}
+
+                <div className="w-[1px] h-6 bg-slate-700 mx-1"></div>
 
                 {/* Right: Controls */}
-                <div className="flex items-center gap-2 w-1/4 justify-end">
+                <div className="flex items-center gap-1 pr-1 shrink-0 no-drag">
 
                     {/* Modifiers Toggle Panel */}
                     <div className="relative">

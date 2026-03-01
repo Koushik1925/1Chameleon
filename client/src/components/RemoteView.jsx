@@ -5,11 +5,9 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, sendI
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isMouseNearTop, setIsMouseNearTop] = useState(true);
 
     // Throttling ref for mouse movement
     const lastMoveTimeRef = useRef(0);
-    const mouseHideTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (videoRef.current && stream) {
@@ -102,18 +100,6 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, sendI
         <div
             ref={containerRef}
             tabIndex={0}
-            onMouseMove={(e) => {
-                // Toolbar reveal logic
-                if (e.clientY < 80) {
-                    setIsMouseNearTop(true);
-                    clearTimeout(mouseHideTimeoutRef.current);
-                } else {
-                    if (isMouseNearTop) {
-                        clearTimeout(mouseHideTimeoutRef.current);
-                        mouseHideTimeoutRef.current = setTimeout(() => setIsMouseNearTop(false), 2000);
-                    }
-                }
-            }}
             onKeyDown={(e) => {
                 e.preventDefault();
                 if (sendInputEvent) sendInputEvent({ type: 'key_down', code: e.code, key: e.key });
@@ -130,7 +116,6 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, sendI
                 onDisconnect={onDisconnect}
                 isFullscreen={isFullscreen}
                 toggleFullscreen={toggleFullscreen}
-                isMouseNearTop={isMouseNearTop}
             />
 
             <div className="flex-1 min-h-0 flex items-center justify-center relative touch-none overflow-hidden bg-black">
@@ -146,17 +131,6 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, sendI
                     // MVP mouse support for testing on laptop
                     onMouseMove={(e) => {
                         e.stopPropagation(); // don't trigger the container's mouse move
-
-                        // Toolbar reveal logic
-                        if (e.clientY < 80) {
-                            setIsMouseNearTop(true);
-                            clearTimeout(mouseHideTimeoutRef.current);
-                        } else {
-                            if (isMouseNearTop) {
-                                clearTimeout(mouseHideTimeoutRef.current);
-                                mouseHideTimeoutRef.current = setTimeout(() => setIsMouseNearTop(false), 2000);
-                            }
-                        }
 
                         if (!sendInputEvent) return;
 
