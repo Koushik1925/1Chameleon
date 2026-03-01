@@ -114,6 +114,14 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, sendI
                     }
                 }
             }}
+            onKeyDown={(e) => {
+                e.preventDefault();
+                if (sendInputEvent) sendInputEvent({ type: 'key_down', code: e.code, key: e.key });
+            }}
+            onKeyUp={(e) => {
+                e.preventDefault();
+                if (sendInputEvent) sendInputEvent({ type: 'key_up', code: e.code, key: e.key });
+            }}
             className="relative w-full h-full bg-[#0b0f14] overflow-hidden flex flex-col focus:outline-none"
         >
             <TopToolbar
