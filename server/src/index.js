@@ -21,7 +21,6 @@ const io = new Server(server, {
 const sessions = new Map();
 
 const SESSION_EXPIRY_MS = 60 * 1000; // 60 seconds for pairing
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes idle timeout
 
 io.on('connection', (socket) => {
     console.log(`[INFO] New connection: ${socket.id}`);
@@ -126,19 +125,6 @@ io.on('connection', (socket) => {
         }
     });
 });
-
-// Periodic cleanup of idle sessions
-setInterval(() => {
-    const now = Date.now();
-    for (const [sessionId, session] of sessions.entries()) {
-        if (session.status === 'connected' && (now - session.lastActivity > IDLE_TIMEOUT_MS)) {
-            if (session.agentSocketId) io.to(session.agentSocketId).emit('session:ended', { reason: 'Idle timeout' });
-            if (session.clientSocketId) io.to(session.clientSocketId).emit('session:ended', { reason: 'Idle timeout' });
-            sessions.delete(sessionId);
-            console.log(`[INFO] Session ${sessionId} expired due to idle timeout`);
-        }
-    }
-}, 60000); // Check every minute
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

@@ -11,6 +11,7 @@ function App() {
   const [status, setStatus] = useState('scan'); // scan -> connecting -> connected -> error
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
 
   const socketRef = useRef(null);
   const peerRef = useRef(null);
@@ -54,8 +55,19 @@ function App() {
       setStatus('scan');
       setSessionId(null);
       setRemoteStream(null);
-      setErrorMsg(`Session ended: ${data.reason}`);
+
+      // Calculate Duration
+      let durationStr = '';
+      if (sessionStartTime) {
+        const diffMs = Date.now() - sessionStartTime;
+        const mins = Math.floor(diffMs / 60000);
+        const secs = Math.floor((diffMs % 60000) / 1000);
+        durationStr = ` (Duration: ${mins}m ${secs}s)`;
+      }
+
+      setErrorMsg(`Session ended: ${data.reason}${durationStr}`);
       cleanupWebRTC();
+      setSessionStartTime(null);
     });
 
     // 2. WebRTC Signaling
@@ -121,6 +133,7 @@ function App() {
       console.log('Received remote track', event.streams[0]);
       setRemoteStream(event.streams[0]);
       setStatus('connected');
+      setSessionStartTime(Date.now());
     };
 
     peer.ondatachannel = (event) => {
@@ -135,8 +148,19 @@ function App() {
       console.log('Connection state:', peer.connectionState);
       if (peer.connectionState === 'disconnected' || peer.connectionState === 'failed') {
         setStatus('error');
-        setErrorMsg('Peer connection lost');
+
+        // Calculate Duration
+        let durationStr = '';
+        if (sessionStartTime) {
+          const diffMs = Date.now() - sessionStartTime;
+          const mins = Math.floor(diffMs / 60000);
+          const secs = Math.floor((diffMs % 60000) / 1000);
+          durationStr = `after ${mins}m ${secs}s`;
+        }
+
+        setErrorMsg(`Peer connection lost ${durationStr}`.trim());
         cleanupWebRTC();
+        setSessionStartTime(null);
       }
     };
   };
