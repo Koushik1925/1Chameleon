@@ -32,15 +32,44 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
+    const getPointerPosition = (clientX, clientY) => {
+        const video = videoRef.current;
+        if (!video || !video.videoWidth) return null;
+
+        const rect = video.getBoundingClientRect();
+        const videoAspectRatio = video.videoWidth / video.videoHeight;
+        const rectAspectRatio = rect.width / rect.height;
+
+        let renderedWidth = rect.width;
+        let renderedHeight = rect.height;
+        let offsetLeft = 0;
+        let offsetTop = 0;
+
+        if (videoAspectRatio > rectAspectRatio) {
+            renderedHeight = rect.width / videoAspectRatio;
+            offsetTop = (rect.height - renderedHeight) / 2;
+        } else {
+            renderedWidth = rect.height * videoAspectRatio;
+            offsetLeft = (rect.width - renderedWidth) / 2;
+        }
+
+        let x = (clientX - rect.left - offsetLeft) / renderedWidth;
+        let y = (clientY - rect.top - offsetTop) / renderedHeight;
+
+        x = Math.max(0, Math.min(1, x));
+        y = Math.max(0, Math.min(1, y));
+
+        return { x, y };
+    };
+
     // Basic touch to mouse mapping for MVP
     const handleTouchStart = (e) => {
         if (!sendInputEvent) return;
         const touch = e.touches[0];
-        const rect = videoRef.current.getBoundingClientRect();
-        const x = (touch.clientX - rect.left) / rect.width;
-        const y = (touch.clientY - rect.top) / rect.height;
+        const pos = getPointerPosition(touch.clientX, touch.clientY);
+        if (!pos) return;
 
-        sendInputEvent({ type: 'mouse_move', x, y, isDown: true });
+        sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y, isDown: true });
         // Emulate left click down on touch start
         sendInputEvent({ type: 'mouse_down', button: 0 });
     };
@@ -48,13 +77,12 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
     const handleTouchMove = (e) => {
         if (!sendInputEvent) return;
         const touch = e.touches[0];
-        const rect = videoRef.current.getBoundingClientRect();
-        const x = (touch.clientX - rect.left) / rect.width;
-        const y = (touch.clientY - rect.top) / rect.height;
+        const pos = getPointerPosition(touch.clientX, touch.clientY);
+        if (!pos) return;
 
         sendInputEvent({
             type: 'mouse_move',
-            x, y,
+            x: pos.x, y: pos.y,
             isDown: true
         });
     };
@@ -118,10 +146,9 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
                     // MVP mouse support for testing on laptop
                     onMouseMove={(e) => {
                         if (!sendInputEvent) return;
-                        const rect = videoRef.current.getBoundingClientRect();
-                        const x = (e.clientX - rect.left) / rect.width;
-                        const y = (e.clientY - rect.top) / rect.height;
-                        sendInputEvent({ type: 'mouse_move', x, y, isDown: e.buttons > 0 });
+                        const pos = getPointerPosition(e.clientX, e.clientY);
+                        if (!pos) return;
+                        sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y, isDown: e.buttons > 0 });
                     }}
                     onMouseDown={(e) => sendInputEvent && sendInputEvent({ type: 'mouse_down', button: e.button })}
                     onMouseUp={(e) => sendInputEvent && sendInputEvent({ type: 'mouse_up', button: e.button })}
