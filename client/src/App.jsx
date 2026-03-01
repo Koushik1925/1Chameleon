@@ -53,6 +53,18 @@ function ClientApp() {
     return () => clearTimeout(timeout);
   }, [status]);
 
+  // Keep-alive for Render backend (Prevents 15m idle shutdown on free tiers)
+  useEffect(() => {
+    const pingInterval = setInterval(() => {
+      fetch(`${SIGNALING_URL}/ping`).catch(() => { });
+    }, 5 * 60 * 1000); // 5 minutes
+
+    // Fire an immediate ping on load just to be safe
+    fetch(`${SIGNALING_URL}/ping`).catch(() => { });
+
+    return () => clearInterval(pingInterval);
+  }, []);
+
   const handleJoinSession = (sid) => {
     setSessionId(sid);
     setStatus('connecting');

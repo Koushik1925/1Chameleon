@@ -14,6 +14,13 @@
         const QRCode = require('qrcode');
 
         const SIGNALING_URL = 'https://chameleon-j5wf.onrender.com';
+
+        // Keep-alive for Render backend (Prevents 15m idle shutdown and RAM wipe)
+        setInterval(() => {
+            fetch(`${SIGNALING_URL}/ping`).catch(() => { });
+        }, 5 * 60 * 1000);
+        fetch(`${SIGNALING_URL}/ping`).catch(() => { }); // Initial warm-up
+
         let socket = null;
         let peerConnection = null;
         let localStream = null;

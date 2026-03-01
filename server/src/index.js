@@ -8,6 +8,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Keep-alive endpoint to prevent Render free-tier from sleeping (wipes session Map)
+app.get('/ping', (req, res) => {
+    res.status(200).send('pong');
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
