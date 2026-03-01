@@ -192,6 +192,15 @@ function ClientApp() {
       channel.onmessage = async (msgEvent) => {
         try {
           const payload = JSON.parse(msgEvent.data);
+
+          if (payload.type === 'ping') {
+            // Let the agent know we're still alive
+            if (channel.readyState === 'open') {
+              channel.send(JSON.stringify({ type: 'pong' }));
+            }
+            return;
+          }
+
           if (payload.type === 'clipboard_pull_response') {
             await navigator.clipboard.writeText(payload.text);
             console.log('Clipboard pulled from host successfully.');
@@ -206,7 +215,7 @@ function ClientApp() {
 
     peer.onconnectionstatechange = () => {
       console.log('Connection state:', peer.connectionState);
-      if (peer.connectionState === 'disconnected' || peer.connectionState === 'failed') {
+      if (peer.connectionState === 'failed') {
         setStatus('error');
 
         // Calculate Duration

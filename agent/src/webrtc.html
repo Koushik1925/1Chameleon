@@ -129,7 +129,8 @@
 
             peerConnection = new RTCPeerConnection({
                 iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' }
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
                 ]
             });
 
@@ -161,7 +162,8 @@
 
             peerConnection.onconnectionstatechange = () => {
                 console.log('PC State:', peerConnection.connectionState);
-                if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                if (peerConnection.connectionState === 'failed') {
+                    console.log('WebRTC Connection failed. Cleaning up.');
                     cleanupSession();
                 }
             };
@@ -178,9 +180,25 @@
         }
 
         function setupDataChannel(channel) {
+            channel.onopen = () => {
+                console.log('Data channel opened');
+                // Keep the NAT binding alive aggressively
+                channel.pingInterval = setInterval(() => {
+                    if (channel.readyState === 'open') {
+                        channel.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 5000); // 5 seconds
+            };
+
+            channel.onclose = () => {
+                console.log('Data channel closed');
+                if (channel.pingInterval) clearInterval(channel.pingInterval);
+            };
+
             channel.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    if (data.type === 'ping' || data.type === 'pong') return; // Ignore keep-alives
                     handleRemoteInput(data);
                 } catch (e) {
                     console.error('DataChannel parse error', e);
