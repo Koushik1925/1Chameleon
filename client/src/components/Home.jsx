@@ -154,24 +154,24 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">Windows</h3>
                                 <p className="text-slate-400 text-sm mb-8">Windows 10 / 11 (x64)</p>
-                                <a href="https://github.com/Rithvik-krishna/Chameleon" className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10">
+                                <a href="/Chameleon-Agent-Setup-1.0.0.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10">
                                     Download for Windows
                                 </a>
-                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.0 • 85 MB</span>
+                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.0 • ~85 MB</span>
                             </div>
 
                             {/* macOS Card */}
-                            <div className="bg-[#111827] border border-slate-800 p-8 rounded-3xl flex flex-col items-center text-center relative overflow-hidden group">
-                                <div className="absolute inset-0 bg-slate-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="bg-[#111827] border border-slate-800 p-8 rounded-3xl flex flex-col items-center text-center relative overflow-hidden group opacity-75">
+                                <div className="absolute inset-0 bg-slate-500/5"></div>
                                 <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 border border-white/10">
-                                    <MonitorPlay size={32} className="text-slate-300" />
+                                    <MonitorPlay size={32} className="text-slate-500" />
                                 </div>
-                                <h3 className="text-2xl font-bold mb-2">macOS</h3>
-                                <p className="text-slate-400 text-sm mb-8">Intel & Apple Silicon (Universal)</p>
-                                <a href="https://github.com/Rithvik-krishna/Chameleon" className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10">
-                                    Download for macOS
-                                </a>
-                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.0 • 92 MB</span>
+                                <h3 className="text-2xl font-bold mb-2 text-slate-300">macOS</h3>
+                                <p className="text-slate-500 text-sm mb-8">Intel & Apple Silicon (Universal)</p>
+                                <button disabled className="w-full py-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 font-medium cursor-not-allowed z-10">
+                                    Coming Soon
+                                </button>
+                                <span className="text-xs text-slate-600 mt-4 font-mono">In Development</span>
                             </div>
                         </div>
                     </div>
