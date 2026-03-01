@@ -20,8 +20,8 @@ const io = new Server(server, {
 // Structure: sessionId -> { agentSocketId, clientSocketId, createdAt, status }
 const sessions = new Map();
 
-const SESSION_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours for pairing
-const RECONNECT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours to grab the same session back
+const SESSION_EXPIRY_MS = 12 * 60 * 60 * 1000; // 12 hours for active session validity
+const RECONNECT_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours to grab the same session back
 
 io.on('connection', (socket) => {
     console.log(`[INFO] New connection: ${socket.id}`);
@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
             lastActivity: Date.now()
         });
 
-        // Automatically expire pairing token after 60 seconds
+        // Automatically expire pairing token after limit reaches (12 hours)
         setTimeout(() => {
             const session = sessions.get(sessionId);
             if (session && session.status === 'pending_pairing') {
@@ -54,6 +54,7 @@ io.on('connection', (socket) => {
         // Send the pairing payload back to agent (to turn into QR)
         socket.emit('agent:session_created', {
             sessionId,
+            // Pass seconds for UI expiration timers
             expiresIn: Math.floor(SESSION_EXPIRY_MS / 1000)
         });
         console.log(`[INFO] Session ${sessionId} created by agent ${socket.id}`);
