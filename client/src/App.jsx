@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import QRScanner from './components/QRScanner';
 import RemoteView from './components/RemoteView';
+import { Power } from 'lucide-react';
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
@@ -34,6 +35,18 @@ function App() {
       handleJoinSession(sid);
     }
   }, []);
+
+  // 7-minute timer to auto-return to home
+  useEffect(() => {
+    let timeout;
+    if (status === 'disconnected_prompt') {
+      timeout = setTimeout(() => {
+        setStatus('scan');
+        setSessionId(null);
+      }, 7 * 60 * 1000);
+    }
+    return () => clearTimeout(timeout);
+  }, [status]);
 
   const handleJoinSession = (sid) => {
     setSessionId(sid);
@@ -68,8 +81,8 @@ function App() {
     });
 
     socket.on('session:ended', (data) => {
-      setStatus('scan');
-      setSessionId(null);
+      setStatus('error');
+      setRemoteStream(null);
       setRemoteStream(null);
 
       // Calculate Duration
@@ -198,8 +211,7 @@ function App() {
       socketRef.current.disconnect();
     }
     cleanupWebRTC();
-    setStatus('scan');
-    setSessionId(null);
+    setStatus('disconnected_prompt');
   };
 
   const sendInputEvent = (eventData) => {
@@ -278,6 +290,36 @@ function App() {
           >
             Cancel
           </button>
+        </div>
+      )}
+
+      {status === 'disconnected_prompt' && (
+        <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-6 border-2 border-slate-600 text-slate-400">
+            <Power size={24} />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Session Disconnected</h2>
+          <p className="text-slate-400 max-w-md mb-8">You have manually disconnected. The session will be preserved for a few more minutes.</p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => {
+                setStatus('scan');
+                setSessionId(null);
+              }}
+              className="px-6 py-3 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors font-medium border border-slate-700"
+            >
+              Connect to New Session
+            </button>
+
+            {lastSessionId && (
+              <button
+                onClick={() => handleJoinSession(lastSessionId)}
+                className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors font-medium shadow-lg shadow-blue-900/20"
+              >
+                Reconnect to Previous
+              </button>
+            )}
+          </div>
         </div>
       )}
 

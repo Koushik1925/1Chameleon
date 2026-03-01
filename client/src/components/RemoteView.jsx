@@ -80,7 +80,7 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
             }}
             className="relative w-full h-full bg-slate-950 overflow-hidden flex flex-col focus:outline-none"
         >
-            <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 opacity-0 hover:opacity-100 transition-opacity duration-300 bg-gradient-to-b from-black/80 to-transparent">
+            <div className="flex-none flex justify-between items-center p-3 bg-slate-900 border-b border-slate-800 z-10 shadow-md">
                 <div className="flex items-center gap-2 text-green-400">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                     <span className="text-sm font-medium">Connected to Host</span>
