@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import QRScanner from './components/QRScanner';
 import RemoteView from './components/RemoteView';
 import OTPInput from './components/OTPInput';
-import { Power, ShieldCheck } from 'lucide-react';
+import Home from './components/Home';
+import { Power, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
 
-function App() {
+function ClientApp() {
+  const navigate = useNavigate();
   const [sessionId, setSessionId] = useState(null);
   const [status, setStatus] = useState('scan'); // scan -> connecting -> connected -> error
   const [errorMsg, setErrorMsg] = useState('');
@@ -303,22 +306,35 @@ function App() {
 
       {status === 'connecting' && (
         <div className="z-10 w-full max-w-md p-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
-          <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
-            {/* Double spinner cyber effect */}
-            <div className="absolute inset-0 border-4 border-slate-800 rounded-full border-t-cyan-400 animate-spin" style={{ animationDuration: '1s' }}></div>
-            <div className="absolute inset-2 border-2 border-slate-800 rounded-full border-b-cyan-500 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
-            <ShieldCheck className="text-cyan-400" size={24} />
+          <div className="max-w-md w-full relative z-10 flex flex-col items-center">
+
+            {/* Back Button */}
+            <button
+              onClick={() => navigate('/')}
+              className="self-start mb-6 text-slate-400 hover:text-white flex items-center gap-2 transition-colors group"
+            >
+              <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+              <span className="text-sm font-medium">Back to Home</span>
+            </button>
+
+            {/* Branding Header Area */}
+            <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
+              {/* Double spinner cyber effect */}
+              <div className="absolute inset-0 border-4 border-slate-800 rounded-full border-t-cyan-400 animate-spin" style={{ animationDuration: '1s' }}></div>
+              <div className="absolute inset-2 border-2 border-slate-800 rounded-full border-b-cyan-500 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+              <ShieldCheck className="text-cyan-400" size={24} />
+            </div>
+
+            <h2 className="text-2xl font-bold tracking-wide text-white mb-2">Establishing Link...</h2>
+            <p className="text-cyan-400 font-mono tracking-widest bg-cyan-950/30 px-4 py-1.5 rounded border border-cyan-500/20">{sessionId}</p>
+
+            <button
+              onClick={handleDisconnect}
+              className="mt-10 px-8 py-3 bg-transparent text-slate-400 hover:text-white hover:bg-white/5 rounded-xl text-sm font-semibold tracking-wide border border-transparent hover:border-white/10 transition-all duration-200"
+            >
+              Abort Connection
+            </button>
           </div>
-
-          <h2 className="text-2xl font-bold tracking-wide text-white mb-2">Establishing Link...</h2>
-          <p className="text-cyan-400 font-mono tracking-widest bg-cyan-950/30 px-4 py-1.5 rounded border border-cyan-500/20">{sessionId}</p>
-
-          <button
-            onClick={handleDisconnect}
-            className="mt-10 px-8 py-3 bg-transparent text-slate-400 hover:text-white hover:bg-white/5 rounded-xl text-sm font-semibold tracking-wide border border-transparent hover:border-white/10 transition-all duration-200"
-          >
-            Abort Connection
-          </button>
         </div>
       )}
 
@@ -399,4 +415,11 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/connect" element={<ClientApp />} />
+    </Routes>
+  );
+}
