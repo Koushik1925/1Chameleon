@@ -33,22 +33,30 @@ export default function QRScanner({ onScanSuccess }) {
     }, [onScanSuccess]);
 
     return (
-        <div className="flex flex-col items-center justify-center h-full w-full p-6">
-            <div className="max-w-md w-full bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-700">
-                <div className="p-6 text-center border-b border-slate-700">
-                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                        Pair Device
-                    </h2>
-                    <p className="text-slate-400 mt-2 text-sm">
-                        Scan the QR code displayed on your desktop agent to connect.
-                    </p>
-                </div>
+        <div className="flex flex-col items-center justify-center w-full">
+            <div className="w-full text-center mb-6">
+                <h2 className="text-3xl font-bold text-white tracking-wide">
+                    Pair Device
+                </h2>
+                <p className="text-slate-400 mt-2 text-sm font-medium">
+                    Scan the QR code displayed on your desktop agent.
+                </p>
+            </div>
 
-                <div className="p-6">
-                    <div id="qr-reader" className="w-full mx-auto" style={{ maxWidth: "400px" }}></div>
-                    {error && <p className="text-red-400 text-sm mt-4 text-center">{error}</p>}
+            <div className="relative w-full max-w-[280px] aspect-square mx-auto mb-6">
+                {/* Futuristic Brackets */}
+                <div className="scanner-bracket scanner-bracket-tl"></div>
+                <div className="scanner-bracket scanner-bracket-tr"></div>
+                <div className="scanner-bracket scanner-bracket-bl"></div>
+                <div className="scanner-bracket scanner-bracket-br"></div>
+
+                {/* Scanner Container */}
+                <div className="w-full h-full rounded-xl overflow-hidden border flex items-center justify-center border-slate-700/50 bg-[#0b0f14]/50 active-scan-glow p-2">
+                    <div id="qr-reader" className="w-full h-full [&>div]:border-none [&>div]:!bg-transparent"></div>
                 </div>
             </div>
+
+            {error && <p className="text-cyan-400 text-sm mt-2 font-medium tracking-wide">{error}</p>}
         </div>
     );
 }

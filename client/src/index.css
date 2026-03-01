@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
 body {
   margin: 0;
@@ -6,11 +7,92 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #0f172a; /* slate-900 */
-  color: #f8fafc; /* slate-50 */
+  background-color: #0b0f14;
+  /* Deep Matte Black */
+  color: #e5e7eb;
+  /* Soft White */
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 #root {
   width: 100%;
   height: 100%;
+}
+
+/* Custom Grid Animation Background */
+.bg-grid-pattern {
+  background-size: 50px 50px;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(50px);
+  }
+}
+
+/* Subtle corner brackets for the Scanner */
+.scanner-bracket {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #06b6d4;
+  border-style: solid;
+  border-width: 0;
+  transition: all 0.3s ease;
+}
+
+.scanner-bracket-tl {
+  top: -2px;
+  left: -2px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  border-top-left-radius: 8px;
+}
+
+.scanner-bracket-tr {
+  top: -2px;
+  right: -2px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  border-top-right-radius: 8px;
+}
+
+.scanner-bracket-bl {
+  bottom: -2px;
+  left: -2px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  border-bottom-left-radius: 8px;
+}
+
+.scanner-bracket-br {
+  bottom: -2px;
+  right: -2px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+  border-bottom-right-radius: 8px;
+}
+
+/* Pulse Glow for scanner active state */
+@keyframes softPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.5);
+  }
+}
+
+.active-scan-glow {
+  animation: softPulse 3s infinite ease-in-out;
 }

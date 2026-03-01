@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import QRScanner from './components/QRScanner';
 import RemoteView from './components/RemoteView';
-import { Power } from 'lucide-react';
+import OTPInput from './components/OTPInput';
+import { Power, ShieldCheck } from 'lucide-react';
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
@@ -250,42 +251,37 @@ function App() {
   };
 
   return (
-    <div className="w-full h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden flex flex-col">
+    <div className="relative w-full h-[100dvh] bg-[#0b0f14] text-[#e5e7eb] font-sans flex flex-col items-center justify-center overflow-hidden">
+
+      {/* Background Grid Layer - Always present unless in remote view */}
+      {status !== 'connected' && (
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-40 mix-blend-screen bg-grid-pattern"></div>
+      )}
+
+      {/* Cyberpunk Secure Badge */}
+      {status !== 'connected' && (
+        <div className="absolute top-6 right-6 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-950/30 border border-cyan-500/30 text-cyan-400 text-xs font-semibold tracking-wide backdrop-blur-md">
+          <ShieldCheck size={14} /> Secure Connection
+        </div>
+      )}
+
       {status === 'scan' && (
-        <div className="flex flex-col items-center justify-center h-full">
+        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative">
+          {/* Subtle top glow line to make the glass pop */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50"></div>
+
           <QRScanner onScanSuccess={handleScanSuccess} />
 
           {/* Polished OTP Entry Section */}
-          <div className="mt-8 flex flex-col items-center">
-            <p className="text-sm text-slate-400 mb-3 uppercase tracking-wider font-semibold">Or enter 6-digit code</p>
-            <div className="flex gap-2">
-              <input
-                id="manual-session"
-                type="text"
-                maxLength={6}
-                placeholder="000000"
-                className="px-4 py-3 bg-slate-800 rounded-lg border border-slate-700 text-2xl tracking-widest text-center focus:outline-none focus:border-blue-500 w-48 text-white font-mono"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const val = document.getElementById('manual-session').value.trim();
-                    if (val && val.length === 6) handleJoinSession(val);
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  const val = document.getElementById('manual-session').value.trim();
-                  if (val && val.length === 6) handleJoinSession(val);
-                }}
-                className="px-6 py-3 bg-blue-600 rounded-lg font-medium hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20"
-              >
-                Connect
-              </button>
-            </div>
+          <div className="mt-8 flex flex-col items-center border-t border-slate-700/50 pt-8">
+            <p className="text-xs text-slate-400 mb-4 uppercase tracking-[0.2em] font-medium">Or manually connect</p>
+
+            <OTPInput length={6} onComplete={(val) => handleJoinSession(val)} />
+
           </div>
 
           {errorMsg && (
-            <div className="absolute bottom-4 left-4 right-4 bg-red-900/80 border border-red-700 text-red-200 px-4 py-3 rounded-lg text-center backdrop-blur shadow-xl">
+            <div className="absolute -bottom-16 left-0 right-0 max-w-sm mx-auto bg-red-950/80 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl text-sm font-medium text-center backdrop-blur shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-in fade-in slide-in-from-bottom-2">
               {errorMsg}
             </div>
           )}
@@ -293,86 +289,97 @@ function App() {
       )}
 
       {status === 'connecting' && (
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="w-16 h-16 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin mb-6"></div>
-          <h2 className="text-xl font-medium animate-pulse">Connecting to Agent...</h2>
-          <p className="text-slate-400 mt-2 text-sm">{sessionId}</p>
+        <div className="z-10 w-full max-w-md p-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
+          <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
+            {/* Double spinner cyber effect */}
+            <div className="absolute inset-0 border-4 border-slate-800 rounded-full border-t-cyan-400 animate-spin" style={{ animationDuration: '1s' }}></div>
+            <div className="absolute inset-2 border-2 border-slate-800 rounded-full border-b-cyan-500 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+            <ShieldCheck className="text-cyan-400" size={24} />
+          </div>
+
+          <h2 className="text-2xl font-bold tracking-wide text-white mb-2">Establishing Link...</h2>
+          <p className="text-cyan-400 font-mono tracking-widest bg-cyan-950/30 px-4 py-1.5 rounded border border-cyan-500/20">{sessionId}</p>
+
           <button
             onClick={handleDisconnect}
-            className="mt-8 px-6 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 text-sm border border-slate-600 transition-colors"
+            className="mt-10 px-8 py-3 bg-transparent text-slate-400 hover:text-white hover:bg-white/5 rounded-xl text-sm font-semibold tracking-wide border border-transparent hover:border-white/10 transition-all duration-200"
           >
-            Cancel
+            Abort Connection
           </button>
         </div>
       )}
 
       {status === 'disconnected_prompt' && (
-        <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-6 border-2 border-slate-600 text-slate-400">
+        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-full bg-[#111827] flex items-center justify-center mb-6 border border-slate-700 text-slate-400 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
             <Power size={24} />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Session Disconnected</h2>
-          <p className="text-slate-400 max-w-md mb-2">You have manually disconnected. The session will be preserved for a few more minutes.</p>
-          {sessionDuration && <p className="text-blue-400 font-medium mb-8">{sessionDuration}</p>}
-          <div className="flex gap-4">
+          <h2 className="text-2xl font-bold tracking-wide mb-2 text-white">Session Terminated</h2>
+          <p className="text-slate-400 max-w-sm mb-2 text-sm leading-relaxed">The remote link has been closed. Your session key remains valid for a limited time.</p>
+          {sessionDuration && <p className="text-cyan-400 font-mono tracking-widest text-sm mb-8 bg-cyan-950/20 px-3 py-1 rounded inline-block">{sessionDuration}</p>}
+
+          <div className="flex flex-col w-full gap-3">
+            {lastSessionId && (
+              <button
+                onClick={() => handleJoinSession(lastSessionId)}
+                className="w-full px-6 py-4 bg-cyan-500 hover:bg-cyan-400 text-[#0b0f14] rounded-xl font-bold tracking-wide shadow-[0_4px_20px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.4)] transition-all duration-200 transform hover:-translate-y-[1px]"
+              >
+                Reconnect to {lastSessionId}
+              </button>
+            )}
             <button
               onClick={() => {
                 setStatus('scan');
                 setSessionId(null);
               }}
-              className="px-6 py-3 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors font-medium border border-slate-700"
+              className="w-full px-6 py-4 bg-[#111827] hover:bg-slate-800 text-white rounded-xl font-medium tracking-wide border border-slate-700 transition-all duration-200"
             >
-              Connect to New Session
+              Start New Session
             </button>
-
-            {lastSessionId && (
-              <button
-                onClick={() => handleJoinSession(lastSessionId)}
-                className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors font-medium shadow-lg shadow-blue-900/20"
-              >
-                Reconnect to Previous
-              </button>
-            )}
           </div>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-900/50 flex items-center justify-center mb-6 border-2 border-red-500 text-red-400">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        <div className="z-10 w-full max-w-md p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center text-center">
+          <div className="w-20 h-20 rounded-full bg-red-950/40 flex items-center justify-center mb-6 border border-red-500/30 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative">
+            <div className="absolute inset-0 rounded-full border border-red-500 animate-ping opacity-20" style={{ animationDuration: '2s' }}></div>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Connection Failed</h2>
-          <p className="text-red-300 max-w-md mb-8">{errorMsg}</p>
-          <div className="flex gap-4">
+          <h2 className="text-2xl font-bold tracking-wide mb-3 text-white">Connection Failed</h2>
+          <p className="text-slate-400 text-sm mb-8 max-w-sm leading-relaxed">{errorMsg}</p>
+
+          <div className="flex flex-col w-full gap-3">
+            {lastSessionId && (
+              <button
+                onClick={() => handleJoinSession(lastSessionId)}
+                className="w-full px-6 py-4 bg-cyan-500 hover:bg-cyan-400 text-[#0b0f14] rounded-xl font-bold tracking-wide shadow-[0_4px_20px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.4)] transition-all duration-200 transform hover:-translate-y-[1px]"
+              >
+                Retry Link
+              </button>
+            )}
+
             <button
               onClick={() => {
                 setStatus('scan');
                 setErrorMsg('');
               }}
-              className="px-6 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors font-medium border border-slate-700"
+              className="w-full px-6 py-4 bg-[#111827] hover:bg-slate-800 text-white rounded-xl font-medium tracking-wide border border-slate-700 transition-all duration-200"
             >
-              Start Over
+              System Reset
             </button>
-
-            {lastSessionId && (
-              <button
-                onClick={() => handleJoinSession(lastSessionId)}
-                className="px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors font-medium shadow-lg shadow-blue-900/20"
-              >
-                Reconnect to {lastSessionId}
-              </button>
-            )}
           </div>
         </div>
       )}
 
       {status === 'connected' && (
-        <RemoteView
-          stream={remoteStream}
-          onDisconnect={handleDisconnect}
-          sendInputEvent={sendInputEvent}
-        />
+        <div className="z-20 w-full h-full">
+          <RemoteView
+            stream={remoteStream}
+            onDisconnect={handleDisconnect}
+            sendInputEvent={sendInputEvent}
+          />
+        </div>
       )}
     </div>
   );
