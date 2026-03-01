@@ -230,18 +230,18 @@ export default function Home() {
                         </p>
                     </div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto border-t border-white/5 pt-8 text-xs text-slate-600">
-                        <div className="flex flex-col items-center md:items-start mb-6 md:mb-0">
-                            <div className="flex items-center gap-2 mb-1">
-                                <ShieldCheck size={16} className="text-cyan-900" />
-                                <span className="font-semibold text-slate-400">Chameleon v1.0.0</span>
-                            </div>
-                            <span className="text-slate-600 md:pl-6">© {new Date().getFullYear()} Chameleon Remote. All rights reserved.</span>
-                        </div>
-                        <div className="flex gap-6 font-medium">
-                            <a href="#" className="hover:text-slate-400 transition-colors">Privacy</a>
-                            <a href="#" className="hover:text-slate-400 transition-colors">Terms</a>
-                            <a href="https://github.com/Rithvik-krishna/Chameleon" className="hover:text-slate-400 transition-colors">GitHub</a>
+                    <div className="max-w-7xl mx-auto border-t border-white/5 pt-12 mt-8 flex flex-col items-center justify-center text-xs text-slate-500 font-medium tracking-wide">
+                        <div className="mb-2 text-slate-400">Chameleon © {new Date().getFullYear()}</div>
+                        <div>
+                            Founder & Developer —{' '}
+                            <a
+                                href="https://github.com/Rithvik-krishna"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-slate-400 hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] transition-all duration-300"
+                            >
+                                Rithvik Krishna
+                            </a>
                         </div>
                     </div>
                 </footer>
