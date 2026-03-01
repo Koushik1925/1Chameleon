@@ -109,7 +109,7 @@
                             maxWidth: 1920,
                             minHeight: 720,
                             maxHeight: 1080,
-                            maxFrameRate: 30
+                            maxFrameRate: 60
                         }
                     }
                 });
@@ -135,6 +135,9 @@
 
             // Add video track
             localStream.getTracks().forEach(track => {
+                if (track.kind === 'video') {
+                    track.contentHint = 'motion'; // Prioritize strict framerate over single-frame clarity
+                }
                 peerConnection.addTrack(track, localStream);
             });
 
@@ -186,7 +189,43 @@
         }
 
         function handleRemoteInput(data) {
-            ipcRenderer.send('webrtc:remote_input', data);
+            if (data.type === 'clipboard_pull_request') {
+                ipcRenderer.invoke('webrtc:clipboard_pull').then(text => {
+                    if (dataChannel && dataChannel.readyState === 'open') {
+                        dataChannel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
+                    }
+                }).catch(err => console.error("Agent clipboard read error", err));
+            } else if (data.type === 'update_resolution') {
+                updateResolution(data.resolution);
+            } else {
+                ipcRenderer.send('webrtc:remote_input', data);
+            }
+        }
+
+        async function updateResolution(res) {
+            if (!localStream) return;
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (!videoTrack) return;
+
+            // Chrome desktopCapture has specific constraints format requirements
+            let width = 1920;
+            let height = 1080;
+            let fps = 60;
+
+            if (res === '720p') { width = 1280; height = 720; fps = 30; }
+            if (res === '480p') { width = 854; height = 480; fps = 30; }
+
+            try {
+                // Apply constraints to running track seamlessly without renegotiation
+                await videoTrack.applyConstraints({
+                    width: { max: width },
+                    height: { max: height },
+                    frameRate: { max: fps }
+                });
+                console.log('Applied new constraints:', res);
+            } catch (err) {
+                console.error('Failed to apply constraints', err);
+            }
         }
 
         function cleanupSession() {

@@ -172,6 +172,19 @@ function App() {
       dataChannelRef.current = channel;
 
       channel.onopen = () => console.log('Data channel opened');
+
+      channel.onmessage = async (msgEvent) => {
+        try {
+          const payload = JSON.parse(msgEvent.data);
+          if (payload.type === 'clipboard_pull_response') {
+            await navigator.clipboard.writeText(payload.text);
+            console.log('Clipboard pulled from host successfully.');
+          }
+        } catch (e) {
+          console.error("Data channel parse error:", e);
+        }
+      };
+
       channel.onclose = () => console.log('Data channel closed');
     };
 
@@ -376,6 +389,7 @@ function App() {
         <div className="z-20 w-full h-full">
           <RemoteView
             stream={remoteStream}
+            peerConnection={peerRef.current}
             onDisconnect={handleDisconnect}
             sendInputEvent={sendInputEvent}
           />

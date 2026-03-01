@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { Maximize2, Minimize2, Power, MousePointer2 } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import TopToolbar from './TopToolbar';
 
-export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
+export default function RemoteView({ stream, peerConnection, onDisconnect, sendInputEvent }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isMouseNearTop, setIsMouseNearTop] = useState(true);
+
+    // Throttling ref for mouse movement
+    const lastMoveTimeRef = useRef(0);
+    const mouseHideTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (videoRef.current && stream) {
@@ -97,41 +102,28 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
         <div
             ref={containerRef}
             tabIndex={0}
-            onKeyDown={(e) => {
-                // Prevent browser shortcuts like F5 or spacebar scrolling while controlling the remote PC
-                e.preventDefault();
-                if (sendInputEvent) sendInputEvent({ type: 'key_down', code: e.code, key: e.key });
+            onMouseMove={(e) => {
+                // Toolbar reveal logic
+                if (e.clientY < 80) {
+                    setIsMouseNearTop(true);
+                    clearTimeout(mouseHideTimeoutRef.current);
+                } else {
+                    if (isMouseNearTop) {
+                        clearTimeout(mouseHideTimeoutRef.current);
+                        mouseHideTimeoutRef.current = setTimeout(() => setIsMouseNearTop(false), 2000);
+                    }
+                }
             }}
-            onKeyUp={(e) => {
-                e.preventDefault();
-                if (sendInputEvent) sendInputEvent({ type: 'key_up', code: e.code, key: e.key });
-            }}
-            className="relative w-full h-full bg-slate-950 overflow-hidden flex flex-col focus:outline-none"
+            className="relative w-full h-full bg-[#0b0f14] overflow-hidden flex flex-col focus:outline-none"
         >
-            <div className="flex-none flex justify-between items-center p-3 bg-slate-900 border-b border-slate-800 z-10 shadow-md">
-                <div className="flex items-center gap-2 text-green-400">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-sm font-medium">Connected to Host</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={toggleFullscreen}
-                        className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white backdrop-blur transition-all"
-                        title="Toggle Fullscreen"
-                    >
-                        {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-                    </button>
-
-                    <button
-                        onClick={onDisconnect}
-                        className="p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white backdrop-blur transition-all flex items-center gap-2 px-4"
-                    >
-                        <Power size={20} />
-                        <span className="font-medium">Disconnect</span>
-                    </button>
-                </div>
-            </div>
+            <TopToolbar
+                peerConnection={peerConnection}
+                sendInputEvent={sendInputEvent}
+                onDisconnect={onDisconnect}
+                isFullscreen={isFullscreen}
+                toggleFullscreen={toggleFullscreen}
+                isMouseNearTop={isMouseNearTop}
+            />
 
             <div className="flex-1 min-h-0 flex items-center justify-center relative touch-none overflow-hidden bg-black">
                 <video
@@ -145,7 +137,26 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
                     onTouchEnd={handleTouchEnd}
                     // MVP mouse support for testing on laptop
                     onMouseMove={(e) => {
+                        e.stopPropagation(); // don't trigger the container's mouse move
+
+                        // Toolbar reveal logic
+                        if (e.clientY < 80) {
+                            setIsMouseNearTop(true);
+                            clearTimeout(mouseHideTimeoutRef.current);
+                        } else {
+                            if (isMouseNearTop) {
+                                clearTimeout(mouseHideTimeoutRef.current);
+                                mouseHideTimeoutRef.current = setTimeout(() => setIsMouseNearTop(false), 2000);
+                            }
+                        }
+
                         if (!sendInputEvent) return;
+
+                        // Strict 16ms mathematical throttle (approx 60hz) to avoid lag spikes
+                        const now = Date.now();
+                        if (now - lastMoveTimeRef.current < 16) return;
+                        lastMoveTimeRef.current = now;
+
                         const pos = getPointerPosition(e.clientX, e.clientY);
                         if (!pos) return;
                         sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y, isDown: e.buttons > 0 });

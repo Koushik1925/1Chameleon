@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, clipboard } = require('electron');
 const path = require('path');
 const { mouse, Point, Button, screen: nutScreen, keyboard, Key } = require('@nut-tree-fork/nut-js');
 
@@ -105,10 +105,17 @@ function createBackgroundWindow() {
                 if (nutKey !== undefined) {
                     await keyboard.releaseKey(nutKey);
                 }
+            } else if (data.type === 'clipboard_push') {
+                clipboard.writeText(data.text);
             }
         } catch (e) {
             console.error('Native Input Error:', e);
         }
+    });
+
+    // Handle pulling clipboard from agent to send to client
+    ipcMain.handle('webrtc:clipboard_pull', () => {
+        return clipboard.readText();
     });
 }
 
