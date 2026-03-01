@@ -49,6 +49,7 @@
 
             socket.on('agent:client_joined', async (data) => {
                 console.log('Client joined session:', data.sessionId);
+                currentSessionId = data.sessionId;
                 ipcRenderer.send('tray:update_status', 'connected');
                 await startWebRTC();
             });

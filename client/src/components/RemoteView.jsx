@@ -111,7 +111,7 @@ export default function RemoteView({ stream, onDisconnect, sendInputEvent }) {
                     autoPlay
                     playsInline
                     muted
-                    className="max-w-full max-h-full object-contain pointer-events-auto"
+                    className="w-full h-full object-contain pointer-events-auto"
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}

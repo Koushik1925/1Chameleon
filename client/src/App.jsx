@@ -12,7 +12,7 @@ function App() {
   const [status, setStatus] = useState('scan'); // scan -> connecting -> connected -> error
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
-  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const sessionStartTimeRef = useRef(null);
   const [sessionDuration, setSessionDuration] = useState('');
   const [lastSessionId, setLastSessionId] = useState(() => {
     const saved = localStorage.getItem('chameleon_last_session');
@@ -88,8 +88,8 @@ function App() {
 
       // Calculate Duration
       let durationStr = '';
-      if (sessionStartTime) {
-        const diffMs = Date.now() - sessionStartTime;
+      if (sessionStartTimeRef.current) {
+        const diffMs = Date.now() - sessionStartTimeRef.current;
         const mins = Math.floor(diffMs / 60000);
         const secs = Math.floor((diffMs % 60000) / 1000);
         durationStr = ` (Duration: ${mins}m ${secs}s)`;
@@ -97,7 +97,7 @@ function App() {
 
       setErrorMsg(`Session ended: ${data.reason}${durationStr}`);
       cleanupWebRTC();
-      setSessionStartTime(null);
+      sessionStartTimeRef.current = null;
     });
 
     // 2. WebRTC Signaling
@@ -163,7 +163,7 @@ function App() {
       console.log('Received remote track', event.streams[0]);
       setRemoteStream(event.streams[0]);
       setStatus('connected');
-      setSessionStartTime(Date.now());
+      sessionStartTimeRef.current = Date.now();
     };
 
     peer.ondatachannel = (event) => {
@@ -181,8 +181,8 @@ function App() {
 
         // Calculate Duration
         let durationStr = '';
-        if (sessionStartTime) {
-          const diffMs = Date.now() - sessionStartTime;
+        if (sessionStartTimeRef.current) {
+          const diffMs = Date.now() - sessionStartTimeRef.current;
           const mins = Math.floor(diffMs / 60000);
           const secs = Math.floor((diffMs % 60000) / 1000);
           durationStr = `after ${mins}m ${secs}s`;
@@ -190,7 +190,7 @@ function App() {
 
         setErrorMsg(`Peer connection lost ${durationStr}`.trim());
         cleanupWebRTC();
-        setSessionStartTime(null);
+        sessionStartTimeRef.current = null;
       }
     };
   };
@@ -214,8 +214,8 @@ function App() {
     cleanupWebRTC();
 
     // Calculate Duration for the 7-min prompt screen
-    if (sessionStartTime) {
-      const diffMs = Date.now() - sessionStartTime;
+    if (sessionStartTimeRef.current) {
+      const diffMs = Date.now() - sessionStartTimeRef.current;
       const mins = Math.floor(diffMs / 60000);
       const secs = Math.floor((diffMs % 60000) / 1000);
       setSessionDuration(`Session lasted ${mins}m ${secs}s`);
@@ -223,7 +223,7 @@ function App() {
       setSessionDuration('');
     }
 
-    setSessionStartTime(null);
+    sessionStartTimeRef.current = null;
     setStatus('disconnected_prompt');
   };
 
@@ -250,7 +250,7 @@ function App() {
   };
 
   return (
-    <div className="w-full h-full bg-slate-900 text-white font-sans">
+    <div className="w-full h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden flex flex-col">
       {status === 'scan' && (
         <div className="flex flex-col items-center justify-center h-full">
           <QRScanner onScanSuccess={handleScanSuccess} />
