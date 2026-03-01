@@ -81,8 +81,21 @@ function ClientApp() {
 
     socket.on('error', (err) => {
       setStatus('error');
-      setErrorMsg(err.message || 'Unknown error');
+
+      // Calculate Duration
+      let durationStr = '';
+      if (sessionStartTimeRef.current) {
+        const diffMs = Date.now() - sessionStartTimeRef.current;
+        const mins = Math.floor(diffMs / 60000);
+        const secs = Math.floor((diffMs % 60000) / 1000);
+        durationStr = ` (Duration: ${mins}m ${secs}s)`;
+        setSessionDuration(`Session lasted ${mins}m ${secs}s`);
+      }
+
+      setErrorMsg((err.message || 'Unknown error') + durationStr);
       socket.disconnect();
+      cleanupWebRTC();
+      sessionStartTimeRef.current = null;
     });
 
     socket.on('session:ended', (data) => {

@@ -143,11 +143,11 @@ io.on('connection', (socket) => {
                     if (sessions.has(sessionId) && sessions.get(sessionId).status === 'detached') {
                         io.to(session.agentSocketId).emit('session:ended', { reason: 'Reconnect window expired' });
                         sessions.delete(sessionId);
-                        console.log(`[INFO] Session ${sessionId} hard deleted after 10m reconnect window.`);
+                        console.log(`[INFO] Session ${sessionId} hard deleted after 12-hour reconnect window.`);
                     }
                 }, RECONNECT_WINDOW_MS);
 
-                console.log(`[INFO] Session ${sessionId} detached. 10m reconnect window started.`);
+                console.log(`[INFO] Session ${sessionId} detached. 12-hour reconnect window started.`);
             }
         }
     });

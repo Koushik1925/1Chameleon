@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, clipboard } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, clipboard, powerSaveBlocker } = require('electron');
 const path = require('path');
 const { mouse, Point, Button, screen: nutScreen, keyboard, Key } = require('@nut-tree-fork/nut-js');
 
@@ -29,6 +29,7 @@ const keyMap = {
 let tray = null;
 let qrWindow = null;
 let backgroundWindow = null;
+let powerBlockerId = null;
 
 // Allow self-signed certs for testing signaling server if HTTPS
 try {
@@ -66,6 +67,21 @@ function createBackgroundWindow() {
     // Forward tray status updates from background process
     ipcMain.on('tray:update_status', (event, status) => {
         updateTrayIcon(status);
+
+        // Manage OS Sleep/Suspend behavior
+        if (status === 'connected') {
+            if (powerBlockerId === null || !powerSaveBlocker.isStarted(powerBlockerId)) {
+                console.log("[INFO] Starting powerSaveBlocker to prevent display sleep.");
+                powerBlockerId = powerSaveBlocker.start('prevent-display-sleep');
+            }
+        } else if (status === 'idle') {
+            if (powerBlockerId !== null && powerSaveBlocker.isStarted(powerBlockerId)) {
+                console.log("[INFO] Stopping powerSaveBlocker. System can now sleep.");
+                powerSaveBlocker.stop(powerBlockerId);
+                powerBlockerId = null;
+            }
+        }
+
         // Also notify QR window if it's open
         if (qrWindow) {
             qrWindow.webContents.send('connection:status', status);
