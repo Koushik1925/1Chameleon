@@ -31,6 +31,8 @@ function ClientApp() {
   const socketRef = useRef(null);
   const peerRef = useRef(null);
   const dataChannelRef = useRef(null);
+  const iceCandidateQueue = useRef([]);
+  const isRemoteDescriptionSet = useRef(false);
 
   useEffect(() => {
     // If we have a sessionId parsed from URL or manual entry (Phase 1 manual input)
@@ -138,6 +140,13 @@ function ClientApp() {
 
         const peer = peerRef.current;
         await peer.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        isRemoteDescriptionSet.current = true;
+
+        // Process queued ICE candidates
+        while (iceCandidateQueue.current.length > 0) {
+          const candidate = iceCandidateQueue.current.shift();
+          await peer.addIceCandidate(candidate).catch(e => console.error("Queued ICE error:", e));
+        }
 
         if (data.sdp.type === 'offer') {
           const answer = await peer.createAnswer();
@@ -155,8 +164,14 @@ function ClientApp() {
 
     socket.on('signal:ice', async (data) => {
       try {
-        if (peerRef.current && data.candidate) {
-          await peerRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        if (data.candidate) {
+          const candidate = new RTCIceCandidate(data.candidate);
+          if (peerRef.current && isRemoteDescriptionSet.current) {
+            await peerRef.current.addIceCandidate(candidate);
+          } else {
+            console.log('Queueing ICE candidate...');
+            iceCandidateQueue.current.push(candidate);
+          }
         }
       } catch (err) {
         console.error('WebRTC ICE Error:', err);
@@ -258,6 +273,8 @@ function ClientApp() {
       peerRef.current.close();
       peerRef.current = null;
     }
+    isRemoteDescriptionSet.current = false;
+    iceCandidateQueue.current = [];
     setRemoteStream(null);
   };
 

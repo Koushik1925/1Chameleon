@@ -73,8 +73,12 @@ io.on('connection', (socket) => {
             return socket.emit('error', { message: 'Session not found or expired' });
         }
 
-        if (session.status !== 'pending_pairing' && session.status !== 'detached') {
-            return socket.emit('error', { message: 'Session already in use' });
+        if (session.status === 'connected') {
+            // Kick the old client so the new one can take over (fixes "Session already in use" lockouts on disconnects/refreshes)
+            io.to(session.clientSocketId).emit('session:ended', { reason: 'Session connected from another tab or device' });
+            console.log(`[INFO] Client ${socket.id} taking over session ${sessionId} from ${session.clientSocketId}`);
+        } else if (session.status !== 'pending_pairing' && session.status !== 'detached') {
+            return socket.emit('error', { message: 'Session unavailable' });
         }
 
         // Handle Reconnect Logic

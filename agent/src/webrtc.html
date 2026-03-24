@@ -26,6 +26,8 @@
         let localStream = null;
         let currentSessionId = null;
         let dataChannel = null;
+        let iceCandidateQueue = [];
+        let isRemoteDescriptionSet = false;
 
         // Initialize connection
         function initSignaling() {
@@ -76,6 +78,14 @@
                 try {
                     if (!peerConnection) return;
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                    isRemoteDescriptionSet = true;
+
+                    // Process queued ICE candidates
+                    while (iceCandidateQueue.length > 0) {
+                        const candidate = iceCandidateQueue.shift();
+                        await peerConnection.addIceCandidate(candidate).catch(e => console.error("Queued ICE error:", e));
+                    }
+
                     if (data.sdp.type === 'offer') {
                         const answer = await peerConnection.createAnswer();
                         await peerConnection.setLocalDescription(answer);
@@ -92,8 +102,14 @@
 
             socket.on('signal:ice', async (data) => {
                 try {
-                    if (peerConnection && data.candidate) {
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    if (data.candidate) {
+                        const candidate = new RTCIceCandidate(data.candidate);
+                        if (peerConnection && isRemoteDescriptionSet) {
+                            await peerConnection.addIceCandidate(candidate);
+                        } else {
+                            console.log('Queueing ICE candidate...');
+                            iceCandidateQueue.push(candidate);
+                        }
                     }
                 } catch (err) {
                     console.error('ICE Error', err);
@@ -263,6 +279,8 @@
                 localStream = null;
             }
             currentSessionId = null;
+            isRemoteDescriptionSet = false;
+            iceCandidateQueue = [];
             ipcRenderer.send('tray:update_status', 'idle');
         }
 
