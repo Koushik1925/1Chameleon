@@ -12,6 +12,7 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, sendI
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(e => console.warn("Video autoplay blocked", e));
             if (containerRef.current) containerRef.current.focus();
         }
     }, [stream]);
