@@ -58,6 +58,7 @@
 
             socket.on('agent:client_joined', async (data) => {
                 console.log('Client joined session:', data.sessionId);
+                cleanupSession(true); // Destroy any zombied connections if a client rejoins
                 currentSessionId = data.sessionId;
                 ipcRenderer.send('tray:update_status', 'connected');
                 await startWebRTC();
@@ -285,7 +286,7 @@
             }
         }
 
-        function cleanupSession() {
+        function cleanupSession(preserveSession = false) {
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -294,10 +295,12 @@
                 localStream.getTracks().forEach(t => t.stop());
                 localStream = null;
             }
-            currentSessionId = null;
+            if (!preserveSession) {
+                currentSessionId = null;
+                ipcRenderer.send('tray:update_status', 'idle');
+            }
             isRemoteDescriptionSet = false;
             iceCandidateQueue = [];
-            ipcRenderer.send('tray:update_status', 'idle');
         }
 
         // IPC Listeners
