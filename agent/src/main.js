@@ -115,6 +115,10 @@ function createBackgroundWindow() {
                 const nutKey = keyMap[data.code];
                 if (nutKey !== undefined) {
                     await keyboard.pressKey(nutKey);
+                } else if (data.key && data.key.length === 1) {
+                    // Printable character not in keyMap (e.g. shifted symbols like : " { } [ ] < > ?)
+                    // Use keyboard.type() so nut-js handles the Shift modifier automatically
+                    await keyboard.type(data.key);
                 }
             } else if (data.type === 'key_up') {
                 const nutKey = keyMap[data.code];
