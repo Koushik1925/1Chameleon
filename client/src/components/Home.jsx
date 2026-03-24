@@ -198,6 +198,9 @@ export default function Home() {
                                 <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                     <ShieldCheck size={12} /> Verified & Secure
                                 </div>
+                                <a href="/Chameleon-Agent-Setup-Legacy.exe" download className="mt-4 text-[10px] text-slate-500 hover:text-cyan-400 underline transition-colors">
+                                    Experiencing issues connecting on 1.0.7? Download Legacy v1.0.4
+                                </a>
                             </div>
 
                             {/* macOS Card */}
