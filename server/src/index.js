@@ -126,6 +126,29 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handlers for Ultimate Cloud Relay Fallback
+    socket.on('client:request_relay', ({ sessionId }) => {
+        const session = sessions.get(sessionId);
+        if (session && session.agentSocketId) {
+            session.isRelayMode = true;
+            io.to(session.agentSocketId).emit('agent:start_relay', { sessionId });
+        }
+    });
+
+    socket.on('relay:frame', ({ sessionId, frame }) => {
+        const session = sessions.get(sessionId);
+        if (session && session.clientSocketId) {
+            io.to(session.clientSocketId).emit('relay:frame', frame);
+        }
+    });
+
+    socket.on('relay:input', ({ sessionId, input }) => {
+        const session = sessions.get(sessionId);
+        if (session && session.agentSocketId) {
+            io.to(session.agentSocketId).emit('relay:input', input);
+        }
+    });
+
     // 5. Cleanup on Disconnect
     socket.on('disconnect', () => {
         console.log(`[INFO] Disconnected: ${socket.id}`);

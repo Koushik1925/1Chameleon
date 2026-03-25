@@ -16,6 +16,8 @@ function ClientApp() {
   const [status, setStatus] = useState('scan'); // scan -> connecting -> connected -> error
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
+  const [relayMode, setRelayMode] = useState(false);
+  const [relayFrame, setRelayFrame] = useState(null);
   const sessionStartTimeRef = useRef(null);
   const [sessionDuration, setSessionDuration] = useState('');
   const [lastSessionId, setLastSessionId] = useState(() => {
@@ -27,6 +29,7 @@ function ClientApp() {
     }
     return null;
   });
+  const [manualSessionId, setManualSessionId] = useState('');
 
   const socketRef = useRef(null);
   const peerRef = useRef(null);
@@ -86,6 +89,11 @@ function ClientApp() {
     socket.on('connect', () => {
       console.log('Connected to signaling server');
       socket.emit('client:join_session', { sessionId: sid });
+      
+      // If user checked "Cloud Relay Mode", request it immediately after joining
+      if (relayMode) {
+        socket.emit('client:request_relay', { sessionId: sid });
+      }
     });
 
     socket.on('client:joined_success', () => {
@@ -115,20 +123,15 @@ function ClientApp() {
     socket.on('session:ended', (data) => {
       setStatus('error');
       setRemoteStream(null);
-      setRemoteStream(null);
-
-      // Calculate Duration
-      let durationStr = '';
-      if (sessionStartTimeRef.current) {
-        const diffMs = Date.now() - sessionStartTimeRef.current;
-        const mins = Math.floor(diffMs / 60000);
-        const secs = Math.floor((diffMs % 60000) / 1000);
-        durationStr = ` (Duration: ${mins}m ${secs}s)`;
-      }
-
-      setErrorMsg(`Session ended: ${data.reason}${durationStr}`);
+      setErrorMsg(`Connection closed: ${data.reason}`);
       cleanupWebRTC();
       sessionStartTimeRef.current = null;
+    });
+
+    // Relay Mode handlers
+    socket.on('relay:frame', (frameData) => {
+      if (status !== 'connected') setStatus('connected');
+      setRelayFrame(frameData);
     });
 
     // 2. WebRTC Signaling
@@ -332,6 +335,17 @@ function ClientApp() {
     }
   };
 
+  const handleDigitInput = (index, value) => {
+    const newManualSessionId = (manualSessionId.substring(0, index) + value + manualSessionId.substring(index + 1)).slice(0, 6);
+    setManualSessionId(newManualSessionId);
+
+    if (value && index < 5) {
+      document.getElementById(`digit-${index + 1}`).focus();
+    } else if (!value && index > 0) {
+      document.getElementById(`digit-${index - 1}`).focus();
+    }
+  };
+
   return (
     <div className="relative w-full h-[100dvh] bg-[#0b0f14] text-[#e5e7eb] font-sans flex flex-col items-center justify-center overflow-hidden">
 
@@ -354,16 +368,47 @@ function ClientApp() {
 
           <QRScanner onScanSuccess={handleScanSuccess} />
 
-          {/* Polished OTP Entry Section */}
-          <div className="mt-8 flex flex-col items-center border-t border-slate-700/50 pt-8">
-            <p className="text-xs text-slate-400 mb-4 uppercase tracking-[0.2em] font-medium">Or manually connect</p>
+          {/* Manual Connection Option */}
+          <div className="mt-8 border-t border-slate-800 pt-8 w-full max-w-xs mx-auto">
+            <p className="text-xs text-slate-500 font-bold tracking-widest uppercase mb-4 text-center">Or manually connect</p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (manualSessionId.trim().length === 6) {
+                handleJoinSession(manualSessionId.trim());
+              }
+            }} className="flex flex-col gap-4">
+              <div className="flex gap-2 justify-center">
+                {[0, 1, 2, 3, 4, 5].map(i => (
+                  <input
+                    key={i}
+                    id={`digit-${i}`}
+                    type="text"
+                    maxLength={1}
+                    value={manualSessionId[i] || ''}
+                    onChange={(e) => handleDigitInput(i, e.target.value)}
+                    className="w-10 h-10 md:w-12 md:h-12 text-center bg-[#0B1120] border border-slate-700/50 rounded-lg text-white font-mono text-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-800"
+                    placeholder="-"
+                  />
+                ))}
+              </div>
+              <label className="flex items-center justify-center gap-2 mt-2 text-xs text-slate-400 cursor-pointer">
+                <input type="checkbox" checked={relayMode} onChange={(e) => setRelayMode(e.target.checked)} className="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-500" />
+                Use Cloud Relay (Bypass Strict Firewalls)
+              </label>
+              {(manualSessionId.length === 6) && (
+                <button
+                  type="submit"
+                  className="w-full px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-[#0b0f14] rounded-xl font-bold tracking-wide shadow-[0_4px_20px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_25px_rgba(6,182,212,0.4)] transition-all duration-200 transform hover:-translate-y-[1px]"
+                >
+                  Connect
+                </button>
+              )}
+            </form>
+          </div>
 
-            <OTPInput length={6} onComplete={(val) => handleJoinSession(val)} />
-
-            <div className="mt-8 text-center text-[11px] text-cyan-400/50 uppercase tracking-[0.2em] animate-pulse font-mono flex items-center justify-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-              Waiting for host link...
-            </div>
+          <div className="mt-8 text-center text-[11px] text-cyan-400/50 uppercase tracking-[0.2em] animate-pulse font-mono flex items-center justify-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+            Waiting for host link...
           </div>
 
           {errorMsg && (
@@ -474,11 +519,18 @@ function ClientApp() {
 
       {status === 'connected' && (
         <div className="z-20 w-full h-full">
-          <RemoteView
-            stream={remoteStream}
+          <RemoteView 
+            stream={remoteStream} 
             peerConnection={peerRef.current}
-            onDisconnect={handleDisconnect}
-            sendInputEvent={sendInputEvent}
+            dataChannel={dataChannelRef.current} 
+            relayMode={relayMode}
+            relayFrame={relayFrame}
+            socket={socketRef.current}
+            sessionId={sessionStartTimeRef.current ? lastSessionId : null}
+            onDisconnect={() => {
+              if (socketRef.current) socketRef.current.disconnect();
+              handleDisconnect();
+            }} 
           />
         </div>
       )}

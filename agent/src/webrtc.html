@@ -28,6 +28,13 @@
         let dataChannel = null;
         let iceCandidateQueue = [];
         let isRemoteDescriptionSet = false;
+        
+        // Relay mode state
+        let relayInterval = null;
+        let relayCanvas = document.createElement('canvas');
+        let relayVideo = document.createElement('video');
+        relayVideo.autoplay = true;
+        relayVideo.muted = true;
 
         // Initialize connection
         function initSignaling() {
@@ -61,7 +68,18 @@
                 cleanupSession(true); // Destroy any zombied connections if a client rejoins
                 currentSessionId = data.sessionId;
                 ipcRenderer.send('tray:update_status', 'connected');
+                // We don't start WebRTC immediately until client tells us which mode
+                // Actually, start WebRTC normally. If relay is requested later, we handle it.
                 await startWebRTC();
+            });
+
+            socket.on('agent:start_relay', async () => {
+                console.log('Cloud Relay Mode requested by client');
+                await startRelayMode();
+            });
+
+            socket.on('relay:input', (inputData) => {
+                ipcRenderer.send('webrtc:remote_input', inputData);
             });
 
             socket.on('session:expired', () => {
@@ -281,8 +299,40 @@
                 console.error('Failed to apply constraints', err);
             }
         }
+           // ------------------ CLOUD RELAY FALLBACK ------------------
+        async function startRelayMode() {
+            if (!localStream) {
+                localStream = await getScreenStream();
+            }
+            if (!localStream) return;
+            
+            relayVideo.srcObject = localStream;
+            await relayVideo.play();
+            
+            if (relayInterval) clearInterval(relayInterval);
+            
+            // Capture at ~15fps (66ms)
+            relayInterval = setInterval(() => {
+                if (relayVideo.videoWidth === 0) return;
+                
+                relayCanvas.width = 1280; // Downscale slightly for websocket limits
+                relayCanvas.height = Math.round((1280 / relayVideo.videoWidth) * relayVideo.videoHeight);
+                
+                const ctx = relayCanvas.getContext('2d');
+                ctx.drawImage(relayVideo, 0, 0, relayCanvas.width, relayCanvas.height);
+                
+                const frameUrl = relayCanvas.toDataURL('image/jpeg', 0.6);
+                socket.emit('relay:frame', { sessionId: currentSessionId, frame: frameUrl });
+            }, 66);
+        }
+
+        // ------------------ CLEANUP ------------------
 
         function cleanupSession(preserveSession = false) {
+            if (relayInterval) {
+                clearInterval(relayInterval);
+                relayInterval = null;
+            }
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;

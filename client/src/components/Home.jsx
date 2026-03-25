@@ -53,7 +53,7 @@ export default function Home() {
                 <section className="pt-40 pb-20 px-6 min-h-[90vh] flex flex-col items-center justify-center text-center">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-8 animate-pulse-slow">
                         <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                        Version 1.0.8 Live
+                        Version 1.0.9 Live
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl leading-tight">
                         Secure Remote Access. <br />
@@ -191,10 +191,10 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">Windows</h3>
                                 <p className="text-slate-400 text-sm mb-8">Windows 10 / 11 (x64)</p>
-                                <a href="/Chameleon-Agent-Setup-1.0.8.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative">
+                                <a href="/Chameleon-Agent-Setup-1.0.9.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative">
                                     Download for Windows
                                 </a>
-                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.8 • ~85 MB</span>
+                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.9 • ~85 MB</span>
                                 <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                     <ShieldCheck size={12} /> Verified & Secure
                                 </div>
@@ -211,10 +211,10 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">macOS</h3>
                                 <p className="text-slate-400 text-sm mb-8">Intel & Apple Silicon (Universal)</p>
-                                <a href="/Chameleon-Agent-macOS-1.0.8.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative">
+                                <a href="/Chameleon-Agent-macOS-1.0.9.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative">
                                     Download for macOS
                                 </a>
-                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.8 • ~95 MB</span>
+                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.0.9 • ~95 MB</span>
                                 <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                     <ShieldCheck size={12} /> Verified & Secure
                                 </div>
