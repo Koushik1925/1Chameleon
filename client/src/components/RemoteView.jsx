@@ -193,7 +193,7 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
                     <img
                         src={relayFrame || ''}
                         alt="Remote Feed"
-                        className="w-full h-full object-contain cursor-crosshair"
+                        className="w-full h-full object-contain cursor-default"
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
@@ -209,7 +209,7 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-full object-contain cursor-crosshair pointer-events-auto"
+                        className="w-full h-full object-contain cursor-default pointer-events-auto"
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}

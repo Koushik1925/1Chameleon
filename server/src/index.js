@@ -135,10 +135,15 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('relay:frame', ({ sessionId, frame }) => {
+    socket.on('relay:frame', ({ sessionId, frame }, ackCallback) => {
         const session = sessions.get(sessionId);
         if (session && session.clientSocketId) {
-            io.to(session.clientSocketId).emit('relay:frame', frame);
+            // Use volatile.emit to ensure frames are DROPPED instead of queued if client network is choked
+            io.to(session.clientSocketId).volatile.emit('relay:frame', frame);
+        }
+        // Immediately acknowledge so the agent knows the server accepted the frame
+        if (typeof ackCallback === 'function') {
+            ackCallback();
         }
     });
 

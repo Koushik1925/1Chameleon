@@ -35,6 +35,7 @@
         let relayVideo = document.createElement('video');
         relayVideo.autoplay = true;
         relayVideo.muted = true;
+        let isRelayingFrame = false;
 
         // Initialize connection
         function initSignaling() {
@@ -311,19 +312,34 @@
             
             if (relayInterval) clearInterval(relayInterval);
             
-            // Capture at ~15fps (66ms)
+            // Capture at ~20fps max (50ms)
             relayInterval = setInterval(() => {
                 if (relayVideo.videoWidth === 0) return;
                 
-                relayCanvas.width = 1280; // Downscale slightly for websocket limits
-                relayCanvas.height = Math.round((1280 / relayVideo.videoWidth) * relayVideo.videoHeight);
+                // BACKPRESSURE: Only proceed if previous frame has been fully processed by the network
+                if (isRelayingFrame) return;
+                isRelayingFrame = true;
+                
+                // Aggressive resolution drop for relay mode (1024p max width) to stay under 100kb
+                relayCanvas.width = 1024; 
+                relayCanvas.height = Math.round((1024 / relayVideo.videoWidth) * relayVideo.videoHeight);
                 
                 const ctx = relayCanvas.getContext('2d');
                 ctx.drawImage(relayVideo, 0, 0, relayCanvas.width, relayCanvas.height);
                 
-                const frameUrl = relayCanvas.toDataURL('image/jpeg', 0.6);
-                socket.emit('relay:frame', { sessionId: currentSessionId, frame: frameUrl });
-            }, 66);
+                // Send as compact Binary Blob instead of bulky Base64
+                relayCanvas.toBlob((blob) => {
+                    if (!blob) {
+                        isRelayingFrame = false;
+                        return;
+                    }
+                    socket.emit('relay:frame', { sessionId: currentSessionId, frame: blob }, () => {
+                        // SERVER ACKNOWLEDGE: We are clear to process the next frame
+                        isRelayingFrame = false;
+                    });
+                }, 'image/jpeg', 0.5);
+                
+            }, 50);
         }
 
         // ------------------ CLEANUP ------------------

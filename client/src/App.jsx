@@ -121,17 +121,50 @@ function ClientApp() {
     });
 
     socket.on('session:ended', (data) => {
-      setStatus('error');
-      setRemoteStream(null);
-      setErrorMsg(`Connection closed: ${data.reason}`);
-      cleanupWebRTC();
-      sessionStartTimeRef.current = null;
+      if (data.reason === 'Agent disconnected') {
+          console.warn('Agent dropped. Attempting aggressive auto-reconnect...');
+          setStatus('reconnecting');
+          setRemoteStream(null);
+          cleanupWebRTC();
+          
+          let attempts = 0;
+          const retryInterval = setInterval(() => {
+              if (attempts > 15) { // 30 seconds max
+                  clearInterval(retryInterval);
+                  setStatus('error');
+                  setErrorMsg('Connection lost permanently. Host is offline.');
+                  socket.disconnect();
+                  sessionStartTimeRef.current = null;
+                  return;
+              }
+              attempts++;
+              socket.emit('client:join_session', { sessionId: sid });
+              if (relayMode) socket.emit('client:request_relay', { sessionId: sid });
+          }, 2000);
+          
+          socket.once('client:joined_success', () => {
+              clearInterval(retryInterval);
+          });
+      } else {
+          setStatus('error');
+          setRemoteStream(null);
+          setErrorMsg(`Connection closed: ${data.reason}`);
+          cleanupWebRTC();
+          sessionStartTimeRef.current = null;
+      }
     });
 
-    // Relay Mode handlers
-    socket.on('relay:frame', (frameData) => {
+    // Relay Mode handlers (Binary Blob Stream)
+    socket.on('relay:frame', (arrayBuffer) => {
       if (status !== 'connected') setStatus('connected');
-      setRelayFrame(frameData);
+      
+      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+      const frameUrl = URL.createObjectURL(blob);
+      
+      setRelayFrame(prevUrl => {
+        if (prevUrl) URL.revokeObjectURL(prevUrl); // Revoke old memory allocation instantly
+        return frameUrl;
+      });
     });
 
     // 2. WebRTC Signaling
@@ -514,6 +547,21 @@ function ClientApp() {
               System Reset
             </button>
           </div>
+        </div>
+      )}
+
+      {status === 'reconnecting' && (
+        <div className="z-10 bg-[#0B1120]/80 backdrop-blur-md p-10 rounded-3xl border border-slate-700/50 shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 text-center">
+          <div className="relative mb-6">
+            <div className="w-20 h-20 border-4 border-slate-800 rounded-full"></div>
+            <div className="w-20 h-20 border-4 border-cyan-500 rounded-full border-t-transparent animate-spin absolute inset-0"></div>
+            <Shield className="absolute inset-0 m-auto text-slate-400 animate-pulse" size={28} />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Connection Dropped</h2>
+          <p className="text-slate-400 mb-6">The remote host temporarily went offline. Auto-reconnecting in background...</p>
+          <button onClick={handleDisconnect} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-medium">
+            Cancel
+          </button>
         </div>
       )}
 
