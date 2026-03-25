@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import TopToolbar from './TopToolbar';
+import { Shield, SignalHigh, WifiOff } from 'lucide-react';
 
-export default function RemoteView({ stream, peerConnection, dataChannel, onDisconnect, relayMode, relayFrame, socket, sessionId }) {
+export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, relayFrame, sendInputEvent }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -78,14 +79,6 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
         return { x, y };
     };
 
-    const sendInput = useCallback((input) => {
-        if (relayMode && socket) {
-            socket.emit('relay:input', { sessionId, input });
-        } else if (dataChannel?.readyState === 'open') {
-            dataChannel.send(JSON.stringify(input));
-        }
-    }, [relayMode, socket, sessionId, dataChannel]);
-
     const handleMouseMove = useCallback((e, type) => {
         e.stopPropagation();
 
@@ -96,51 +89,59 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
         const pos = getPointerPosition(e);
         if (!pos) return;
 
-        sendInput({ type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons });
-    }, [getPointerPosition, sendInput]);
+        if (sendInputEvent) {
+            sendInputEvent({ type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons });
+        }
+    }, [getPointerPosition, sendInputEvent]);
 
     const handleMouseWheel = useCallback((e) => {
         e.preventDefault();
-        sendInput({
-            type: 'mouse_wheel',
-            deltaX: e.deltaX,
-            deltaY: e.deltaY
-        });
-    }, [sendInput]);
+        if (sendInputEvent) {
+            sendInputEvent({
+                type: 'mouse_wheel',
+                deltaX: e.deltaX,
+                deltaY: e.deltaY
+            });
+        }
+    }, [sendInputEvent]);
 
     // Basic touch to mouse mapping for MVP
     const handleTouchStart = useCallback((e) => {
         e.preventDefault();
+        if (!sendInputEvent) return;
         const touch = e.touches[0];
         const pos = getPointerPosition({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
         if (!pos) return;
 
-        sendInput({ type: 'mouse_move', x: pos.x, y: pos.y, isDown: true });
+        sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y, isDown: true });
         // Emulate left click down on touch start
-        sendInput({ type: 'mouse_down', button: 0 });
-    }, [getPointerPosition, sendInput]);
+        sendInputEvent({ type: 'mouse_down', button: 0 });
+    }, [getPointerPosition, sendInputEvent]);
 
     const handleTouchMove = useCallback((e) => {
         e.preventDefault();
+        if (!sendInputEvent) return;
         const touch = e.touches[0];
         const pos = getPointerPosition({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
         if (!pos) return;
 
-        sendInput({
+        sendInputEvent({
             type: 'mouse_move',
             x: pos.x, y: pos.y,
             isDown: true
         });
-    }, [getPointerPosition, sendInput]);
+    }, [getPointerPosition, sendInputEvent]);
 
     const handleTouchEnd = useCallback(() => {
+        if (!sendInputEvent) return;
         // Release left click on touch end
-        sendInput({ type: 'mouse_up', button: 0 });
-    }, [sendInput]);
+        sendInputEvent({ type: 'mouse_up', button: 0 });
+    }, [sendInputEvent]);
 
     const handleKeyDown = useCallback((e) => {
         e.preventDefault();
-        sendInput({
+        if (!sendInputEvent) return;
+        sendInputEvent({
             type: 'key_down',
             key: e.key,
             code: e.code,
@@ -149,11 +150,12 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
             altKey: e.altKey,
             metaKey: e.metaKey
         });
-    }, [sendInput]);
+    }, [sendInputEvent]);
 
     const handleKeyUp = useCallback((e) => {
         e.preventDefault();
-        sendInput({
+        if (!sendInputEvent) return;
+        sendInputEvent({
             type: 'key_up',
             key: e.key,
             code: e.code,
@@ -162,7 +164,7 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
             altKey: e.altKey,
             metaKey: e.metaKey
         });
-    }, [sendInput]);
+    }, [sendInputEvent]);
 
     return (
         <div
@@ -174,7 +176,7 @@ export default function RemoteView({ stream, peerConnection, dataChannel, onDisc
         >
             <TopToolbar
                 peerConnection={peerConnection} 
-                sendInputEvent={sendInput} 
+                sendInputEvent={sendInputEvent} 
                 onDisconnect={onDisconnect}
                 isFullscreen={isFullscreen}
                 toggleFullscreen={toggleFullscreen}

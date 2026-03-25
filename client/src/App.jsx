@@ -18,6 +18,12 @@ function ClientApp() {
   const [remoteStream, setRemoteStream] = useState(null);
   const [relayMode, setRelayMode] = useState(false);
   const [relayFrame, setRelayFrame] = useState(null);
+  
+  const relayModeRef = useRef(relayMode);
+  useEffect(() => {
+      relayModeRef.current = relayMode;
+  }, [relayMode]);
+
   const sessionStartTimeRef = useRef(null);
   const [sessionDuration, setSessionDuration] = useState('');
   const [lastSessionId, setLastSessionId] = useState(() => {
@@ -252,26 +258,24 @@ function ClientApp() {
     };
 
     peer.ontrack = (event) => {
-      console.log('Received remote track', event.streams[0]);
+      console.log('Received remote track:', event.streams[0]);
       setRemoteStream(event.streams[0]);
-      setStatus('connected');
-      sessionStartTimeRef.current = Date.now();
     };
 
     peer.ondatachannel = (event) => {
-      const channel = event.channel;
-      dataChannelRef.current = channel;
+      console.log('Received Agent DataChannel:', event.channel.label);
+      dataChannelRef.current = event.channel;
+      event.channel.onopen = () => console.log('Data channel open');
+      event.channel.onclose = () => console.log('Data channel closed');
 
-      channel.onopen = () => console.log('Data channel opened');
-
-      channel.onmessage = async (msgEvent) => {
+      event.channel.onmessage = async (msgEvent) => {
         try {
           const payload = JSON.parse(msgEvent.data);
 
           if (payload.type === 'ping') {
             // Let the agent know we're still alive
-            if (channel.readyState === 'open') {
-              channel.send(JSON.stringify({ type: 'pong' }));
+            if (event.channel.readyState === 'open') {
+              event.channel.send(JSON.stringify({ type: 'pong' }));
             }
             return;
           }
@@ -284,23 +288,16 @@ function ClientApp() {
           console.error("Data channel parse error:", e);
         }
       };
-
-      channel.onclose = () => console.log('Data channel closed');
     };
 
     peer.onconnectionstatechange = () => {
-      console.log('Connection state:', peer.connectionState);
-      if (peer.connectionState === 'failed') {
-        setStatus('error');
-
-        // Calculate Duration
-        let durationStr = '';
-        if (sessionStartTimeRef.current) {
-          const diffMs = Date.now() - sessionStartTimeRef.current;
-          const mins = Math.floor(diffMs / 60000);
-          const secs = Math.floor((diffMs % 60000) / 1000);
-          durationStr = `after ${mins}m ${secs}s`;
-          setSessionDuration(`Session lasted ${mins}m ${secs}s`);
+      console.log('WebRTC Connection State:', peer.connectionState);
+      if (peer.connectionState === 'connected') {
+        setStatus('connected');
+        sessionStartTimeRef.current = Date.now();
+      } else if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
+        if (relayModeRef.current) {
+            console.log('WebRTC dropped, but ignoring because Cloud Relay Fallback is shielding the session.');
         } else {
           setSessionDuration('');
         }
@@ -570,7 +567,7 @@ function ClientApp() {
           <RemoteView 
             stream={remoteStream} 
             peerConnection={peerRef.current}
-            dataChannel={dataChannelRef.current} 
+            sendInputEvent={sendInputEvent}
             relayMode={relayMode}
             relayFrame={relayFrame}
             socket={socketRef.current}
