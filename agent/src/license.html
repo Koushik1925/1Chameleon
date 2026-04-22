@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Activate Chameleon</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: system-ui; background-color: #0b0f14; color: white; height: 100vh; display: flex; align-items: center; justify-content: center; -webkit-app-region: drag; }
+        .card { background: #1a1f26; padding: 30px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); -webkit-app-region: no-drag; position: relative; }
+        .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; color: #444; font-weight: bold; }
+        .close-btn:hover { color: white; }
+        h2 { margin: 0 0 10px 0; color: #00f2ff; }
+        p { color: #8892b0; font-size: 14px; margin-bottom: 20px; }
+        input { width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #0b0f14; color: white; }
+        button { width: 100%; padding: 12px; border-radius: 6px; border: none; background: #0070f3; color: white; font-weight: bold; cursor: pointer; }
+        button:hover { background: #0060e0; }
+        button:disabled { background: #333; cursor: wait; }
+        .link { display: block; text-align: center; margin-top: 15px; color: #0070f3; font-size: 13px; text-decoration: none; }
+        #error { color: #ff4d4d; font-size: 12px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="close-btn" onclick="window.close()">X</div>
+        <h2>Activate License</h2>
+        <p>Please enter your Chameleon license key.</p>
+        
+        <input type="text" id="keyInput" placeholder="CHAM-XXXX-XXXX-XXXX" value="CHAM-TEST-1234-5678">
+        <div id="error"></div>
+        <button id="activateBtn">Activate Now</button>
+        <a href="#" id="buyLink" class="link">Don't have a license? Buy one here</a>
+    </div>
+
+    <script>
+        console.log('[Renderer] Script starting');
+        const api = window.electronAPI;
+        
+        const btn = document.getElementById('activateBtn');
+        const input = document.getElementById('keyInput');
+        const errorDiv = document.getElementById('error');
+        const buyLink = document.getElementById('buyLink');
+
+        if (!api) {
+            errorDiv.innerText = 'Error: api not bridgeable. Check Preload.';
+            console.error('[Renderer] ❌ api is missing!');
+        }
+
+        buyLink.onclick = (e) => {
+            e.preventDefault();
+            console.log('[Renderer] Buying license...');
+            api.openExternal('http://localhost:3000/checkout.html');
+        };
+
+        btn.onclick = async () => {
+            const key = input.value.trim();
+            if (!key) return;
+
+            console.log('[Renderer] Activating key:', key);
+            btn.disabled = true;
+            btn.innerText = 'Checking...';
+            errorDiv.innerText = '';
+
+            try {
+                const res = await api.license.activate(key);
+                console.log('[Renderer] Activation Result:', res);
+                if (res.success) {
+                    await api.license.onActivateSuccess();
+                } else {
+                    errorDiv.innerText = res.message;
+                    btn.disabled = false;
+                    btn.innerText = 'Activate Now';
+                }
+            } catch (err) {
+                console.error('[Renderer] Crash:', err);
+                errorDiv.innerText = 'Critical Error: ' + err.message;
+                btn.disabled = false;
+                btn.innerText = 'Activate Now';
+            }
+        };
+    </script>
+</body>
+</html>

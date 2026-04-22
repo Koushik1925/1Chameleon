@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chameleon Checkout</title>
+  <style>
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      background: #0b0f14; 
+      color: #f8fafc;
+      padding: 4rem 2rem; 
+      display: flex; gap: 2rem; 
+      justify-content: center; 
+      align-items: flex-start;
+      margin: 0;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .card { 
+      background: #111827; 
+      padding: 2.5rem 2rem; 
+      border-radius: 24px; 
+      border: 1px solid #1e293b;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); 
+      width: 320px; 
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(800px circle at center, rgba(59, 130, 246, 0.05), transparent 40%);
+      pointer-events: none;
+    }
+    .card:hover { border-color: #3b82f6; box-shadow: 0 0 30px rgba(59, 130, 246, 0.15); }
+    
+    .card h2 { color: #f8fafc; font-size: 1.5rem; margin-top: 0; margin-bottom: 0.5rem; }
+    .price-lifetime { font-size: 2.25rem; font-weight: 900; background: linear-gradient(to right, #60a5fa, #06b6d4); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 0 0 0.5rem 0;}
+    .price-weekly { font-size: 2.25rem; font-weight: 900; background: linear-gradient(to right, #4ade80, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 0 0 0.5rem 0;}
+    .currency { font-size: 1rem; font-weight: normal; color: #64748b; }
+    
+    p { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5; }
+    
+    .pp-RJN6FCSGCTR5N { 
+      text-align: center; border: none; border-radius: 12px; min-width: 11.625rem; padding: 0 2rem; height: 3rem; font-weight: bold; background-color: #FFD140; color: #000; font-size: 1rem; cursor: pointer; display: block; width: 100%; box-sizing: border-box; margin-bottom: 12px; transition: opacity 0.2s;
+    }
+    .pp-RJN6FCSGCTR5N:hover { opacity: 0.9; }
+    
+    .paypal-footer { font-size: 0.75rem; color: #64748b; margin-top: 1rem; }
+    .paypal-footer img { height: 0.875rem; vertical-align: middle; filter: brightness(0.8); }
+    
+    /* Shield SVG Icon */
+    .icon-wrapper { margin-bottom: 1.5rem; display: flex; justify-content: center; opacity: 0.8; }
+    .icon-wrapper svg { width: 48px; height: 48px; color: #3b82f6; }
+    
+  </style>
+</head>
+<body>
+
+  <!-- Lifetime Checkout -->
+  <div class="card">
+    <div class="icon-wrapper">
+      <svg xmlns="http://www.w3.org/-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-check"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2-1 4-2 7-2 2.5 0 4.5 1.2 7 2a1 1 0 0 1 1 1v7z"/><path d="m9 12 2 2 4-4"/></svg>
+    </div>
+    <h2>Lifetime Access</h2>
+    <p class="price-lifetime">$25.00 <span class="currency">USD</span></p>
+    <p>Pay once, use forever. No recurring fees.</p>
+    <div style="margin-top: 1.5rem;">
+      <!-- UPDATED FOR SANDBOX: sandbox.paypal.com -->
+      <form action="https://www.sandbox.paypal.com/ncp/payment/RJN6FCSGCTR5N" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;width:100%;">
+        <input class="pp-RJN6FCSGCTR5N" type="submit" value="Buy Lifetime (Sandbox) - $25" />
+        <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" style="filter: brightness(0.9);" />
+        <section class="paypal-footer"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal"/></section>
+      </form>
+    </div>
+  </div>
+
+  <!-- Weekly Checkout -->
+  <div class="card">
+    <div class="icon-wrapper">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 9.81h5a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 9 13.19H4Z"/></svg>
+    </div>
+    <h2>Weekly Plan</h2>
+    <p class="price-weekly">$5.00 <span class="currency">USD / week</span></p>
+    <p>Flexible weekly access, cancel anytime.</p>
+    <div style="margin-top: 1.5rem; width: 100%;">
+      <div id="paypal-button-container-P-5HU39231BN986563GNHDE5IQ"></div>
+      <script src="https://www.paypal.com/sdk/js?client-id=AYxknlDAttnqpwcC1sqTOnacmaBA-Y19PMTOpiyPmWAQ_bOpOxdWc9XPFejUiRpyah3ORd9N1mLUvWkG&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
+      <script>
+        paypal.Buttons({
+            style: {
+                shape: 'pill',
+                color: 'gold',
+                layout: 'vertical',
+                label: 'subscribe'
+            },
+            createSubscription: function(data, actions) {
+              return actions.subscription.create({
+                plan_id: 'P-5HU39231BN986563GNHDE5IQ'
+              });
+            },
+            onApprove: function(data, actions) {
+              // Redirecting to backend success endpoint which handles polling
+              window.location.href = '/success?email=' + encodeURIComponent(data.orderID || 'user') + '&type=subscription'; 
+            }
+        }).render('#paypal-button-container-P-5HU39231BN986563GNHDE5IQ');
+      </script>
+    </div>
+  </div>
+
+</body>
+</html>

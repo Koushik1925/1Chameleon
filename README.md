@@ -202,6 +202,17 @@ Unauthorized access to devices without consent may violate local laws.
 
 ---
 
+## 💰 Pricing
+
+Chameleon offers two flexible licensing models:
+
+- **Lifetime Access**: $25.00 USD (One-time payment) — Pay once, use forever.
+- **Weekly Plan**: $5.00 USD (Recurring weekly) — Flexible access, cancel anytime.
+
+Purchase your license at [chameleon-jet.vercel.app/checkout.html](https://chameleon-jet.vercel.app/checkout.html) or directly through the Desktop Agent's activation screen.
+
+---
+
 ## 📄 License
 
 MIT License (or specify your license here)

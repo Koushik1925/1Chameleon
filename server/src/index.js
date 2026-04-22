@@ -1,12 +1,82 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const crypto = require('crypto');
 const cors = require('cors');
+const path = require('path');
+const { RateLimiterRedis, RateLimiterMemory } = require('rate-limiter-flexible');
+const { createClient } = require('redis');
 
 const app = express();
+const helmet = require('helmet');
+app.use(helmet({
+  contentSecurityPolicy: true,
+  strictTransportSecurity: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  xFrameOptions: { action: 'deny' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' }
+}));
 app.use(cors());
 app.use(express.json());
+
+// 1. Redis Setup & Rate Limiting
+const redisClient = createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  socket: { reconnectStrategy: (retries) => Math.min(retries * 50, 2000) }
+});
+
+let redisLogOnce = false;
+redisClient.on('error', (err) => {
+  if (!redisLogOnce) {
+    console.warn('[Redis] Connection Error (Rate limiting will use local memory fallback):', err.message);
+    redisLogOnce = true;
+  }
+});
+redisClient.connect().catch(() => {});
+
+// Global Rate Limiter: 100 req/min/IP
+const globalRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: 'global_limit',
+  points: 100,
+  duration: 60,
+  insuranceLimiter: new RateLimiterMemory({
+    points: 100,
+    duration: 60,
+  })
+});
+
+const rateLimitMiddleware = async (req, res, next) => {
+  try {
+    await globalRateLimiter.consume(req.ip);
+    next();
+  } catch (rejRes) {
+    res.status(429).set('Retry-After', Math.round(rejRes.msBeforeNext / 1000) || 1).json({
+      success: false,
+      error: { code: 'TOO_MANY_REQUESTS', message: 'Rate limit exceeded' }
+    });
+  }
+};
+
+app.use(rateLimitMiddleware);
+
+// Import License API Routes
+const activateRoute = require('./routes/activate');
+const validateRoute = require('./routes/validate');
+const paypalWebhookRoute = require('./routes/paypal-webhook');
+const successRoute = require('./routes/success');
+
+app.use(activateRoute);
+app.use(validateRoute);
+app.use(paypalWebhookRoute);
+app.use(successRoute);
+
+// Serve static directory for checkout.html
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Keep-alive endpoint to prevent Render free-tier from sleeping (wipes session Map)
 app.get('/ping', (req, res) => {
