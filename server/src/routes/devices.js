@@ -11,7 +11,7 @@ const hashToken = (token) => crypto.createHash('sha256').update(token).digest('h
 // 1. Register Device (Agent calls this)
 router.post('/register', async (req, res) => {
     try {
-        const { email, device_id, nickname } = req.body;
+        const { device_id, nickname } = req.body;
         
         if (!device_id) {
             return res.status(400).json({ success: false, error: 'Missing device_id' });
@@ -23,16 +23,15 @@ router.post('/register', async (req, res) => {
 
         // Upsert Device
         await db.query(`
-            INSERT INTO devices (email, device_id, nickname, refresh_token_hash, status, last_seen)
-            VALUES ($1, $2, $3, $4, 'online', NOW())
+            INSERT INTO devices (device_id, nickname, refresh_token_hash, status, last_seen)
+            VALUES ($1, $2, $3, 'online', NOW())
             ON CONFLICT (device_id) 
             DO UPDATE SET 
-                email = COALESCE(EXCLUDED.email, devices.email),
                 refresh_token_hash = EXCLUDED.refresh_token_hash,
                 nickname = COALESCE(EXCLUDED.nickname, devices.nickname),
                 status = 'online',
                 last_seen = NOW()
-        `, [email || null, device_id, nickname || 'Windows Desktop']);
+        `, [device_id, nickname || 'Windows Desktop']);
 
         res.json({
             success: true,

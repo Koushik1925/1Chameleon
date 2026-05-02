@@ -100,6 +100,12 @@ const RECONNECT_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours to grab the same se
 
 const db = require('./db');
 
+// Auto-migrate database on Render
+db.query(`ALTER TABLE devices DROP COLUMN IF EXISTS license_id CASCADE;`).catch(console.error);
+// We no longer need the email column, but we won't drop it just in case, or we can drop it.
+// Actually, let's drop email too to make it strictly Device ID based!
+db.query(`ALTER TABLE devices DROP COLUMN IF EXISTS email CASCADE;`).catch(console.error);
+
 io.on('connection', (socket) => {
     console.log(`[INFO] New connection: ${socket.id}`);
 
