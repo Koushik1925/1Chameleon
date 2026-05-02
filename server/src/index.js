@@ -69,11 +69,13 @@ const activateRoute = require('./routes/activate');
 const validateRoute = require('./routes/validate');
 const paypalWebhookRoute = require('./routes/paypal-webhook');
 const successRoute = require('./routes/success');
+const devicesRoute = require('./routes/devices');
 
 app.use(activateRoute);
 app.use(validateRoute);
 app.use(paypalWebhookRoute);
 app.use(successRoute);
+app.use('/devices', devicesRoute);
 
 // Serve static directory for checkout.html
 app.use(express.static(path.join(__dirname, 'public')));
@@ -91,17 +93,56 @@ const io = new Server(server, {
     }
 });
 
-// In-memory store for sessions
+// In-memory store for transient sessions (Legacy/QR pairing)
 // Structure: sessionId -> { agentSocketId, clientSocketId, createdAt, status }
 const sessions = new Map();
+
+// Persistent Devices System
+// onlineDevices maps device_id -> socket.id
+const onlineDevices = new Map();
+// socketToDevice maps socket.id -> device_id
+const socketToDevice = new Map();
 
 const SESSION_EXPIRY_MS = 12 * 60 * 60 * 1000; // 12 hours for active session validity
 const RECONNECT_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours to grab the same session back
 
+const db = require('./db');
+
 io.on('connection', (socket) => {
     console.log(`[INFO] New connection: ${socket.id}`);
 
-    // 1. Agent requests a new pairing session
+    // Persistent Device Auth
+    socket.on('agent:authenticate', async ({ device_id, refresh_token }) => {
+        try {
+            const hash = crypto.createHash('sha256').update(refresh_token).digest('hex');
+            const res = await db.query('SELECT id FROM devices WHERE device_id = $1 AND refresh_token_hash = $2', [device_id, hash]);
+            
+            if (res.rows.length === 0) {
+                return socket.emit('error', { message: 'Invalid credentials or revoked device' });
+            }
+
+            // Clean up any old socket for this device
+            const oldSocketId = onlineDevices.get(device_id);
+            if (oldSocketId && oldSocketId !== socket.id) {
+                const oldSocket = io.sockets.sockets.get(oldSocketId);
+                if (oldSocket) oldSocket.disconnect();
+                socketToDevice.delete(oldSocketId);
+            }
+
+            onlineDevices.set(device_id, socket.id);
+            socketToDevice.set(socket.id, device_id);
+
+            // Update status in DB
+            await db.query(`UPDATE devices SET status = 'online', last_seen = NOW() WHERE device_id = $1`, [device_id]);
+
+            socket.emit('agent:authenticated', { success: true });
+            console.log(`[INFO] Device Authenticated: ${device_id} on socket ${socket.id}`);
+        } catch (e) {
+            socket.emit('error', { message: 'Auth failed' });
+        }
+    });
+
+    // 1. Agent requests a new pairing session (Legacy/QR flow)
     socket.on('agent:create_session', () => {
         let sessionId;
         do {
@@ -136,7 +177,32 @@ io.on('connection', (socket) => {
     });
 
     // 2. Client joins using standard UI or scanned QR
-    socket.on('client:join_session', ({ sessionId }) => {
+    socket.on('client:join_session', ({ sessionId, device_id }) => {
+        // If device_id is provided, it's a direct connection via persistent linking
+        if (device_id) {
+            const agentSocketId = onlineDevices.get(device_id);
+            if (!agentSocketId) {
+                return socket.emit('error', { message: 'Device is offline' });
+            }
+            
+            // Create a virtual session id for this direct connection
+            const sid = `direct_${device_id}_${Date.now()}`;
+            sessions.set(sid, {
+                agentSocketId,
+                clientSocketId: socket.id,
+                createdAt: Date.now(),
+                status: 'connected',
+                lastActivity: Date.now()
+            });
+
+            // Notify Agent
+            io.to(agentSocketId).emit('agent:client_joined', { sessionId: sid });
+            // Notify Client
+            socket.emit('client:joined_success', { sessionId: sid });
+            console.log(`[INFO] Client ${socket.id} joined direct session ${sid} to device ${device_id}`);
+            return;
+        }
+
         const session = sessions.get(sessionId);
 
         if (!session) {
@@ -225,8 +291,21 @@ io.on('connection', (socket) => {
     });
 
     // 5. Cleanup on Disconnect
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log(`[INFO] Disconnected: ${socket.id}`);
+
+        // Cleanup persistent device mapping
+        const device_id = socketToDevice.get(socket.id);
+        if (device_id) {
+            onlineDevices.delete(device_id);
+            socketToDevice.delete(socket.id);
+            console.log(`[INFO] Persistent Device Offline: ${device_id}`);
+            try {
+                await db.query(`UPDATE devices SET status = 'offline', last_seen = NOW() WHERE device_id = $1`, [device_id]);
+            } catch (e) {
+                // ignore
+            }
+        }
 
         for (const [sessionId, session] of sessions.entries()) {
             // If Agent disconnects, kill the whole session immediately. Host is gone.

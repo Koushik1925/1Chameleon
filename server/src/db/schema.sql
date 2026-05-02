@@ -70,3 +70,18 @@ CREATE TABLE IF NOT EXISTS activations (
 
 CREATE INDEX IF NOT EXISTS idx_activations_license_id ON activations(license_id);
 CREATE INDEX IF NOT EXISTS idx_activations_device_id ON activations(device_id);
+
+-- Persistent Devices
+CREATE TABLE IF NOT EXISTS devices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  license_id UUID REFERENCES licenses(id) ON DELETE CASCADE,
+  device_id VARCHAR(255) UNIQUE NOT NULL,
+  nickname VARCHAR(255),
+  refresh_token_hash VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'offline',
+  last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_devices_license_id ON devices(license_id);
+CREATE INDEX IF NOT EXISTS idx_devices_device_id ON devices(device_id);

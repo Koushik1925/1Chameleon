@@ -53,7 +53,7 @@ export default function Home() {
                     <section className="pt-40 pb-20 px-6 min-h-[90vh] flex flex-col items-center justify-center text-center">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-8 animate-pulse-slow">
                             <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                            Version 1.1.1 Live
+                            Version 1.2.0 Live
                         </div>
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl leading-tight">
                             Secure Remote Access. <br />
@@ -87,6 +87,80 @@ export default function Home() {
                                 <span>Peer-to-Peer</span>
                                 <span className="w-1 h-1 rounded-full bg-slate-500"></span>
                                 <span>No Data Stored</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* SECTION 1.5: My Devices (Persistent Links) */}
+                    <section className="py-12 px-6 bg-cyan-950/10 border-t border-b border-cyan-500/10">
+                        <div className="max-w-4xl mx-auto">
+                            <div className="flex flex-col md:flex-row items-center justify-between mb-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                                        <MonitorPlay className="text-cyan-400" /> 
+                                        Your Linked Devices
+                                    </h2>
+                                    <p className="text-sm text-slate-400">Access your persistently connected Windows agents.</p>
+                                </div>
+                                <div className="mt-4 md:mt-0 flex w-full md:w-auto gap-2">
+                                    <input 
+                                        type="email" 
+                                        id="deviceEmail"
+                                        placeholder="Enter license email..." 
+                                        className="bg-black/50 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:border-cyan-500 outline-none w-full md:w-64"
+                                    />
+                                    <button 
+                                        onClick={async () => {
+                                            const email = document.getElementById('deviceEmail').value;
+                                            if (!email) return;
+                                            try {
+                                                const res = await fetch(`http://localhost:3000/devices?email=${encodeURIComponent(email)}`);
+                                                const json = await res.json();
+                                                if (json.success) {
+                                                    // Quick inline state injection for MVP without rewriting the whole component
+                                                    const list = document.getElementById('devicesList');
+                                                    list.innerHTML = '';
+                                                    if (json.data.length === 0) {
+                                                        list.innerHTML = '<div class="text-slate-500 text-sm py-4">No linked devices found for this email.</div>';
+                                                        return;
+                                                    }
+                                                    json.data.forEach(dev => {
+                                                        const isOnline = dev.status === 'online';
+                                                        const el = document.createElement('div');
+                                                        el.className = `flex items-center justify-between p-4 rounded-xl border ${isOnline ? 'border-cyan-500/30 bg-cyan-950/20' : 'border-slate-800 bg-black/40'} mb-3`;
+                                                        el.innerHTML = `
+                                                            <div class="flex flex-col">
+                                                                <span class="font-bold text-white flex items-center gap-2">
+                                                                    <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-slate-600'}"></span>
+                                                                    ${dev.nickname || 'Windows Desktop'}
+                                                                </span>
+                                                                <span class="text-xs text-slate-400 mt-1 font-mono">${dev.device_id.substring(0, 12)}...</span>
+                                                            </div>
+                                                        `;
+                                                        
+                                                        const btn = document.createElement('button');
+                                                        btn.className = `px-6 py-2 rounded-lg text-sm font-bold transition-all ${isOnline ? 'bg-cyan-500 hover:bg-cyan-400 text-black' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`;
+                                                        btn.innerText = isOnline ? 'Connect' : 'Offline';
+                                                        if (isOnline) {
+                                                            btn.onclick = () => window.location.href = '/connect?device_id=' + dev.device_id;
+                                                        }
+                                                        
+                                                        el.appendChild(btn);
+                                                        list.appendChild(el);
+                                                    });
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        }}
+                                        className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Load
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="devicesList" className="flex flex-col">
+                                <div className="text-slate-500 text-sm italic">Enter your email to view your devices.</div>
                             </div>
                         </div>
                     </section>
@@ -220,10 +294,10 @@ export default function Home() {
                                     </div>
                                     <h3 className="text-2xl font-bold mb-2">Windows</h3>
                                     <p className="text-slate-300 text-sm mb-8">Windows 10 / 11 (x64)</p>
-                                    <a href="/Chameleon-Agent-Setup-1.1.1.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative underline hover:no-underline">
+                                    <a href="/Chameleon-Agent-Setup-1.2.0.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative underline hover:no-underline">
                                         Download for Windows
                                     </a>
-                                    <span className="text-xs text-slate-400 mt-4 font-mono">v1.1.1 • ~85 MB</span>
+                                    <span className="text-xs text-slate-400 mt-4 font-mono">v1.2.0 • ~85 MB</span>
                                     <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                         <ShieldCheck size={12} /> Verified & Secure
                                     </div>
@@ -240,10 +314,10 @@ export default function Home() {
                                     </div>
                                     <h3 className="text-2xl font-bold mb-2">macOS</h3>
                                     <p className="text-slate-300 text-sm mb-8">Intel & Apple Silicon (Universal)</p>
-                                    <a href="/Chameleon-Agent-macOS-1.1.1.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative underline hover:no-underline">
+                                    <a href="/Chameleon-Agent-macOS-1.2.0.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative underline hover:no-underline">
                                         Download for macOS
                                     </a>
-                                    <span className="text-xs text-slate-400 mt-4 font-mono">v1.1.1 • ~95 MB</span>
+                                    <span className="text-xs text-slate-400 mt-4 font-mono">v1.2.0 • ~95 MB</span>
                                     <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                         <ShieldCheck size={12} /> Verified & Secure
                                     </div>

@@ -1,145 +1,70 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
-    <title>Chameleon Background Process</title>
+    <title>Chameleon Hidden WebRTC Engine</title>
 </head>
-
 <body>
     <script>
-        // We use nodeIntegration here to easily access DesktopCapturer and Socket.io in MVP
         const { ipcRenderer } = require('electron');
-        const { io } = require('socket.io-client');
-        const QRCode = require('qrcode');
 
-        const SIGNALING_URL = 'https://chameleon-j5wf.onrender.com';
-
-        // Keep-alive for Render backend (Prevents 15m idle shutdown and RAM wipe)
-        setInterval(() => {
-            fetch(`${SIGNALING_URL}/ping`).catch(() => { });
-        }, 5 * 60 * 1000);
-        fetch(`${SIGNALING_URL}/ping`).catch(() => { }); // Initial warm-up
-
-        let socket = null;
         let peerConnection = null;
         let localStream = null;
-        let currentSessionId = null;
         let dataChannel = null;
         let iceCandidateQueue = [];
         let isRemoteDescriptionSet = false;
-        
-        // Relay mode state
-        let relayInterval = null;
-        let relayCanvas = document.createElement('canvas');
-        let relayVideo = document.createElement('video');
-        relayVideo.autoplay = true;
-        relayVideo.muted = true;
-        let isRelayingFrame = false;
 
-        // Initialize connection
-        function initSignaling() {
-            if (socket) socket.disconnect();
+        // Start WebRTC when client joins
+        ipcRenderer.on('agent:client_joined', async () => {
+            console.log('[WebRTC] Client joined. Starting WebRTC...');
+            cleanupSession();
+            ipcRenderer.send('tray:update_status', 'connected');
+            await startWebRTC();
+        });
 
-            socket = io(SIGNALING_URL);
+        ipcRenderer.on('signal:sdp', async (event, data) => {
+            try {
+                if (!peerConnection) return;
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                isRemoteDescriptionSet = true;
 
-            socket.on('connect', () => {
-                console.log('Background connected to signaling server');
-            });
+                // Process queued ICE candidates
+                while (iceCandidateQueue.length > 0) {
+                    const candidate = iceCandidateQueue.shift();
+                    await peerConnection.addIceCandidate(candidate).catch(e => console.error("Queued ICE error:", e));
+                }
 
-            socket.on('agent:session_created', async (data) => {
-                currentSessionId = data.sessionId;
-                const qrUrl = `https://chameleon-jet.vercel.app/?sess=${data.sessionId}`;
-
-                try {
-                    const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
-                    ipcRenderer.send('webrtc:qr_payload', {
-                        sessionId: data.sessionId,
-                        dataUrl: qrDataUrl,
-                        expiresIn: data.expiresIn
+                if (data.sdp.type === 'offer') {
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    ipcRenderer.send('webrtc:signal:sdp', {
+                        sdp: peerConnection.localDescription,
+                        to: 'client'
                     });
-                    ipcRenderer.send('tray:update_status', 'pairing');
-                } catch (e) {
-                    console.error('Failed to generate QR code', e);
                 }
-            });
+            } catch (err) {
+                console.error('[WebRTC] SDP Error', err);
+            }
+        });
 
-            socket.on('agent:client_joined', async (data) => {
-                console.log('Client joined session:', data.sessionId);
-                cleanupSession(true); // Destroy any zombied connections if a client rejoins
-                currentSessionId = data.sessionId;
-                ipcRenderer.send('tray:update_status', 'connected');
-                // We don't start WebRTC immediately until client tells us which mode
-                // Actually, start WebRTC normally. If relay is requested later, we handle it.
-                await startWebRTC();
-            });
-
-            socket.on('agent:start_relay', async () => {
-                console.log('Cloud Relay Mode requested by client');
-                await startRelayMode();
-            });
-
-            socket.on('relay:input', (inputData) => {
-                ipcRenderer.send('webrtc:remote_input', inputData);
-            });
-
-            socket.on('session:expired', () => {
-                console.log('Session expired');
-                currentSessionId = null;
-                ipcRenderer.send('tray:update_status', 'idle');
-            });
-
-            socket.on('session:ended', () => {
-                console.log('Session ended');
-                cleanupSession();
-            });
-
-            socket.on('signal:sdp', async (data) => {
-                try {
-                    if (!peerConnection) return;
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    isRemoteDescriptionSet = true;
-
-                    // Process queued ICE candidates
-                    while (iceCandidateQueue.length > 0) {
-                        const candidate = iceCandidateQueue.shift();
-                        await peerConnection.addIceCandidate(candidate).catch(e => console.error("Queued ICE error:", e));
+        ipcRenderer.on('signal:ice', async (event, data) => {
+            try {
+                if (data.candidate) {
+                    const candidate = new RTCIceCandidate(data.candidate);
+                    if (peerConnection && isRemoteDescriptionSet) {
+                        await peerConnection.addIceCandidate(candidate);
+                    } else {
+                        iceCandidateQueue.push(candidate);
                     }
-
-                    if (data.sdp.type === 'offer') {
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        socket.emit('signal:sdp', {
-                            sessionId: currentSessionId,
-                            sdp: peerConnection.localDescription,
-                            to: 'client'
-                        });
-                    }
-                } catch (err) {
-                    console.error('SDP Error', err);
                 }
-            });
-
-            socket.on('signal:ice', async (data) => {
-                try {
-                    if (data.candidate) {
-                        const candidate = new RTCIceCandidate(data.candidate);
-                        if (peerConnection && isRemoteDescriptionSet) {
-                            await peerConnection.addIceCandidate(candidate);
-                        } else {
-                            console.log('Queueing ICE candidate...');
-                            iceCandidateQueue.push(candidate);
-                        }
-                    }
-                } catch (err) {
-                    console.error('ICE Error', err);
-                }
-            });
-        }
+            } catch (err) {
+                console.error('[WebRTC] ICE Error', err);
+            }
+        });
 
         async function getScreenStream() {
             const sources = await ipcRenderer.invoke('get-desktop-sources');
-            const primarySource = sources[0]; // Just grab first screen for MVP
+            const primarySource = sources[0];
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -174,8 +99,6 @@
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:443' },
-                    { urls: 'stun:stun2.l.google.com:443' },
-                    { urls: 'stun:stun.cloudflare.com:443' },
                     {
                         urls: 'turn:openrelay.metered.ca:443',
                         username: 'openrelayproject',
@@ -189,15 +112,13 @@
                 ]
             });
 
-            // Add video track
             localStream.getTracks().forEach(track => {
                 if (track.kind === 'video') {
-                    track.contentHint = 'motion'; // Prioritize strict framerate over single-frame clarity
+                    track.contentHint = 'motion';
                 }
                 peerConnection.addTrack(track, localStream);
             });
 
-            // Create DataChannel for receiving input
             dataChannel = peerConnection.createDataChannel('control');
             setupDataChannel(dataChannel);
 
@@ -207,8 +128,7 @@
 
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    socket.emit('signal:ice', {
-                        sessionId: currentSessionId,
+                    ipcRenderer.send('webrtc:signal:ice', {
                         candidate: event.candidate,
                         to: 'client'
                     });
@@ -216,10 +136,13 @@
             };
 
             peerConnection.onconnectionstatechange = () => {
-                console.log('PC State:', peerConnection.connectionState);
-                if (peerConnection.connectionState === 'failed') {
-                    console.log('WebRTC Connection failed. Cleaning up.');
-                    cleanupSession();
+                console.log('[WebRTC] State:', peerConnection.connectionState);
+                if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
+                    console.log('[WebRTC] Connection failed or disconnected. Attempting ICE restart...');
+                    // ICE Restart logic
+                    if (peerConnection.connectionState === 'failed') {
+                        peerConnection.restartIce();
+                    }
                 }
             };
 
@@ -227,52 +150,35 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            socket.emit('signal:sdp', {
-                sessionId: currentSessionId,
+            ipcRenderer.send('webrtc:signal:sdp', {
                 sdp: peerConnection.localDescription,
                 to: 'client'
             });
         }
 
         function setupDataChannel(channel) {
-            channel.onopen = () => {
-                console.log('Data channel opened');
-                // Keep the NAT binding alive aggressively
-                channel.pingInterval = setInterval(() => {
-                    if (channel.readyState === 'open') {
-                        channel.send(JSON.stringify({ type: 'ping' }));
-                    }
-                }, 5000); // 5 seconds
-            };
-
-            channel.onclose = () => {
-                console.log('Data channel closed');
-                if (channel.pingInterval) clearInterval(channel.pingInterval);
-            };
-
+            channel.onopen = () => console.log('Data channel opened');
+            channel.onclose = () => console.log('Data channel closed');
             channel.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'ping' || data.type === 'pong') return; // Ignore keep-alives
-                    handleRemoteInput(data);
+                    if (data.type === 'ping' || data.type === 'pong') return;
+                    
+                    if (data.type === 'clipboard_pull_request') {
+                        ipcRenderer.invoke('webrtc:clipboard_pull').then(text => {
+                            if (channel && channel.readyState === 'open') {
+                                channel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
+                            }
+                        }).catch(err => console.error("Agent clipboard read error", err));
+                    } else if (data.type === 'update_resolution') {
+                        updateResolution(data.resolution);
+                    } else {
+                        ipcRenderer.send('webrtc:remote_input', data);
+                    }
                 } catch (e) {
                     console.error('DataChannel parse error', e);
                 }
             };
-        }
-
-        function handleRemoteInput(data) {
-            if (data.type === 'clipboard_pull_request') {
-                ipcRenderer.invoke('webrtc:clipboard_pull').then(text => {
-                    if (dataChannel && dataChannel.readyState === 'open') {
-                        dataChannel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
-                    }
-                }).catch(err => console.error("Agent clipboard read error", err));
-            } else if (data.type === 'update_resolution') {
-                updateResolution(data.resolution);
-            } else {
-                ipcRenderer.send('webrtc:remote_input', data);
-            }
         }
 
         async function updateResolution(res) {
@@ -280,75 +186,18 @@
             const videoTrack = localStream.getVideoTracks()[0];
             if (!videoTrack) return;
 
-            // Chrome desktopCapture has specific constraints format requirements
-            let width = 1920;
-            let height = 1080;
-            let fps = 60;
-
+            let width = 1920; let height = 1080; let fps = 60;
             if (res === '720p') { width = 1280; height = 720; fps = 30; }
             if (res === '480p') { width = 854; height = 480; fps = 30; }
 
             try {
-                // Apply constraints to running track seamlessly without renegotiation
-                await videoTrack.applyConstraints({
-                    width: { max: width },
-                    height: { max: height },
-                    frameRate: { max: fps }
-                });
-                console.log('Applied new constraints:', res);
+                await videoTrack.applyConstraints({ width: { max: width }, height: { max: height }, frameRate: { max: fps } });
             } catch (err) {
                 console.error('Failed to apply constraints', err);
             }
         }
-           // ------------------ CLOUD RELAY FALLBACK ------------------
-        async function startRelayMode() {
-            if (!localStream) {
-                localStream = await getScreenStream();
-            }
-            if (!localStream) return;
-            
-            relayVideo.srcObject = localStream;
-            await relayVideo.play();
-            
-            if (relayInterval) clearInterval(relayInterval);
-            
-            // Capture at ~20fps max (50ms)
-            relayInterval = setInterval(() => {
-                if (relayVideo.videoWidth === 0) return;
-                
-                // BACKPRESSURE: Only proceed if previous frame has been fully processed by the network
-                if (isRelayingFrame) return;
-                isRelayingFrame = true;
-                
-                // Aggressive resolution drop for relay mode (1024p max width) to stay under 100kb
-                relayCanvas.width = 1024; 
-                relayCanvas.height = Math.round((1024 / relayVideo.videoWidth) * relayVideo.videoHeight);
-                
-                const ctx = relayCanvas.getContext('2d');
-                ctx.drawImage(relayVideo, 0, 0, relayCanvas.width, relayCanvas.height);
-                
-                // Send as compact Binary Blob instead of bulky Base64
-                relayCanvas.toBlob((blob) => {
-                    if (!blob) {
-                        isRelayingFrame = false;
-                        return;
-                    }
-                    socket.emit('relay:frame', { sessionId: currentSessionId, frame: blob }, () => {
-                        // SERVER ACKNOWLEDGE: We are clear to process the next frame
-                        isRelayingFrame = false;
-                    });
-                }, 'image/jpeg', 0.5);
-                
-            }, 50);
-        }
 
-        // ------------------ CLEANUP ------------------
-
-        function cleanupSession(preserveSession = false) {
-            if (relayInterval) {
-                clearInterval(relayInterval);
-                relayInterval = null;
-            }
+        function cleanupSession() {
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -357,35 +206,10 @@
                 localStream.getTracks().forEach(t => t.stop());
                 localStream = null;
             }
-            if (!preserveSession) {
-                currentSessionId = null;
-                ipcRenderer.send('tray:update_status', 'idle');
-            }
             isRemoteDescriptionSet = false;
             iceCandidateQueue = [];
+            ipcRenderer.send('tray:update_status', 'idle');
         }
-
-        // IPC Listeners
-        ipcRenderer.on('session:request_pairing', () => {
-            if (!socket) initSignaling();
-            if (!socket.connected) {
-                socket.connect();
-            }
-            socket.emit('agent:create_session');
-        });
-
-        ipcRenderer.on('session:disconnect', () => {
-            if (socket && currentSessionId) {
-                // Let server know we dropped
-                socket.disconnect();
-                socket.connect(); // reconnect cleanly
-            }
-            cleanupSession();
-        });
-
-        // Initialize socket on boot
-        initSignaling();
     </script>
 </body>
-
 </html>

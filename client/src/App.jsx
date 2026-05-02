@@ -48,8 +48,11 @@ function ClientApp() {
     // If we have a sessionId parsed from URL or manual entry (Phase 1 manual input)
     const urlParams = new URLSearchParams(window.location.search);
     const sid = urlParams.get('sess');
+    const devId = urlParams.get('device_id');
     if (sid && status === 'scan') {
       handleJoinSession(sid);
+    } else if (devId && status === 'scan') {
+      handleJoinSession(null, devId);
     }
   }, []);
 
@@ -77,17 +80,17 @@ function ClientApp() {
     return () => clearInterval(pingInterval);
   }, []);
 
-  const handleJoinSession = (sid) => {
-    setSessionId(sid);
+  const handleJoinSession = (sid, device_id = null) => {
+    setSessionId(sid || device_id);
     setStatus('connecting');
     setErrorMsg('');
 
     // Save session id to localStorage for fast reconnect
     localStorage.setItem('chameleon_last_session', JSON.stringify({
-      id: sid,
+      id: sid || device_id,
       timestamp: Date.now()
     }));
-    setLastSessionId(sid);
+    setLastSessionId(sid || device_id);
 
     // 1. Connect to signaling server
     const socket = io(SIGNALING_URL);
@@ -95,7 +98,11 @@ function ClientApp() {
 
     socket.on('connect', () => {
       console.log('Connected to signaling server');
-      socket.emit('client:join_session', { sessionId: sid });
+      if (device_id) {
+          socket.emit('client:join_session', { device_id });
+      } else {
+          socket.emit('client:join_session', { sessionId: sid });
+      }
       
       // If user checked "Cloud Relay Mode", request it immediately after joining
       if (relayMode) {

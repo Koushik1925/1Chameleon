@@ -2,6 +2,7 @@ const { ipcMain } = require('electron');
 const { LicenseStorage } = require('./licenseStorage');
 const { getDeviceId } = require('./deviceId');
 const { LicenseApi } = require('./licenseApi');
+const { saveTokens, getOrGenerateDeviceId } = require('../storage/identity');
 
 class LicenseManager {
   constructor() {
@@ -61,6 +62,14 @@ class LicenseManager {
 
       if (response && response.token) {
         LicenseStorage.save(licenseKey, response.token);
+        
+        // Save persistent refresh token
+        if (response.refresh_token) {
+            const persistentId = getOrGenerateDeviceId();
+            saveTokens(response.refresh_token, null);
+            // Optionally restart daemon here if we had reference to it
+        }
+
         return { success: true, message: 'License activated!' };
       }
 

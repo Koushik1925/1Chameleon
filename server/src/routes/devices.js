@@ -1,0 +1,124 @@
+const express = require('express');
+const db = require('../db');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+
+const router = express.Router();
+
+// Helper to hash refresh tokens
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// 1. Register Device (Agent calls this)
+router.post('/register', async (req, res) => {
+    try {
+        const { license_key, device_id, nickname } = req.body;
+        
+        if (!license_key || !device_id) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        // Validate License
+        const licenseRes = await db.query('SELECT * FROM licenses WHERE license_key_hash = $1', [hashToken(license_key)]);
+        const license = licenseRes.rows[0];
+        if (!license) return res.status(404).json({ success: false, error: 'License not found' });
+
+        // Generate Refresh Token
+        const refreshToken = crypto.randomBytes(32).toString('hex');
+        const refreshTokenHash = hashToken(refreshToken);
+
+        // Upsert Device
+        await db.query(`
+            INSERT INTO devices (license_id, device_id, nickname, refresh_token_hash, status, last_seen)
+            VALUES ($1, $2, $3, $4, 'online', NOW())
+            ON CONFLICT (device_id) 
+            DO UPDATE SET 
+                refresh_token_hash = EXCLUDED.refresh_token_hash,
+                nickname = COALESCE(EXCLUDED.nickname, devices.nickname),
+                status = 'online',
+                last_seen = NOW()
+        `, [license.id, device_id, nickname || os.hostname()]);
+
+        res.json({
+            success: true,
+            data: {
+                refresh_token: refreshToken,
+                license_id: license.id
+            }
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+});
+
+// 2. Heartbeat (Agent calls this periodically)
+router.post('/heartbeat', async (req, res) => {
+    try {
+        const { device_id, status } = req.body;
+        if (!device_id) return res.status(400).json({ success: false });
+
+        await db.query(`
+            UPDATE devices 
+            SET last_seen = NOW(), status = $1 
+            WHERE device_id = $2
+        `, [status || 'online', device_id]);
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+// 3. Get Devices (Dashboard calls this)
+router.get('/', async (req, res) => {
+    try {
+        // Mocking user auth via query param for now, or auth token
+        const email = req.query.email;
+        if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+
+        const devicesRes = await db.query(`
+            SELECT d.id, d.device_id, d.nickname, d.status, d.last_seen 
+            FROM devices d
+            JOIN licenses l ON d.license_id = l.id
+            WHERE l.email = $1
+        `, [email]);
+
+        // Optional: Update status to offline if last_seen > 2 mins ago
+        const devices = devicesRes.rows.map(d => {
+            const isOffline = (Date.now() - new Date(d.last_seen).getTime()) > 120000;
+            return {
+                ...d,
+                status: isOffline ? 'offline' : d.status
+            };
+        });
+
+        res.json({ success: true, data: devices });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+});
+
+// 4. Revoke Device
+router.post('/revoke', async (req, res) => {
+    try {
+        const { device_id } = req.body;
+        await db.query(`UPDATE devices SET refresh_token_hash = NULL, status = 'offline' WHERE device_id = $1`, [device_id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+// 5. Rename Device
+router.post('/rename', async (req, res) => {
+    try {
+        const { device_id, nickname } = req.body;
+        await db.query(`UPDATE devices SET nickname = $1 WHERE device_id = $2`, [nickname, device_id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false });
+    }
+});
+
+module.exports = router;

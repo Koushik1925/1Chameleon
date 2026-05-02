@@ -14,6 +14,7 @@ class LicenseApi {
    * @returns {Promise<{token: string, status: string, type: string, expires_at: string}>}
    */
   async activate(licenseKey, deviceId) {
+    // 1. Activate the license normally
     const response = await this.api.post('/activate', {
       license_key: licenseKey,
       device_id: deviceId
@@ -21,6 +22,20 @@ class LicenseApi {
 
     if (!response.data || !response.data.success) {
       throw new Error(response.data?.error?.message || 'Activation failed');
+    }
+
+    // 2. Register the device persistently
+    try {
+        const regRes = await this.api.post('/devices/register', {
+            license_key: licenseKey,
+            device_id: deviceId
+        });
+        
+        if (regRes.data && regRes.data.success) {
+            response.data.data.refresh_token = regRes.data.data.refresh_token;
+        }
+    } catch (e) {
+        console.warn('[LicenseApi] Device persistent registration failed:', e.message);
     }
 
     return response.data.data;
