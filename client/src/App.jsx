@@ -6,6 +6,7 @@ import RemoteView from './components/RemoteView';
 import OTPInput from './components/OTPInput';
 import Home from './components/Home';
 import { Power, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { AdaptiveController } from './lib/adaptiveController';
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
@@ -17,8 +18,9 @@ function ClientApp() {
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
   const [relayMode, setRelayMode] = useState(false);
-  const [relayFrame, setRelayFrame] = useState(null);
-  
+  // NOTE: relayFrame state REMOVED — relay frames bypass React state entirely.
+  // The socket is passed directly to RemoteView which handles frames in a Worker.
+  // This eliminates 8-15ms React reconciliation overhead per frame.
   const relayModeRef = useRef(relayMode);
   useEffect(() => {
       relayModeRef.current = relayMode;
@@ -44,6 +46,9 @@ function ClientApp() {
   const keyboardChannelRef = useRef(null);
   const iceCandidateQueue = useRef([]);
   const isRemoteDescriptionSet = useRef(false);
+  // GCC-inspired ABR controller (one instance per session)
+  const abrControllerRef = useRef(null);
+  const abrIntervalRef   = useRef(null);
 
   useEffect(() => {
     // If we have a sessionId parsed from URL or manual entry (Phase 1 manual input)
@@ -168,17 +173,11 @@ function ClientApp() {
       }
     });
 
-    // Relay Mode handlers (Binary Blob Stream)
-    socket.on('relay:frame', (arrayBuffer) => {
+    // Relay frames: NO React state update.
+    // RemoteView handles relay:frame directly via the socket ref + frameWorker.
+    // We only need to flip status to 'connected' on the first frame.
+    socket.once('relay:frame', () => {
       if (status !== 'connected') setStatus('connected');
-      
-      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-      const frameUrl = URL.createObjectURL(blob);
-      
-      setRelayFrame(prevUrl => {
-        if (prevUrl) URL.revokeObjectURL(prevUrl); // Revoke old memory allocation instantly
-        return frameUrl;
-      });
     });
 
     // 2. WebRTC Signaling
@@ -304,8 +303,10 @@ function ClientApp() {
       if (state === 'connected') {
         setStatus('connected');
         sessionStartTimeRef.current = Date.now();
+        // Initialise GCC-inspired ABR controller for this session
+        abrControllerRef.current = new AdaptiveController();
+        startAbrLoop(peer, socket);
       } else if (state === 'failed') {
-        // Attempt ICE restart first — recovers from temporary glitches without full re-negotiation
         console.warn('[RTC] Connection failed — attempting ICE restart');
         peer.restartIce();
       } else if (state === 'disconnected') {
@@ -324,7 +325,53 @@ function ClientApp() {
     };
   };
 
+  // ── GCC-Inspired ABR Loop ────────────────────────────────────────────────
+  // Reads WebRTC stats every second, feeds them to AdaptiveController,
+  // and applies the resulting quality rung to the encoder via setParameters().
+  const startAbrLoop = (peer, socket) => {
+    if (abrIntervalRef.current) clearInterval(abrIntervalRef.current);
+
+    abrIntervalRef.current = setInterval(async () => {
+      if (!peer || peer.connectionState !== 'connected') return;
+      const abr = abrControllerRef.current;
+      if (!abr) return;
+
+      try {
+        const stats = await peer.getStats();
+        let rttSeconds = 0, packetLossRate = 0, availableBitrate = 0;
+
+        stats.forEach(r => {
+          if (r.type === 'candidate-pair' && r.state === 'succeeded') {
+            rttSeconds      = r.currentRoundTripTime || 0;
+            availableBitrate = r.availableOutgoingBitrate || 0;
+          }
+          if (r.type === 'inbound-rtp' && r.kind === 'video') {
+            // packetsLost / packetsReceived gives client-side loss rate
+            const total = (r.packetsReceived || 0) + (r.packetsLost || 0);
+            packetLossRate = total > 0 ? (r.packetsLost || 0) / total : 0;
+          }
+        });
+
+        const result = abr.update({ rttSeconds, packetLossRate, availableBitrate });
+
+        if (result.changed) {
+          // Signal the agent to update its encoder constraints
+          const ch = keyboardChannelRef.current;
+          if (ch && ch.readyState === 'open') {
+            ch.send(JSON.stringify({
+              type: 'update_resolution',
+              resolution: result.rung.label,
+              maxBitrate: result.rung.maxBitrate
+            }));
+          }
+        }
+      } catch (e) { /* ignore stats errors during renegotiation */ }
+    }, 1000);
+  };
+
   const cleanupWebRTC = () => {
+    if (abrIntervalRef.current) { clearInterval(abrIntervalRef.current); abrIntervalRef.current = null; }
+    abrControllerRef.current = null;
     if (mouseChannelRef.current) {
       try { mouseChannelRef.current.close(); } catch(e) {}
       mouseChannelRef.current = null;
@@ -603,18 +650,17 @@ function ClientApp() {
 
       {status === 'connected' && (
         <div className="z-20 w-full h-full">
-          <RemoteView 
-            stream={remoteStream} 
+          <RemoteView
+            stream={remoteStream}
             peerConnection={peerRef.current}
             sendInputEvent={sendInputEvent}
             relayMode={relayMode}
-            relayFrame={relayFrame}
             socket={socketRef.current}
             sessionId={sessionStartTimeRef.current ? lastSessionId : null}
             onDisconnect={() => {
               if (socketRef.current) socketRef.current.disconnect();
               handleDisconnect();
-            }} 
+            }}
           />
         </div>
       )}

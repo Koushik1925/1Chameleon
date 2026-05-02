@@ -465,32 +465,58 @@
         function handleRemoteInput(data) {
             if (data.type === 'clipboard_pull_request') {
                 ipcRenderer.invoke('webrtc:clipboard_pull').then(text => {
-                    // Send clipboard response on the keyboard channel (reliable)
                     if (keyboardChannel && keyboardChannel.readyState === 'open') {
                         keyboardChannel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
                     }
                 }).catch(err => console.error('[Clipboard] Agent read error', err));
             } else if (data.type === 'update_resolution') {
-                updateResolution(data.resolution);
+                // Client ABR controller sends: { resolution: '720p30', maxBitrate: 2500000 }
+                // or legacy: { resolution: '720p' }
+                updateResolution(data.resolution, data.maxBitrate);
             } else {
                 ipcRenderer.send('webrtc:remote_input', data);
             }
         }
 
-        async function updateResolution(res) {
+        // Applies track capture constraints AND encoder bitrate from a quality rung.
+        // Called both from user-initiated resolution changes and from the ABR controller.
+        // The quality ladder labels are: '1080p60', '1080p30', '720p60', '720p30', '480p30', '360p20'
+        // Legacy labels ('720p', '480p', '1080p') are also accepted for backwards compat.
+        async function updateResolution(res, maxBitrate) {
             if (!localStream) return;
             const videoTrack = localStream.getVideoTracks()[0];
             if (!videoTrack) return;
 
-            let width = 1920, height = 1080, fps = 60;
-            if (res === '720p') { width = 1280; height = 720; fps = 30; }
-            if (res === '480p') { width = 854; height = 480; fps = 30; }
+            // ── Map quality label to capture constraints ──────────────────────
+            const RUNG_MAP = {
+                '1080p60': { width: 1920, height: 1080, fps: 60 },
+                '1080p30': { width: 1920, height: 1080, fps: 30 },
+                '720p60':  { width: 1280, height: 720,  fps: 60 },
+                '720p30':  { width: 1280, height: 720,  fps: 30 },
+                '480p30':  { width: 854,  height: 480,  fps: 30 },
+                '360p20':  { width: 640,  height: 360,  fps: 20 },
+                // Legacy labels
+                '1080p':   { width: 1920, height: 1080, fps: 60 },
+                '720p':    { width: 1280, height: 720,  fps: 30 },
+                '480p':    { width: 854,  height: 480,  fps: 30 },
+            };
+            const rung = RUNG_MAP[res] || RUNG_MAP['720p30'];
 
             try {
-                await videoTrack.applyConstraints({ width: { max: width }, height: { max: height }, frameRate: { max: fps } });
+                await videoTrack.applyConstraints({
+                    width:     { max: rung.width  },
+                    height:    { max: rung.height },
+                    frameRate: { max: rung.fps    }
+                });
                 console.log('[CAPTURE] Applied constraints:', res);
             } catch (err) {
                 console.warn('[CAPTURE] Failed to apply constraints:', err);
+            }
+
+            // ── Also update encoder bitrate if provided by ABR controller ─────
+            if (maxBitrate && maxBitrate > 0) {
+                currentTargetBitrate = maxBitrate;
+                await applyEncoderParameters(maxBitrate);
             }
         }
 

@@ -113,7 +113,11 @@ function createBackgroundWindow() {
                 const screenHeight = await nutScreen.height();
                 const targetX = Math.max(0, Math.min(Math.floor(data.x * screenWidth), screenWidth - 1));
                 const targetY = Math.max(0, Math.min(Math.floor(data.y * screenHeight), screenHeight - 1));
-                await mouse.setPosition(new Point(targetX, targetY));
+                // FIRE-AND-FORGET: do NOT await mouse.setPosition().
+                // Awaiting blocks the IPC handler for 1-3ms on each mouse event.
+                // Since we only care about the LATEST position (not acknowledgment),
+                // fire the OS call and immediately return to handle the next event.
+                mouse.setPosition(new Point(targetX, targetY)).catch(() => {});
 
             } else if (data.type === 'mouse_down') {
                 const btn = data.button === 2 ? Button.RIGHT : (data.button === 1 ? Button.MIDDLE : Button.LEFT);
