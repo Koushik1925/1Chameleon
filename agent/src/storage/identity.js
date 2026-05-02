@@ -48,6 +48,11 @@ function getHardwareIds() {
 function getOrGenerateDeviceId() {
     const store = loadStore();
     if (store.device_id) {
+        // Automatically shorten legacy long IDs
+        if (store.device_id.length > 12) {
+            store.device_id = store.device_id.substring(0, 12);
+            saveStore(store);
+        }
         return store.device_id;
     }
 
@@ -56,7 +61,8 @@ function getOrGenerateDeviceId() {
     
     const deviceId = crypto.createHash('sha256')
         .update(`${machineGuid}-${boardSerial}-${installationSalt}`)
-        .digest('hex');
+        .digest('hex')
+        .substring(0, 12);
 
     store.device_id = deviceId;
     store.installation_salt = installationSalt;
