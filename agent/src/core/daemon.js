@@ -64,10 +64,25 @@ class Daemon {
             }
         });
 
-        this.socket.on('error', (err) => {
+        this.socket.on('error', async (err) => {
             console.error('[Daemon] Socket error:', err.message);
             if (err.message === 'Invalid credentials or revoked device') {
-                console.log('[Daemon] Credentials rejected by server. Halting reconnect.');
+                console.log('[Daemon] Credentials rejected by server. Clearing tokens and re-registering.');
+                const { clearTokens } = require('../storage/identity');
+                clearTokens();
+                
+                // Re-register in background
+                const { registrationManager } = require('../services/registrationManager');
+                await registrationManager.registerBackground();
+                
+                // Now retry authentication
+                const newRefreshToken = require('../storage/identity').getRefreshToken();
+                if (newRefreshToken) {
+                    this.socket.emit('agent:authenticate', {
+                        device_id: this.deviceId,
+                        refresh_token: newRefreshToken
+                    });
+                }
             }
         });
 
