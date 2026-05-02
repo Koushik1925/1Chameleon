@@ -1,227 +1,372 @@
 # 🦎 Chameleon
 
-**Secure. Instant. Remote.**
+**Ultra-Low-Latency Remote Desktop Infrastructure**
 
-Chameleon is a low-latency, QR-based remote desktop solution that enables secure access to your desktop from anywhere using end-to-end encrypted peer-to-peer connections.
+Chameleon is a modern peer-to-peer remote desktop platform engineered for extremely low latency, responsive remote control, and secure browser-based access.
 
-No IP addresses.  
-No port forwarding.  
-No complex setup.
+Built around WebRTC, hardware-accelerated streaming, adaptive bitrate control, and latency-bounded rendering pipelines.
 
----
-
-## 🚀 Overview
-
-Chameleon allows you to:
-
-- Connect to your desktop instantly using a QR code
-- Control your machine remotely from any modern browser
-- Stream your screen with ultra-low latency
-- Use full keyboard and mouse control
-- Sync clipboard between devices
-- Switch resolutions dynamically
-- Monitor live connection quality
-
-Built with performance and security as first principles.
+No port forwarding.
+No exposed IP addresses.
+No complicated setup.
 
 ---
 
-## 🔐 Security Architecture
+# 🚀 Core Features
+
+* Instant QR-based pairing
+* Secure WebRTC peer-to-peer connections
+* Hardware-accelerated H264 streaming
+* Ultra-low-latency remote control
+* Adaptive bitrate + dynamic quality scaling
+* High-performance mouse + keyboard input pipeline
+* Clipboard synchronization
+* Real-time connection diagnostics
+* Fullscreen pointer-lock mode
+* Automatic congestion handling
+* Relay fallback for restrictive networks
+
+---
+
+# ⚡ Architecture Philosophy
+
+Chameleon is designed around one core principle:
+
+> Responsiveness is more important than perfect delivery.
+
+The system aggressively prioritizes:
+
+1. Input responsiveness
+2. Frame smoothness
+3. Stable latency
+4. Visual quality
+
+This means:
+
+* stale frames are dropped immediately
+* queues are tightly bounded
+* bitrate adapts dynamically
+* mouse movement bypasses retransmission delays
+* congestion is handled proactively
+
+---
+
+# 🔐 Security Architecture
 
 Chameleon uses:
 
-- **WebRTC peer-to-peer connections**
-- **DTLS + SRTP encryption**
-- Secure signaling server (no media relayed)
-- Session-based pairing with expiry
-- Manual disconnect control
+* WebRTC peer-to-peer transport
+* DTLS + SRTP encryption
+* Session-based negotiation
+* Temporary pairing sessions
+* TLS-secured signaling
+* No persistent media storage
+* Direct encrypted desktop streaming
 
-Your screen data is never stored on the server.
+The signaling server only coordinates session establishment.
 
----
-
-## ⚡ How It Works
-
-1. Install the **Chameleon Desktop Agent** on your computer.
-2. Open the Chameleon web client.
-3. Scan the QR code shown on your desktop.
-4. Secure WebRTC connection is established.
-5. Start controlling instantly.
+Desktop video and input traffic are transmitted directly between peers whenever possible.
 
 ---
 
-## 🖥️ Desktop Agent
+# 🖥️ Desktop Agent
 
-The Desktop Agent:
+The Chameleon Desktop Agent:
 
-- Captures your screen using hardware acceleration
-- Streams via WebRTC
-- Accepts remote keyboard and mouse input
-- Displays a secure pairing QR code
-- Runs in the background with a system tray icon
-
-### Supported Platforms
-
-- Windows 10 / 11
-- macOS (Intel + Apple Silicon)
+* Captures the desktop using hardware acceleration
+* Streams via low-latency WebRTC
+* Uses GPU H264 encoding (NVENC / QuickSync)
+* Accepts remote mouse + keyboard input
+* Supports relative mouse movement
+* Displays secure QR pairing codes
+* Runs from the system tray
+* Maintains adaptive quality automatically
 
 ---
 
-## 🌐 Web Client Features
+# 🌐 Web Client
 
-- QR-based instant pairing
-- 6-digit manual code fallback
-- Live connection stats (latency, bitrate, FPS)
-- Session timer
-- Modifier key panel (Ctrl / Alt / Shift / Win)
-- Clipboard sync
-- Remote resolution switching
-- Adaptive bitrate
-- Fullscreen mode
-- Auto-hide toolbar
+The browser client includes:
 
----
+* QR pairing
+* Manual 6-digit code fallback
+* Real-time latency / FPS / bitrate metrics
+* Clipboard synchronization
+* Fullscreen mode
+* Pointer lock support
+* Modifier key controls
+* Dynamic quality adaptation
+* Auto-hide toolbar
+* Responsive mobile-compatible UI
 
-## 📊 Connection Quality Monitoring
+No plugins required.
 
-Chameleon provides real-time connection diagnostics:
-
-- Round-trip latency (ms)
-- Current FPS
-- Bitrate (Mbps)
-- Packet loss (%)
-
-Optimized for minimal delay and stable streaming.
+Works directly from modern browsers.
 
 ---
 
-## 🎯 Performance Optimizations
+# ⚡ Low-Latency Optimizations
 
-Chameleon is engineered for low latency:
+Chameleon implements multiple production-grade latency optimizations:
 
-- Hardware-accelerated H264 encoding
-- Adaptive bitrate streaming
-- UDP-first WebRTC transport
-- Minimal UI rendering overhead
-- Optimized input event throttling
-- Low-latency encoder presets
+## Transport Layer
 
-Priority order:
+* WebRTC over UDP
+* Dual DataChannels
+* Unordered/unreliable mouse transport
+* Ordered/reliable keyboard transport
+* ICE restart handling
+* Trickle ICE
+* Candidate prefetching
 
-1. Stream smoothness
-2. Input responsiveness
-3. Stability
-4. Visual polish
+## Video Pipeline
+
+* Hardware H264 encoding
+* SDP codec prioritization
+* Adaptive bitrate control
+* Framerate-priority degradation
+* Frame deadline enforcement
+* Stale frame dropping
+* Worker-based decode pipeline
+
+## Rendering Pipeline
+
+* Off-main-thread frame decode
+* `createImageBitmap()` acceleration
+* Canvas-based rendering
+* React rerender elimination
+* GPU compositing
+* Direct bitmap painting
+
+## Input Pipeline
+
+* requestAnimationFrame mouse coalescing
+* Relative mouse movement
+* Fire-and-forget input injection
+* Pointer lock fullscreen mode
+
+## Relay Optimization
+
+* Relay FPS caps
+* Relay backpressure protection
+* TCP buffer monitoring
+* Congestion-aware frame dropping
 
 ---
 
-## 📦 Installation
+# 📊 Real-Time Metrics
 
-### Desktop Agent
+Chameleon continuously monitors:
 
-Download from the official homepage:
+* Round-trip latency
+* FPS
+* Bitrate
+* Packet loss
+* Relay statistics
+* Connection state
+* Memory usage
+* Uptime
 
+Metrics are exposed through:
+
+```txt
+/metrics
 ```
+
+---
+
+# 🧠 Adaptive Streaming System
+
+Chameleon includes a GCC-inspired adaptive bitrate controller with:
+
+* EMA-smoothed bandwidth estimation
+* Multi-rung quality ladder
+* Congestion hysteresis
+* Fast downgrade / slow recovery behavior
+
+Quality ladder:
+
+```txt
+1080p60
+1080p30
+720p60
+720p30
+480p30
+360p20
+```
+
+---
+
+# 🛠️ Tech Stack
+
+## Desktop Agent
+
+* Electron
+* WebRTC
+* Hardware H264 encode
+* Native OS input injection
+* DXGI screen capture (Windows)
+* GPU acceleration
+
+## Web Client
+
+* React
+* WebRTC API
+* Canvas rendering
+* Web Workers
+* Socket.IO signaling
+
+## Signaling Server
+
+* Node.js
+* Socket.IO
+* TLS-secured signaling
+* Session coordination
+* Relay telemetry
+
+---
+
+# 📦 Installation
+
+## Desktop Agent
+
+Download the installer:
+
+```txt
 https://chameleon-jet.vercel.app/
 ```
 
-Choose:
-- Download for Windows
-- Download for macOS
+Supported:
+
+* Windows 10 / 11
+* macOS (Intel + Apple Silicon)
 
 Run installer and launch Chameleon.
 
 ---
 
-## 🔗 Web Client
+# 🌐 Web Client
 
 Open:
 
-```
+```txt
 https://chameleon-jet.vercel.app/
 ```
 
-Scan QR code or enter 6-digit code to connect.
+Then:
+
+1. Scan the QR code
+2. Or enter the 6-digit pairing code
+3. Connect instantly
 
 ---
 
-## 🛠️ Tech Stack
+# 🔗 Connection Flow
 
-### Desktop Agent
-- Native screen capture (DXGI / macOS equivalent)
-- Hardware H264 encoding
-- WebRTC
-- DataChannel for input events
-
-### Web Client
-- React / Next.js
-- WebRTC API
-- WebSocket signaling
-- Performance-optimized UI
-
-### Signaling Server
-- Node.js
-- WebSocket
-- TLS secured
-- Session-based negotiation only
-
----
-
-## 🧩 Project Structure
-
+```txt
+Desktop Agent
+    ↓
+Secure Signaling
+    ↓
+WebRTC Negotiation
+    ↓
+Direct P2P Connection
+    ↓
+Encrypted Remote Control Session
 ```
-/desktop-agent
-/web-client
-/signaling-server
+
+If direct peer-to-peer fails:
+
+* TURN relay fallback is used automatically.
+
+---
+
+# 📁 Project Structure
+
+```txt
+/agent
+/client
+/server
 /docs
 ```
 
 ---
 
-## 🔮 Roadmap
+# 🧪 Performance Targets
 
-- File transfer support
-- Remote audio streaming
-- Multi-monitor selection
-- Session recording
-- Device authentication system
-- Enterprise admin dashboard
+Target metrics:
+
+| Metric          | Target             |
+| --------------- | ------------------ |
+| Total latency   | 40–120ms           |
+| Stream FPS      | 30–60 FPS          |
+| Input latency   | Near-instant       |
+| Relay stability | Congestion bounded |
+| Frame policy    | Zero-queue         |
 
 ---
 
-## 🛡️ Legal & Usage
+# 🔮 Roadmap
+
+Planned features:
+
+* Remote audio streaming
+* File transfer
+* Multi-monitor selection
+* Linux desktop agent
+* Session recording
+* Persistent trusted devices
+* Mobile client apps
+* Enterprise device management
+* TURN region routing
+* Native DXGI → NVENC pipeline
+
+---
+
+# 🛡️ Usage & Legal
 
 Chameleon is intended for:
 
-- Personal remote access
-- Remote support
-- Development environments
-- Administrative control of owned devices
+* Personal remote access
+* Remote administration
+* Remote support
+* Development environments
+* Secure device management
 
-Unauthorized access to devices without consent may violate local laws.
+Unauthorized access to systems without consent may violate local laws.
 
----
-
-## 📄 License
-
-MIT License (or specify your license here)
+Users are responsible for complying with applicable regulations.
 
 ---
 
-## 🤝 Contributing
+# 📄 License
 
-Pull requests are welcome.
-
-For major changes, open an issue first to discuss what you would like to change.
+MIT License
 
 ---
 
-## 📧 Contact
+# 🤝 Contributing
+
+Contributions are welcome.
+
+For major changes:
+
+1. Open an issue
+2. Discuss proposed architecture changes
+3. Submit a pull request
+
+---
+
+# 📧 Contact
 
 For support or inquiries:
 
+```txt
 contact@yourdomain.com
+```
 
 ---
 
-© 2026 Chameleon. All rights reserved.
+# © 2026 Chameleon
+
+Secure. Instant. Remote.
