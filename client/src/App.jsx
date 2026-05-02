@@ -93,8 +93,15 @@ function ClientApp() {
     }));
     setLastSessionId(sid || device_id);
 
-    // 1. Connect to signaling server
-    const socket = io(SIGNALING_URL);
+    const socket = io(SIGNALING_URL, {
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5,
+      timeout: 20000
+    });
+    
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -117,9 +124,11 @@ function ClientApp() {
     });
 
     socket.on('error', (err) => {
-      setStatus('error');
-
-      // Calculate Duration
+      // Differentiate between Offline Device vs Connection Failure
+      const isOffline = err.message === 'Device is offline';
+      
+      setStatus(isOffline ? 'error' : 'error');
+      
       let durationStr = '';
       if (sessionStartTimeRef.current) {
         const diffMs = Date.now() - sessionStartTimeRef.current;
@@ -129,10 +138,22 @@ function ClientApp() {
         setSessionDuration(`Session lasted ${mins}m ${secs}s`);
       }
 
-      setErrorMsg((err.message || 'Unknown error') + durationStr);
-      socket.disconnect();
-      cleanupWebRTC();
-      sessionStartTimeRef.current = null;
+      setErrorMsg((isOffline ? 'Device is offline' : err.message || 'Connection Error') + durationStr);
+      
+      // Don't disconnect socket immediately for 'Device is offline' so it doesn't cause WebRTC abortion errors
+      // Wait a moment before disconnecting
+      setTimeout(() => {
+        if (socketRef.current === socket) {
+            socket.disconnect();
+            cleanupWebRTC();
+            sessionStartTimeRef.current = null;
+        }
+      }, 500);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('Socket connection error:', err.message);
+      setStatus('reconnecting');
     });
 
     socket.on('session:ended', (data) => {
@@ -144,7 +165,7 @@ function ClientApp() {
           
           let attempts = 0;
           const retryInterval = setInterval(() => {
-              if (attempts > 15) { // 30 seconds max
+              if (attempts > 10) { // Max retries
                   clearInterval(retryInterval);
                   setStatus('error');
                   setErrorMsg('Connection lost permanently. Host is offline.');

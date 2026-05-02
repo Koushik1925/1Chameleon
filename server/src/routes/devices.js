@@ -41,7 +41,7 @@ router.post('/register', async (req, res) => {
         });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(500).json({ success: false, error: e.stack ? e.stack.split('\n')[0] : String(e) });
     }
 });
 
