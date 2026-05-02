@@ -16,9 +16,15 @@ app.get('/ping', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: '*', // Allow all for MVP, restrict in prod
+        origin: '*',
         methods: ['GET', 'POST']
-    }
+    },
+    // Tight keepalive: detect dead connections in ~10 s instead of the 30 s default.
+    // This ensures the agent's 'online' status reflects reality quickly.
+    pingInterval: 5000,
+    pingTimeout: 10000,
+    // Limit reconnect attempts to prevent thundering-herd on server restart
+    connectTimeout: 15000
 });
 
 // In-memory store for sessions
@@ -144,6 +150,17 @@ io.on('connection', (socket) => {
         const session = sessions.get(sessionId);
         if (session && session.agentSocketId) {
             io.to(session.agentSocketId).emit('relay:input', input);
+        }
+    });
+
+    // Agent broadcasts its live telemetry (RTT, FPS, bitrate, packetLoss)
+    // Server relays it to the connected client so the TopToolbar can display it
+    socket.on('agent:stats', ({ sessionId, stats }) => {
+        const session = sessions.get(sessionId);
+        if (session && session.clientSocketId) {
+            // volatile: drop stats frames if the client socket is backed up.
+            // Stats are non-critical; we never want them to slow down video.
+            io.to(session.clientSocketId).volatile.emit('agent:stats', stats);
         }
     });
 

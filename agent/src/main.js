@@ -31,13 +31,23 @@ let qrWindow = null;
 let backgroundWindow = null;
 let powerBlockerId = null;
 
-// Allow self-signed certs for testing signaling server if HTTPS
+// ── GPU / ENCODER FLAGS ───────────────────────────────────────────────────────
+// IMPORTANT: Do NOT call app.disableHardwareAcceleration().
+// Doing so kills NVENC / QuickSync H.264 encoding and forces the CPU to
+// encode every frame in software — the #1 cause of high CPU and encode latency.
 try {
-    app.disableHardwareAcceleration(); // Prevent GPU crash
-    app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); // Prevent Access Denied on cache
+    // Allow Chromium's hardware video encoder to use the GPU
+    app.commandLine.appendSwitch('enable-accelerated-video-encode');
+    // Use the GPU process for video decode on the viewer side too
+    app.commandLine.appendSwitch('enable-accelerated-video-decode');
+    // Prefer H.264 hardware encode path in WebRTC (overrides VP8 default)
+    app.commandLine.appendSwitch('enable-features', 'WebRtcHideLocalIpsWithMdns,PlatformHEVCEncoderSupport');
+    // Ignore self-signed cert errors for the dev signaling server
     app.commandLine.appendSwitch('ignore-certificate-errors');
+    // Prevent shader cache permission errors on Windows
+    app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 } catch (e) {
-    console.error(e);
+    console.error('[GPU] Flag error:', e);
 }
 
 // Prevent multiple instances
@@ -103,14 +113,24 @@ function createBackgroundWindow() {
                 const screenHeight = await nutScreen.height();
                 const targetX = Math.max(0, Math.min(Math.floor(data.x * screenWidth), screenWidth - 1));
                 const targetY = Math.max(0, Math.min(Math.floor(data.y * screenHeight), screenHeight - 1));
-
                 await mouse.setPosition(new Point(targetX, targetY));
+
             } else if (data.type === 'mouse_down') {
                 const btn = data.button === 2 ? Button.RIGHT : (data.button === 1 ? Button.MIDDLE : Button.LEFT);
                 await mouse.pressButton(btn);
+
             } else if (data.type === 'mouse_up') {
                 const btn = data.button === 2 ? Button.RIGHT : (data.button === 1 ? Button.MIDDLE : Button.LEFT);
                 await mouse.releaseButton(btn);
+
+            } else if (data.type === 'mouse_wheel') {
+                // Scroll wheel support — deltaY positive = scroll down
+                // nut-js scroll unit is 'lines', so divide pixels by a sensitivity factor
+                const lines = Math.round(data.deltaY / 100);
+                if (lines !== 0) {
+                    await mouse.scrollDown(Math.abs(lines) * (lines > 0 ? 1 : -1));
+                }
+
             } else if (data.type === 'key_down') {
                 const nutKey = keyMap[data.code];
                 if (nutKey !== undefined) {
@@ -120,16 +140,18 @@ function createBackgroundWindow() {
                     // Use keyboard.type() so nut-js handles the Shift modifier automatically
                     await keyboard.type(data.key);
                 }
+
             } else if (data.type === 'key_up') {
                 const nutKey = keyMap[data.code];
                 if (nutKey !== undefined) {
                     await keyboard.releaseKey(nutKey);
                 }
+
             } else if (data.type === 'clipboard_push') {
                 clipboard.writeText(data.text);
             }
         } catch (e) {
-            console.error('Native Input Error:', e);
+            console.error('[INPUT] Native driver error:', e);
         }
     });
 

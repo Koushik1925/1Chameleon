@@ -8,28 +8,36 @@
 
 <body>
     <script>
-        // We use nodeIntegration here to easily access DesktopCapturer and Socket.io in MVP
         const { ipcRenderer } = require('electron');
         const { io } = require('socket.io-client');
         const QRCode = require('qrcode');
 
         const SIGNALING_URL = 'https://chameleon-j5wf.onrender.com';
 
-        // Keep-alive for Render backend (Prevents 15m idle shutdown and RAM wipe)
-        setInterval(() => {
-            fetch(`${SIGNALING_URL}/ping`).catch(() => { });
-        }, 5 * 60 * 1000);
-        fetch(`${SIGNALING_URL}/ping`).catch(() => { }); // Initial warm-up
+        // ─────────────────────────────────────────────────────────────────────
+        // KEEP-ALIVE  (Prevent Render free-tier cold-start / RAM wipe)
+        // ─────────────────────────────────────────────────────────────────────
+        setInterval(() => { fetch(`${SIGNALING_URL}/ping`).catch(() => {}); }, 5 * 60 * 1000);
+        fetch(`${SIGNALING_URL}/ping`).catch(() => {});
 
+        // ─────────────────────────────────────────────────────────────────────
+        // STATE
+        // ─────────────────────────────────────────────────────────────────────
         let socket = null;
         let peerConnection = null;
         let localStream = null;
         let currentSessionId = null;
-        let dataChannel = null;
+
+        // DUAL DATA CHANNELS  ─ the core input-lag fix
+        // mouse  → unordered + unreliable  (UDP semantics: drops are fine, new coord arrives immediately)
+        // keyboard → ordered + reliable    (key events must arrive in order, never dropped)
+        let mouseChannel = null;
+        let keyboardChannel = null;
+
         let iceCandidateQueue = [];
         let isRemoteDescriptionSet = false;
-        
-        // Relay mode state
+
+        // Relay-mode state
         let relayInterval = null;
         let relayCanvas = document.createElement('canvas');
         let relayVideo = document.createElement('video');
@@ -37,16 +45,50 @@
         relayVideo.muted = true;
         let isRelayingFrame = false;
 
-        // Initialize connection
+        // Adaptive Bitrate (ABR) state
+        let abrInterval = null;
+        let lastAbrBytes = 0;
+        let lastAbrTime = Date.now();
+        // Target bitrate ramp: starts at 4 Mbps, adapts between 500 Kbps – 8 Mbps
+        let currentTargetBitrate = 4_000_000;
+        const MIN_BITRATE = 500_000;
+        const MAX_BITRATE = 8_000_000;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // ICE SERVER CONFIG  (multiple STUN servers for fast gathering + TURN fallback)
+        // ─────────────────────────────────────────────────────────────────────
+        const ICE_SERVERS = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:443' },
+            { urls: 'stun:stun2.l.google.com:443' },
+            { urls: 'stun:stun.cloudflare.com:3478' },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
+        ];
+
+        // ─────────────────────────────────────────────────────────────────────
+        // SIGNALING
+        // ─────────────────────────────────────────────────────────────────────
         function initSignaling() {
             if (socket) socket.disconnect();
 
-            socket = io(SIGNALING_URL);
+            socket = io(SIGNALING_URL, {
+                // Tight heartbeat so we detect dead connections within 10 s (default is 25 s)
+                pingInterval: 5000,
+                pingTimeout: 10000,
+                reconnectionDelayMax: 5000
+            });
 
             socket.on('connect', () => {
-                console.log('Background connected to signaling server');
-                // Re-register the permanent session ID immediately if we have one.
-                // This ensures the agent survives server restarts without needing a manual refresh.
+                console.log('[WS] Connected to signaling server');
                 const savedSessionId = localStorage.getItem('chameleon_permanent_id');
                 if (savedSessionId) {
                     socket.emit('agent:create_session', { sessionId: savedSessionId });
@@ -60,29 +102,23 @@
 
                 try {
                     const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
-                    ipcRenderer.send('webrtc:qr_payload', {
-                        sessionId: data.sessionId,
-                        dataUrl: qrDataUrl,
-                        expiresIn: data.expiresIn
-                    });
+                    ipcRenderer.send('webrtc:qr_payload', { sessionId: data.sessionId, dataUrl: qrDataUrl, expiresIn: data.expiresIn });
                     ipcRenderer.send('tray:update_status', 'pairing');
                 } catch (e) {
-                    console.error('Failed to generate QR code', e);
+                    console.error('[QR] Failed to generate QR code', e);
                 }
             });
 
             socket.on('agent:client_joined', async (data) => {
-                console.log('Client joined session:', data.sessionId);
-                cleanupSession(true); // Destroy any zombied connections if a client rejoins
+                console.log('[WS] Client joined session:', data.sessionId);
+                cleanupSession(true);
                 currentSessionId = data.sessionId;
                 ipcRenderer.send('tray:update_status', 'connected');
-                // We don't start WebRTC immediately until client tells us which mode
-                // Actually, start WebRTC normally. If relay is requested later, we handle it.
                 await startWebRTC();
             });
 
             socket.on('agent:start_relay', async () => {
-                console.log('Cloud Relay Mode requested by client');
+                console.log('[RELAY] Cloud relay mode requested by client');
                 await startRelayMode();
             });
 
@@ -91,62 +127,60 @@
             });
 
             socket.on('session:expired', () => {
-                console.log('Session expired');
+                console.log('[WS] Session expired');
                 currentSessionId = null;
                 ipcRenderer.send('tray:update_status', 'idle');
             });
 
             socket.on('session:ended', () => {
-                console.log('Session ended');
+                console.log('[WS] Session ended');
                 cleanupSession();
             });
 
+            // ── SDP Signaling ──
             socket.on('signal:sdp', async (data) => {
                 try {
                     if (!peerConnection) return;
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                     isRemoteDescriptionSet = true;
 
-                    // Process queued ICE candidates
-                    while (iceCandidateQueue.length > 0) {
-                        const candidate = iceCandidateQueue.shift();
-                        await peerConnection.addIceCandidate(candidate).catch(e => console.error("Queued ICE error:", e));
+                    // Drain queued ICE candidates
+                    for (const candidate of iceCandidateQueue) {
+                        await peerConnection.addIceCandidate(candidate).catch(e => console.warn('[ICE] Queued candidate error:', e));
                     }
+                    iceCandidateQueue = [];
 
                     if (data.sdp.type === 'offer') {
                         const answer = await peerConnection.createAnswer();
                         await peerConnection.setLocalDescription(answer);
-                        socket.emit('signal:sdp', {
-                            sessionId: currentSessionId,
-                            sdp: peerConnection.localDescription,
-                            to: 'client'
-                        });
+                        socket.emit('signal:sdp', { sessionId: currentSessionId, sdp: peerConnection.localDescription, to: 'client' });
                     }
                 } catch (err) {
-                    console.error('SDP Error', err);
+                    console.error('[SDP] Error:', err);
                 }
             });
 
             socket.on('signal:ice', async (data) => {
                 try {
-                    if (data.candidate) {
-                        const candidate = new RTCIceCandidate(data.candidate);
-                        if (peerConnection && isRemoteDescriptionSet) {
-                            await peerConnection.addIceCandidate(candidate);
-                        } else {
-                            console.log('Queueing ICE candidate...');
-                            iceCandidateQueue.push(candidate);
-                        }
+                    if (!data.candidate) return;
+                    const candidate = new RTCIceCandidate(data.candidate);
+                    if (peerConnection && isRemoteDescriptionSet) {
+                        await peerConnection.addIceCandidate(candidate);
+                    } else {
+                        iceCandidateQueue.push(candidate);
                     }
                 } catch (err) {
-                    console.error('ICE Error', err);
+                    console.error('[ICE] Error:', err);
                 }
             });
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // SCREEN CAPTURE
+        // ─────────────────────────────────────────────────────────────────────
         async function getScreenStream() {
             const sources = await ipcRenderer.invoke('get-desktop-sources');
-            const primarySource = sources[0]; // Just grab first screen for MVP
+            const primarySource = sources[0];
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -155,126 +189,287 @@
                         mandatory: {
                             chromeMediaSource: 'desktop',
                             chromeMediaSourceId: primarySource.id,
+                            // Start at 1080p; ABR loop will constraint down if bandwidth is tight
                             minWidth: 1280,
                             maxWidth: 1920,
                             minHeight: 720,
                             maxHeight: 1080,
+                            // 60 fps ceiling; ABR loop will reduce via applyConstraints
                             maxFrameRate: 60
                         }
                     }
                 });
                 return stream;
             } catch (e) {
-                console.error('Capture error', e);
+                console.error('[CAPTURE] Error:', e);
                 return null;
             }
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // H.264 CODEC PREFERENCE  (prefer hardware-accelerated H.264 over VP8)
+        // ─────────────────────────────────────────────────────────────────────
+        function preferH264(sdp) {
+            // Extract H264 payload types from SDP
+            const h264PayloadTypes = [];
+            const lines = sdp.split('\r\n');
+
+            for (const line of lines) {
+                // Match codec lines for H264 (case-insensitive)
+                if (/a=rtpmap:(\d+) H264/i.test(line)) {
+                    h264PayloadTypes.push(line.match(/a=rtpmap:(\d+)/)[1]);
+                }
+            }
+
+            if (h264PayloadTypes.length === 0) return sdp; // No H264 found, leave as-is
+
+            // Rewrite m=video line to put H264 payload types first
+            return sdp.replace(/(m=video \d+ [^\r\n]+)/g, (match) => {
+                const parts = match.split(' ');
+                // parts: ['m=video', port, proto, pt1, pt2, ...]
+                const header = parts.slice(0, 3);
+                const existingPts = parts.slice(3);
+                const h264First = [...h264PayloadTypes, ...existingPts.filter(p => !h264PayloadTypes.includes(p))];
+                return [...header, ...h264First].join(' ');
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // WEBRTC SETUP
+        // ─────────────────────────────────────────────────────────────────────
         async function startWebRTC() {
             localStream = await getScreenStream();
             if (!localStream) {
-                console.error("Failed to get screen stream");
+                console.error('[RTC] Failed to get screen stream');
                 return;
             }
 
             peerConnection = new RTCPeerConnection({
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:443' },
-                    { urls: 'stun:stun2.l.google.com:443' },
-                    { urls: 'stun:stun.cloudflare.com:443' },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ]
+                iceServers: ICE_SERVERS,
+                // Pre-gather 4 candidates in the background so ICE completes faster after negotiation
+                iceCandidatePoolSize: 4,
+                // Only one port bundle for all streams — fewer holes to punch through NAT
+                bundlePolicy: 'max-bundle',
+                rtcpMuxPolicy: 'require',
+                // Prefer UDP for low latency; TCP is fallback only
+                iceTransportPolicy: 'all'
             });
 
-            // Add video track
+            // ── VIDEO TRACK: add with low-latency hints ──
             localStream.getTracks().forEach(track => {
                 if (track.kind === 'video') {
-                    track.contentHint = 'motion'; // Prioritize strict framerate over single-frame clarity
+                    // 'motion' hint: prioritize frame rate over detail (exactly what we want for remote desktop)
+                    track.contentHint = 'motion';
                 }
                 peerConnection.addTrack(track, localStream);
             });
 
-            // Create DataChannel for receiving input
-            dataChannel = peerConnection.createDataChannel('control');
-            setupDataChannel(dataChannel);
+            // ── DUAL DATA CHANNELS ──
+            // 1. MOUSE: unordered + unreliable (fire-and-forget, newest pos always wins)
+            mouseChannel = peerConnection.createDataChannel('mouse', {
+                ordered: false,
+                maxRetransmits: 0 // Drop the packet, don't retry — the next mousemove will correct it
+            });
 
+            // 2. KEYBOARD: ordered + reliable (every keystroke must arrive, in order)
+            keyboardChannel = peerConnection.createDataChannel('keyboard', {
+                ordered: true
+            });
+
+            setupMouseChannel(mouseChannel);
+            setupKeyboardChannel(keyboardChannel);
+
+            // Allow agent to also receive channels the client creates (future-proofing)
             peerConnection.ondatachannel = (event) => {
-                setupDataChannel(event.channel);
+                if (event.channel.label === 'mouse') setupMouseChannel(event.channel);
+                else if (event.channel.label === 'keyboard') setupKeyboardChannel(event.channel);
             };
 
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    socket.emit('signal:ice', {
-                        sessionId: currentSessionId,
-                        candidate: event.candidate,
-                        to: 'client'
-                    });
+                    socket.emit('signal:ice', { sessionId: currentSessionId, candidate: event.candidate, to: 'client' });
                 }
             };
 
             peerConnection.onconnectionstatechange = () => {
-                console.log('PC State:', peerConnection.connectionState);
-                if (peerConnection.connectionState === 'failed') {
-                    console.log('WebRTC Connection failed. Cleaning up.');
+                const state = peerConnection.connectionState;
+                console.log('[RTC] Connection state:', state);
+                if (state === 'failed') {
+                    console.warn('[RTC] Connection failed. Attempting ICE restart...');
+                    // Try ICE restart before full cleanup — this recovers from temporary network glitches
+                    peerConnection.restartIce();
+                } else if (state === 'closed') {
                     cleanupSession();
                 }
             };
 
-            // Create Offer
-            const offer = await peerConnection.createOffer();
+            // ── CREATE OFFER with H.264 SDP munging ──
+            const offer = await peerConnection.createOffer({
+                offerToReceiveAudio: false,
+                offerToReceiveVideo: false
+            });
+
+            // Munge SDP to prefer H.264 before setting local description
+            offer.sdp = preferH264(offer.sdp);
             await peerConnection.setLocalDescription(offer);
 
-            socket.emit('signal:sdp', {
-                sessionId: currentSessionId,
-                sdp: peerConnection.localDescription,
-                to: 'client'
+            socket.emit('signal:sdp', { sessionId: currentSessionId, sdp: peerConnection.localDescription, to: 'client' });
+
+            // ── ENCODER PARAMETERS: set degradation preference + bitrate cap ──
+            // We must wait until the connection is established, so we apply them after ICE connects
+            peerConnection.addEventListener('connectionstatechange', async () => {
+                if (peerConnection.connectionState === 'connected') {
+                    await applyEncoderParameters(currentTargetBitrate);
+                    startAbrLoop();
+                }
             });
         }
 
-        function setupDataChannel(channel) {
+        // ─────────────────────────────────────────────────────────────────────
+        // ENCODER PARAMETERS
+        // Apply low-latency encoder settings via RTCRtpSender.setParameters()
+        // This avoids re-negotiation and works on live connections
+        // ─────────────────────────────────────────────────────────────────────
+        async function applyEncoderParameters(targetBitrate) {
+            if (!peerConnection) return;
+            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (!sender) return;
+
+            try {
+                const params = sender.getParameters();
+                if (!params.encodings || params.encodings.length === 0) {
+                    params.encodings = [{}];
+                }
+
+                params.encodings[0].maxBitrate = targetBitrate;
+                // CRITICAL: 'maintain-framerate' tells the encoder to DROP QUALITY (QP up)
+                // rather than drop FPS when bandwidth is constrained.
+                // This prevents the "slideshow" effect — we always prefer responsive motion.
+                params.degradationPreference = 'maintain-framerate';
+
+                await sender.setParameters(params);
+                console.log(`[ABR] Encoder bitrate set to ${(targetBitrate / 1000).toFixed(0)} Kbps`);
+            } catch (e) {
+                console.warn('[ABR] setParameters failed:', e);
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // ADAPTIVE BITRATE LOOP
+        // Reads RTCPeerConnection stats every second and adjusts encoder bitrate
+        // to track available bandwidth. Reacts aggressively to congestion signals.
+        // ─────────────────────────────────────────────────────────────────────
+        function startAbrLoop() {
+            if (abrInterval) clearInterval(abrInterval);
+
+            abrInterval = setInterval(async () => {
+                if (!peerConnection || peerConnection.connectionState !== 'connected') return;
+
+                try {
+                    const stats = await peerConnection.getStats();
+                    let rtt = 0;
+                    let packetLossRate = 0;
+                    let availableBitrate = 0;
+
+                    stats.forEach(report => {
+                        // Use the active candidate-pair for RTT and available outgoing bitrate
+                        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                            rtt = report.currentRoundTripTime || 0; // seconds
+                            availableBitrate = report.availableOutgoingBitrate || 0;
+                        }
+                        // Outbound RTP gives us packet loss
+                        if (report.type === 'outbound-rtp' && report.kind === 'video') {
+                            const sent = report.packetsSent || 0;
+                            const lost = report.retransmittedPacketsSent || 0; // proxy for loss
+                            if (sent > 0) packetLossRate = lost / sent;
+                        }
+                    });
+
+                    let newBitrate = currentTargetBitrate;
+
+                    // AGGRESSIVE CONGESTION RESPONSE:
+                    // If RTT spikes above 150ms or packet loss > 2%: slash bitrate by 40%
+                    // This immediately reduces the pipeline load before the queue builds up.
+                    if (rtt > 0.15 || packetLossRate > 0.02) {
+                        newBitrate = Math.max(MIN_BITRATE, currentTargetBitrate * 0.6);
+                        console.log(`[ABR] Congestion detected (RTT=${(rtt * 1000).toFixed(0)}ms, Loss=${(packetLossRate * 100).toFixed(1)}%). Cutting bitrate to ${(newBitrate / 1000).toFixed(0)} Kbps`);
+                    }
+                    // BANDWIDTH RECOVERY:
+                    // If available bitrate (from REMB/TWCC) is significantly above our current
+                    // target, ramp up gently (+15%) to avoid oscillation
+                    else if (availableBitrate > currentTargetBitrate * 1.3) {
+                        newBitrate = Math.min(MAX_BITRATE, currentTargetBitrate * 1.15);
+                    }
+
+                    if (newBitrate !== currentTargetBitrate) {
+                        currentTargetBitrate = newBitrate;
+                        await applyEncoderParameters(currentTargetBitrate);
+
+                        // Also adapt frame rate capture constraints when on very low bandwidth
+                        const videoTrack = localStream?.getVideoTracks()[0];
+                        if (videoTrack) {
+                            const maxFps = newBitrate < 1_000_000 ? 20 : 60;
+                            const maxRes = newBitrate < 1_500_000 ? 1280 : 1920;
+                            await videoTrack.applyConstraints({
+                                width: { max: maxRes },
+                                frameRate: { max: maxFps }
+                            }).catch(() => {});
+                        }
+                    }
+                } catch (e) {
+                    // Silently ignore stats errors (can happen during renegotiation)
+                }
+            }, 1000);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // DATA CHANNEL HANDLERS
+        // ─────────────────────────────────────────────────────────────────────
+        function setupMouseChannel(channel) {
+            channel.onopen = () => console.log('[DC] Mouse channel open');
+            channel.onclose = () => console.log('[DC] Mouse channel closed');
+            channel.onmessage = (event) => {
+                try {
+                    // Mouse events are tiny JSON blobs — parse and inject immediately
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'ping') return;
+                    // Route all mouse events (move, down, up, wheel, scroll) to native driver
+                    ipcRenderer.send('webrtc:remote_input', data);
+                } catch (e) { /* Drop malformed packets */ }
+            };
+        }
+
+        function setupKeyboardChannel(channel) {
             channel.onopen = () => {
-                console.log('Data channel opened');
-                // Keep the NAT binding alive aggressively
+                console.log('[DC] Keyboard channel open');
+                // NAT keepalive — smaller interval than default to prevent UDP hole from closing
                 channel.pingInterval = setInterval(() => {
                     if (channel.readyState === 'open') {
                         channel.send(JSON.stringify({ type: 'ping' }));
                     }
-                }, 5000); // 5 seconds
+                }, 4000);
             };
-
             channel.onclose = () => {
-                console.log('Data channel closed');
+                console.log('[DC] Keyboard channel closed');
                 if (channel.pingInterval) clearInterval(channel.pingInterval);
             };
-
             channel.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'ping' || data.type === 'pong') return; // Ignore keep-alives
+                    if (data.type === 'ping' || data.type === 'pong') return;
                     handleRemoteInput(data);
-                } catch (e) {
-                    console.error('DataChannel parse error', e);
-                }
+                } catch (e) { /* Drop malformed packets */ }
             };
         }
 
         function handleRemoteInput(data) {
             if (data.type === 'clipboard_pull_request') {
                 ipcRenderer.invoke('webrtc:clipboard_pull').then(text => {
-                    if (dataChannel && dataChannel.readyState === 'open') {
-                        dataChannel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
+                    // Send clipboard response on the keyboard channel (reliable)
+                    if (keyboardChannel && keyboardChannel.readyState === 'open') {
+                        keyboardChannel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
                     }
-                }).catch(err => console.error("Agent clipboard read error", err));
+                }).catch(err => console.error('[Clipboard] Agent read error', err));
             } else if (data.type === 'update_resolution') {
                 updateResolution(data.resolution);
             } else {
@@ -287,75 +482,71 @@
             const videoTrack = localStream.getVideoTracks()[0];
             if (!videoTrack) return;
 
-            // Chrome desktopCapture has specific constraints format requirements
-            let width = 1920;
-            let height = 1080;
-            let fps = 60;
-
+            let width = 1920, height = 1080, fps = 60;
             if (res === '720p') { width = 1280; height = 720; fps = 30; }
             if (res === '480p') { width = 854; height = 480; fps = 30; }
 
             try {
-                // Apply constraints to running track seamlessly without renegotiation
-                await videoTrack.applyConstraints({
-                    width: { max: width },
-                    height: { max: height },
-                    frameRate: { max: fps }
-                });
-                console.log('Applied new constraints:', res);
+                await videoTrack.applyConstraints({ width: { max: width }, height: { max: height }, frameRate: { max: fps } });
+                console.log('[CAPTURE] Applied constraints:', res);
             } catch (err) {
-                console.error('Failed to apply constraints', err);
+                console.warn('[CAPTURE] Failed to apply constraints:', err);
             }
         }
-           // ------------------ CLOUD RELAY FALLBACK ------------------
+
+        // ─────────────────────────────────────────────────────────────────────
+        // CLOUD RELAY FALLBACK
+        // Used only when WebRTC P2P fails after TURN. Sends JPEG frames via
+        // WebSocket. Tuned for minimum latency: backpressure prevents queue buildup.
+        // ─────────────────────────────────────────────────────────────────────
         async function startRelayMode() {
-            if (!localStream) {
-                localStream = await getScreenStream();
-            }
+            if (!localStream) localStream = await getScreenStream();
             if (!localStream) return;
-            
+
             relayVideo.srcObject = localStream;
             await relayVideo.play();
-            
+
             if (relayInterval) clearInterval(relayInterval);
-            
-            // Capture at ~20fps max (50ms)
+
+            // ~20 FPS max for relay — WebSocket can't sustain 60 FPS
             relayInterval = setInterval(() => {
                 if (relayVideo.videoWidth === 0) return;
-                
-                // BACKPRESSURE: Only proceed if previous frame has been fully processed by the network
+
+                // BACKPRESSURE: Don't enqueue a new frame until the previous one
+                // has been acknowledged by the server. This is the key to preventing
+                // a frame queue from building up and causing slideshow behavior.
                 if (isRelayingFrame) return;
                 isRelayingFrame = true;
-                
-                // Aggressive resolution drop for relay mode (1024p max width) to stay under 100kb
-                relayCanvas.width = 1024; 
-                relayCanvas.height = Math.round((1024 / relayVideo.videoWidth) * relayVideo.videoHeight);
-                
+
+                // Downscale to 960px width max for relay — must fit comfortably under 100 KB per frame
+                const targetWidth = 960;
+                relayCanvas.width = targetWidth;
+                relayCanvas.height = Math.round((targetWidth / relayVideo.videoWidth) * relayVideo.videoHeight);
+
                 const ctx = relayCanvas.getContext('2d');
                 ctx.drawImage(relayVideo, 0, 0, relayCanvas.width, relayCanvas.height);
-                
-                // Send as compact Binary Blob instead of bulky Base64
+
                 relayCanvas.toBlob((blob) => {
-                    if (!blob) {
-                        isRelayingFrame = false;
-                        return;
-                    }
+                    if (!blob) { isRelayingFrame = false; return; }
                     socket.emit('relay:frame', { sessionId: currentSessionId, frame: blob }, () => {
-                        // SERVER ACKNOWLEDGE: We are clear to process the next frame
+                        // Server ACK: safe to capture next frame
                         isRelayingFrame = false;
                     });
-                }, 'image/jpeg', 0.5);
-                
-            }, 50);
+                }, 'image/jpeg', 0.55); // 0.55 quality: good compression, acceptable sharpness
+
+            }, 50); // 50ms = 20 FPS ceiling
         }
 
-        // ------------------ CLEANUP ------------------
-
+        // ─────────────────────────────────────────────────────────────────────
+        // CLEANUP
+        // ─────────────────────────────────────────────────────────────────────
         function cleanupSession(preserveSession = false) {
-            if (relayInterval) {
-                clearInterval(relayInterval);
-                relayInterval = null;
-            }
+            if (abrInterval) { clearInterval(abrInterval); abrInterval = null; }
+            if (relayInterval) { clearInterval(relayInterval); relayInterval = null; }
+
+            if (mouseChannel) { try { mouseChannel.close(); } catch(e){} mouseChannel = null; }
+            if (keyboardChannel) { try { keyboardChannel.close(); } catch(e){} keyboardChannel = null; }
+
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -364,34 +555,37 @@
                 localStream.getTracks().forEach(t => t.stop());
                 localStream = null;
             }
+
             if (!preserveSession) {
                 currentSessionId = null;
                 ipcRenderer.send('tray:update_status', 'idle');
             }
+
             isRemoteDescriptionSet = false;
             iceCandidateQueue = [];
+            lastAbrBytes = 0;
+            currentTargetBitrate = 4_000_000;
         }
 
-        // IPC Listeners
+        // ─────────────────────────────────────────────────────────────────────
+        // IPC LISTENERS
+        // ─────────────────────────────────────────────────────────────────────
         ipcRenderer.on('session:request_pairing', () => {
             if (!socket) initSignaling();
-            if (!socket.connected) {
-                socket.connect();
-            }
+            if (!socket.connected) socket.connect();
             const savedSessionId = localStorage.getItem('chameleon_permanent_id');
             socket.emit('agent:create_session', { sessionId: savedSessionId });
         });
 
         ipcRenderer.on('session:disconnect', () => {
             if (socket && currentSessionId) {
-                // Let server know we dropped
                 socket.disconnect();
-                socket.connect(); // reconnect cleanly
+                socket.connect();
             }
             cleanupSession();
         });
 
-        // Initialize socket on boot
+        // ── BOOT ──
         initSignaling();
     </script>
 </body>

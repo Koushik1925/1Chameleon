@@ -7,8 +7,12 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Throttling ref for mouse movement
-    const lastMoveTimeRef = useRef(0);
+    // ── RAF-COALESCED MOUSE MOVEMENT ────────────────────────────────────────
+    // Instead of throttling by wall-clock time (which can still stack up events
+    // between paint frames), we schedule exactly one send per animation frame.
+    // This perfectly matches the browser's render cadence and prevents queuing.
+    const rafPendingRef = useRef(false);
+    const latestMouseEventRef = useRef(null);
 
     useEffect(() => {
         if (!relayMode && videoRef.current && stream) {
@@ -82,15 +86,26 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     const handleMouseMove = useCallback((e, type) => {
         e.stopPropagation();
 
-        const now = Date.now();
-        if (type === 'mouse_move' && now - lastMoveTimeRef.current < 16) return;
-        lastMoveTimeRef.current = now;
-
         const pos = getPointerPosition(e);
         if (!pos) return;
 
-        if (sendInputEvent) {
-            sendInputEvent({ type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons });
+        const payload = { type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons };
+
+        if (type === 'mouse_move') {
+            // Coalesce: store the latest event, schedule one rAF flush if not already pending
+            latestMouseEventRef.current = payload;
+            if (!rafPendingRef.current) {
+                rafPendingRef.current = true;
+                requestAnimationFrame(() => {
+                    rafPendingRef.current = false;
+                    const evt = latestMouseEventRef.current;
+                    if (evt && sendInputEvent) sendInputEvent(evt);
+                    latestMouseEventRef.current = null;
+                });
+            }
+        } else {
+            // mouse_down / mouse_up: send immediately, never drop
+            if (sendInputEvent) sendInputEvent(payload);
         }
     }, [getPointerPosition, sendInputEvent]);
 
@@ -211,7 +226,11 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
                         autoPlay
                         playsInline
                         muted
+                        // disablePictureInPicture prevents browser from intercepting the video
+                        disablePictureInPicture
                         className="w-full h-full object-contain cursor-default pointer-events-auto"
+                        // Tell the browser not to buffer ahead — we want the latest frame always
+                        style={{ willChange: 'contents' }}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}

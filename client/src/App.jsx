@@ -39,7 +39,9 @@ function ClientApp() {
 
   const socketRef = useRef(null);
   const peerRef = useRef(null);
-  const dataChannelRef = useRef(null);
+  // DUAL CHANNELS: mouse = unordered/unreliable, keyboard = ordered/reliable
+  const mouseChannelRef = useRef(null);
+  const keyboardChannelRef = useRef(null);
   const iceCandidateQueue = useRef([]);
   const isRemoteDescriptionSet = useRef(false);
 
@@ -88,8 +90,14 @@ function ClientApp() {
     }));
     setLastSessionId(sid);
 
-    // 1. Connect to signaling server
-    const socket = io(SIGNALING_URL);
+    // 1. Connect to signaling server with tight heartbeat
+    // Default 25 s ping interval means dead connections linger for 25 s.
+    // At 5 s we detect drops within one second of the keepalive window.
+    const socket = io(SIGNALING_URL, {
+      pingInterval: 5000,
+      pingTimeout: 10000,
+      reconnectionDelayMax: 5000
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -227,82 +235,89 @@ function ClientApp() {
   };
 
   const initWebRTC = (socket, sid) => {
+    const ICE_SERVERS = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:443' },
+      { urls: 'stun:stun2.l.google.com:443' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+
     const peer = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:443' },
-        { urls: 'stun:stun2.l.google.com:443' },
-        { urls: 'stun:stun.cloudflare.com:443' },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ]
+      iceServers: ICE_SERVERS,
+      iceCandidatePoolSize: 4,   // Pre-gather candidates before negotiation starts
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
     });
     peerRef.current = peer;
 
     peer.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('signal:ice', {
-          sessionId: sid,
-          candidate: event.candidate,
-          to: 'agent'
-        });
+        socket.emit('signal:ice', { sessionId: sid, candidate: event.candidate, to: 'agent' });
       }
     };
 
     peer.ontrack = (event) => {
-      console.log('Received remote track:', event.streams[0]);
+      console.log('[RTC] Received remote video track');
       setRemoteStream(event.streams[0]);
     };
 
+    // ── RECEIVE DUAL DATA CHANNELS FROM AGENT ──
     peer.ondatachannel = (event) => {
-      console.log('Received Agent DataChannel:', event.channel.label);
-      dataChannelRef.current = event.channel;
-      event.channel.onopen = () => console.log('Data channel open');
-      event.channel.onclose = () => console.log('Data channel closed');
+      const ch = event.channel;
+      console.log('[DC] Received channel:', ch.label);
 
-      event.channel.onmessage = async (msgEvent) => {
-        try {
-          const payload = JSON.parse(msgEvent.data);
+      if (ch.label === 'mouse') {
+        mouseChannelRef.current = ch;
+        ch.onopen = () => console.log('[DC] Mouse channel open (client-side)');
+        ch.onclose = () => console.log('[DC] Mouse channel closed');
+        // Mouse channel receives nothing from agent — it's outbound only from client
+      }
 
-          if (payload.type === 'ping') {
-            // Let the agent know we're still alive
-            if (event.channel.readyState === 'open') {
-              event.channel.send(JSON.stringify({ type: 'pong' }));
+      if (ch.label === 'keyboard') {
+        keyboardChannelRef.current = ch;
+        ch.onopen = () => console.log('[DC] Keyboard channel open (client-side)');
+        ch.onclose = () => console.log('[DC] Keyboard channel closed');
+
+        ch.onmessage = async (msgEvent) => {
+          try {
+            const payload = JSON.parse(msgEvent.data);
+            if (payload.type === 'ping') {
+              if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'pong' }));
+              return;
             }
-            return;
+            if (payload.type === 'clipboard_pull_response') {
+              await navigator.clipboard.writeText(payload.text);
+              console.log('[Clipboard] Pulled from host successfully.');
+            }
+          } catch (e) {
+            console.error('[DC] Parse error:', e);
           }
-
-          if (payload.type === 'clipboard_pull_response') {
-            await navigator.clipboard.writeText(payload.text);
-            console.log('Clipboard pulled from host successfully.');
-          }
-        } catch (e) {
-          console.error("Data channel parse error:", e);
-        }
-      };
+        };
+      }
     };
 
     peer.onconnectionstatechange = () => {
-      console.log('WebRTC Connection State:', peer.connectionState);
-      if (peer.connectionState === 'connected') {
+      const state = peer.connectionState;
+      console.log('[RTC] Connection state:', state);
+      if (state === 'connected') {
         setStatus('connected');
         sessionStartTimeRef.current = Date.now();
-      } else if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
+      } else if (state === 'failed') {
+        // Attempt ICE restart first — recovers from temporary glitches without full re-negotiation
+        console.warn('[RTC] Connection failed — attempting ICE restart');
+        peer.restartIce();
+      } else if (state === 'disconnected') {
         if (relayModeRef.current) {
-            console.log('WebRTC dropped, but ignoring because Cloud Relay Fallback is shielding the session.');
-        } else {
-          setSessionDuration('');
+          console.log('[RTC] WebRTC dropped, Cloud Relay is shielding the session.');
+          return;
         }
-
-        setErrorMsg(`Peer connection lost ${durationStr}`.trim());
+        const diffMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : 0;
+        const mins = Math.floor(diffMs / 60000);
+        const secs = Math.floor((diffMs % 60000) / 1000);
+        const dur = diffMs > 0 ? ` (${mins}m ${secs}s)` : '';
+        setErrorMsg(`Peer connection lost${dur}`);
         cleanupWebRTC();
         sessionStartTimeRef.current = null;
       }
@@ -310,9 +325,13 @@ function ClientApp() {
   };
 
   const cleanupWebRTC = () => {
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
+    if (mouseChannelRef.current) {
+      try { mouseChannelRef.current.close(); } catch(e) {}
+      mouseChannelRef.current = null;
+    }
+    if (keyboardChannelRef.current) {
+      try { keyboardChannelRef.current.close(); } catch(e) {}
+      keyboardChannelRef.current = null;
     }
     if (peerRef.current) {
       peerRef.current.close();
@@ -344,8 +363,28 @@ function ClientApp() {
   };
 
   const sendInputEvent = (eventData) => {
-    if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
-      dataChannelRef.current.send(JSON.stringify(eventData));
+    const type = eventData.type;
+
+    // ── CHANNEL ROUTING ─────────────────────────────────────────────────────
+    // Mouse move / wheel → MOUSE channel (unordered, unreliable)
+    //   A dropped mouse packet is harmless — the next one corrects position.
+    //   This prevents a stale mouse queue from causing cursor lag.
+    //
+    // Everything else → KEYBOARD channel (ordered, reliable)
+    //   Keystrokes, clicks, clipboard — must arrive in order, must not drop.
+    // ────────────────────────────────────────────────────────────────────────
+    const isMouseMotion = (type === 'mouse_move' || type === 'mouse_wheel');
+
+    if (isMouseMotion) {
+      const ch = mouseChannelRef.current;
+      if (ch && ch.readyState === 'open') {
+        ch.send(JSON.stringify(eventData));
+      }
+    } else {
+      const ch = keyboardChannelRef.current;
+      if (ch && ch.readyState === 'open') {
+        ch.send(JSON.stringify(eventData));
+      }
     }
   };
 
