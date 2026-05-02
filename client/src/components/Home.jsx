@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown, Loader2 } from 'lucide-react';
+import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown, Loader2, MonitorSmartphone, Apple } from 'lucide-react';
 
 export default function Home() {
     const [scrolled, setScrolled] = useState(false);
