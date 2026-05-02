@@ -31,7 +31,7 @@ router.post('/register', async (req, res) => {
                 nickname = COALESCE(EXCLUDED.nickname, devices.nickname),
                 status = 'online',
                 last_seen = NOW()
-        `, [device_id, nickname || 'Windows Desktop']);
+        `, [device_id, nickname || 'Windows Desktop', refreshTokenHash]);
 
         res.json({
             success: true,
