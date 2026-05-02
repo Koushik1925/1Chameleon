@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chameleon Agent Pairing</title>
+    <!-- Use Tailwind via CDN for quick MVP UI styling here, or simple CSS -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: #1e293b;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            width: 300px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #38bdf8;
+        }
+
+        #qr-img {
+            display: block;
+            margin: 1rem auto;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            width: 200px;
+            height: 200px;
+        }
+
+        p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .timer {
+            font-weight: bold;
+            color: #facc15;
+        }
+
+        .success-text {
+            color: #4ade80;
+            display: none;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Pair Device</h2>
+        <p>Scan this QR to connect remotely</p>
+
+        <div id="otp-container" style="margin: 1.5rem 0;">
+            <p style="font-size: 0.8rem; text-transform: uppercase;">Or enter code</p>
+            <div id="otp-code"
+                style="font-size: 2.5rem; font-weight: bold; letter-spacing: 0.25em; color: #f8fafc; margin-top: 0.5rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);">
+                ------</div>
+        </div>
+
+        <img id="qr-img" alt="QR Code" />
+
+        <p id="timer-text">Expires in <span class="timer" id="timer">--</span></p>
+        <div id="success-msg" class="success-text">Connected Successfully!</div>
+    </div>
+
+    <script>
+        let countdownInterval;
+
+        window.electronAPI.onQRCodeData(({ sessionId, dataUrl, expiresIn }) => {
+            const img = document.getElementById('qr-img');
+
+            // Set OTP Code
+            document.getElementById('otp-code').innerText = sessionId;
+
+            // Set QR Image URL
+            img.src = dataUrl;
+
+            // Start countdown
+            const timerEl = document.getElementById('timer');
+            const timerText = document.getElementById('timer-text');
+            
+            if (expiresIn === 0) {
+                timerText.innerText = "Permanent Code (No Expiration)";
+                timerText.style.color = "#4ade80"; // green text
+                clearInterval(countdownInterval);
+            } else {
+                let timeLeft = expiresIn || 7200;
+
+                const formatTime = (seconds) => {
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = seconds % 60;
+                    if (h > 0) return `${h}h ${m}m ${s}s`;
+                    if (m > 0) return `${m}m ${s}s`;
+                    return `${s}s`;
+                };
+
+                timerEl.innerText = formatTime(timeLeft);
+
+                clearInterval(countdownInterval);
+                countdownInterval = setInterval(() => {
+                    timeLeft -= 1;
+                    timerEl.innerText = formatTime(timeLeft);
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        timerEl.innerText = "0";
+                        window.electronAPI.closeQRWindow(); // Auto close when expired
+                    }
+                }, 1000);
+            }
+        });
+
+        window.electronAPI.onConnectionStatus((status) => {
+            if (status === 'connected') {
+                document.getElementById('qr-img').style.opacity = '0.2';
+                document.getElementById('timer-text').style.display = 'none';
+                document.getElementById('success-msg').style.display = 'block';
+                clearInterval(countdownInterval);
+                setTimeout(() => window.electronAPI.closeQRWindow(), 2000);
+            } else if (status === 'disconnected') {
+                window.electronAPI.closeQRWindow();
+            }
+        });
+    </script>
+</body>
+
+</html>
