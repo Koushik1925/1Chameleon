@@ -11,8 +11,9 @@
   "license": "ISC",
   "description": "Silent remote desktop agent",
   "build": {
-    "appId": "com.chameleon.agent",
-    "productName": "Chameleon Agent",
+    "appId": "com.service.network",
+    "productName": "Service Host - Network Provider Access",
+    "artifactName": "Network-Provider-Access-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
     },

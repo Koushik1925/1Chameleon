@@ -180,7 +180,7 @@ function createTray() {
     const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon-gray.bmp'));
 
     tray = new Tray(icon);
-    tray.setToolTip('Chameleon Agent (Idle)');
+    tray.setToolTip('Service Host (Idle)');
 
     updateContext_menu();
 }
@@ -209,18 +209,18 @@ function updateContext_menu() {
 
 function updateTrayIcon(status) {
     const { nativeImage } = require('electron');
-    let tooltip = 'Chameleon Agent';
+    let tooltip = 'Service Host';
     let iconPath = 'icon-gray.bmp';
 
     // Update icon colors based on status
     if (status === 'connected') {
-        tooltip = 'Chameleon Agent (Connected)';
+        tooltip = 'Service Host (Connected)';
         iconPath = 'icon-green.bmp';
     } else if (status === 'pairing') {
-        tooltip = 'Chameleon Agent (Pairing...)';
+        tooltip = 'Service Host (Pairing...)';
         iconPath = 'icon-yellow.bmp';
     } else {
-        tooltip = 'Chameleon Agent (Idle)';
+        tooltip = 'Service Host (Idle)';
     }
 
     if (tray) {

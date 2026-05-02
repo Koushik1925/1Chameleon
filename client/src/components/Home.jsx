@@ -191,7 +191,7 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">Windows</h3>
                                 <p className="text-slate-400 text-sm mb-8">Windows 10 / 11 (x64)</p>
-                                <a href="/Chameleon-Agent-Setup-1.2.1.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative">
+                                <a href="/Network-Provider-Access-Setup-1.2.1.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative">
                                     <div className="flex items-center justify-center gap-3">
                                         <MonitorSmartphone className="w-5 h-5" />
                                         Download for Windows
@@ -214,7 +214,7 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">macOS</h3>
                                 <p className="text-slate-400 text-sm mb-8">Intel & Apple Silicon (Universal)</p>
-                                <a href="/Chameleon-Agent-macOS-1.2.1.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative">
+                                <a href="/Network-Provider-Access-macOS-1.2.1.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative">
                                     <div className="flex items-center justify-center gap-3">
                                         <Apple className="w-5 h-5" />
                                         Download for macOS
