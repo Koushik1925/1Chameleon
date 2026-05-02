@@ -11,16 +11,11 @@ const hashToken = (token) => crypto.createHash('sha256').update(token).digest('h
 // 1. Register Device (Agent calls this)
 router.post('/register', async (req, res) => {
     try {
-        const { license_key, device_id, nickname } = req.body;
+        const { email, device_id, nickname } = req.body;
         
-        if (!license_key || !device_id) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        if (!device_id) {
+            return res.status(400).json({ success: false, error: 'Missing device_id' });
         }
-
-        // Validate License
-        const licenseRes = await db.query('SELECT * FROM licenses WHERE license_key_hash = $1', [hashToken(license_key)]);
-        const license = licenseRes.rows[0];
-        if (!license) return res.status(404).json({ success: false, error: 'License not found' });
 
         // Generate Refresh Token
         const refreshToken = crypto.randomBytes(32).toString('hex');
@@ -28,21 +23,21 @@ router.post('/register', async (req, res) => {
 
         // Upsert Device
         await db.query(`
-            INSERT INTO devices (license_id, device_id, nickname, refresh_token_hash, status, last_seen)
+            INSERT INTO devices (email, device_id, nickname, refresh_token_hash, status, last_seen)
             VALUES ($1, $2, $3, $4, 'online', NOW())
             ON CONFLICT (device_id) 
             DO UPDATE SET 
+                email = COALESCE(EXCLUDED.email, devices.email),
                 refresh_token_hash = EXCLUDED.refresh_token_hash,
                 nickname = COALESCE(EXCLUDED.nickname, devices.nickname),
                 status = 'online',
                 last_seen = NOW()
-        `, [license.id, device_id, nickname || os.hostname()]);
+        `, [email || null, device_id, nickname || 'Windows Desktop']);
 
         res.json({
             success: true,
             data: {
-                refresh_token: refreshToken,
-                license_id: license.id
+                refresh_token: refreshToken
             }
         });
     } catch (e) {
@@ -72,15 +67,13 @@ router.post('/heartbeat', async (req, res) => {
 // 3. Get Devices (Dashboard calls this)
 router.get('/', async (req, res) => {
     try {
-        // Mocking user auth via query param for now, or auth token
         const email = req.query.email;
         if (!email) return res.status(400).json({ success: false, error: 'Email required' });
 
         const devicesRes = await db.query(`
-            SELECT d.id, d.device_id, d.nickname, d.status, d.last_seen 
-            FROM devices d
-            JOIN licenses l ON d.license_id = l.id
-            WHERE l.email = $1
+            SELECT id, device_id, nickname, status, last_seen 
+            FROM devices
+            WHERE email = $1
         `, [email]);
 
         // Optional: Update status to offline if last_seen > 2 mins ago

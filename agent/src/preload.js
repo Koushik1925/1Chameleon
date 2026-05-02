@@ -13,12 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sendQRPayload: (payload) => ipcRenderer.send('webrtc:qr_payload', payload),
     updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status),
 
-    license: {
-      activate: (licenseKey) => ipcRenderer.invoke('license:activate', licenseKey),
-      getStatus: () => ipcRenderer.invoke('license:getStatus'),
-      logout: () => ipcRenderer.invoke('license:logout'),
-      getDeviceId: () => ipcRenderer.invoke('license:getDeviceId'),
-      onActivateSuccess: () => ipcRenderer.invoke('license:activate_success')
+    device: {
+      getId: () => ipcRenderer.invoke('device:getId'),
+      isLinked: () => ipcRenderer.invoke('device:isLinked')
     },
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
 });

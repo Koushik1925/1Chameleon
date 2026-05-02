@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chameleon Agent</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: system-ui; background-color: #0b0f14; color: white; height: 100vh; display: flex; align-items: center; justify-content: center; -webkit-app-region: drag; }
+        .card { background: #1a1f26; padding: 30px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); -webkit-app-region: no-drag; position: relative; text-align: center; }
+        .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; color: #444; font-weight: bold; }
+        .close-btn:hover { color: white; }
+        h2 { margin: 0 0 10px 0; color: #00f2ff; }
+        p { color: #8892b0; font-size: 14px; margin-bottom: 20px; }
+        .device-id-container { background: #0b0f14; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px; }
+        .device-id { font-family: monospace; color: #00f2ff; font-size: 18px; letter-spacing: 1px; word-break: break-all; }
+        button { width: 100%; padding: 12px; border-radius: 6px; border: none; background: #00f2ff; color: #000; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #00d0dd; }
+        .status { margin-top: 15px; font-size: 12px; color: #4ade80; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; box-shadow: 0 0 8px #4ade80; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="close-btn" onclick="window.close()">X</div>
+        <h2>Agent Active</h2>
+        <p>Your persistent Windows agent is running. Use this Device ID to connect from the web dashboard.</p>
+        
+        <div class="device-id-container">
+            <div class="device-id" id="deviceIdDisplay">Loading...</div>
+        </div>
+        
+        <button id="copyBtn">Copy Device ID</button>
+        
+        <div class="status">
+            <div class="status-dot"></div> Connected to Server
+        </div>
+    </div>
+
+    <script>
+        const api = window.electronAPI;
+        const deviceIdDisplay = document.getElementById('deviceIdDisplay');
+        const copyBtn = document.getElementById('copyBtn');
+        let currentId = '';
+
+        if (api) {
+            api.device.getId().then(id => {
+                currentId = id;
+                deviceIdDisplay.innerText = id;
+            });
+        }
+
+        copyBtn.onclick = () => {
+            if (!currentId) return;
+            navigator.clipboard.writeText(currentId);
+            const originalText = copyBtn.innerText;
+            copyBtn.innerText = 'Copied!';
+            setTimeout(() => {
+                copyBtn.innerText = originalText;
+            }, 2000);
+        };
+    </script>
+</body>
+</html>

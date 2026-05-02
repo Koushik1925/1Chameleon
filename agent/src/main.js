@@ -6,6 +6,7 @@ const { mouse, Point, Button, screen: nutScreen, keyboard, Key } = require('@nut
 // Initialize the persistent daemon
 const { daemon } = require('./core/daemon');
 const { getOrGenerateDeviceId } = require('./storage/identity');
+const { startIPCServer } = require('./ipc/server');
 
 console.log(`[Main] Process starting. PID: ${process.pid}`);
 
@@ -137,8 +138,8 @@ function showUIWindow() {
         }
     });
 
-    // Currently, license.html acts as the dashboard
-    uiWindow.loadFile(path.join(__dirname, 'license.html'));
+    // Currently, link.html acts as the dashboard
+    uiWindow.loadFile(path.join(__dirname, 'link.html'));
 
     uiWindow.on('close', (e) => {
         // Hide instead of quit
@@ -185,28 +186,18 @@ function continueStartup() {
 }
 
 ipcMain.handle('shell:openExternal', async (e, url) => shell.openExternal(url));
-ipcMain.handle('license:activate_success', () => {
-    // If user activated via UI, trigger daemon reconnect
-    daemon.start();
-    showUIWindow();
-});
-
-// For IPC named pipes, we can set up a local server, but Electron IPC covers renderer<->main.
-// The user requested: "Implement named pipes OR localhost secured IPC server"
-// Since we have Electron, we could use native ipcMain. If external processes need it, we'd use net.createServer.
-// We'll stick to electron IPC for internal, but let's implement the named pipe if requested by test script.
-
-const { startIPCServer } = require('./ipc/server');
 
 app.whenReady().then(async () => {
     console.log('[Main] App Ready');
     setupAutoLaunch();
     startIPCServer();
 
-    const { licenseManager } = require('./services/licenseManager');
-    // Using initialize to check if we have a valid token (or we can just check DPAPI storage)
-    const valid = await licenseManager.initialize();
+    const { registrationManager } = require('./services/registrationManager');
     
+    // Automatically register the device in the background if needed
+    await registrationManager.registerBackground();
+    
+    // Continue startup immediately
     continueStartup();
 });
 

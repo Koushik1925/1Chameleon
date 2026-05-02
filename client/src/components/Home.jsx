@@ -91,76 +91,35 @@ export default function Home() {
                         </div>
                     </section>
 
-                    {/* SECTION 1.5: My Devices (Persistent Links) */}
+                    {/* SECTION 1.5: Direct Connect (Device ID) */}
                     <section className="py-12 px-6 bg-cyan-950/10 border-t border-b border-cyan-500/10">
                         <div className="max-w-4xl mx-auto">
                             <div className="flex flex-col md:flex-row items-center justify-between mb-8">
                                 <div>
                                     <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
                                         <MonitorPlay className="text-cyan-400" /> 
-                                        Your Linked Devices
+                                        Connect to a Device
                                     </h2>
-                                    <p className="text-sm text-slate-400">Access your persistently connected Windows agents.</p>
+                                    <p className="text-sm text-slate-400">Enter your agent's Device ID to connect directly.</p>
                                 </div>
                                 <div className="mt-4 md:mt-0 flex w-full md:w-auto gap-2">
                                     <input 
-                                        type="email" 
-                                        id="deviceEmail"
-                                        placeholder="Enter license email..." 
-                                        className="bg-black/50 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:border-cyan-500 outline-none w-full md:w-64"
+                                        type="text" 
+                                        id="directDeviceId"
+                                        placeholder="Enter Device ID..." 
+                                        className="bg-black/50 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:border-cyan-500 outline-none w-full md:w-64 font-mono"
                                     />
                                     <button 
-                                        onClick={async () => {
-                                            const email = document.getElementById('deviceEmail').value;
-                                            if (!email) return;
-                                            try {
-                                                const res = await fetch(`http://localhost:3000/devices?email=${encodeURIComponent(email)}`);
-                                                const json = await res.json();
-                                                if (json.success) {
-                                                    // Quick inline state injection for MVP without rewriting the whole component
-                                                    const list = document.getElementById('devicesList');
-                                                    list.innerHTML = '';
-                                                    if (json.data.length === 0) {
-                                                        list.innerHTML = '<div class="text-slate-500 text-sm py-4">No linked devices found for this email.</div>';
-                                                        return;
-                                                    }
-                                                    json.data.forEach(dev => {
-                                                        const isOnline = dev.status === 'online';
-                                                        const el = document.createElement('div');
-                                                        el.className = `flex items-center justify-between p-4 rounded-xl border ${isOnline ? 'border-cyan-500/30 bg-cyan-950/20' : 'border-slate-800 bg-black/40'} mb-3`;
-                                                        el.innerHTML = `
-                                                            <div class="flex flex-col">
-                                                                <span class="font-bold text-white flex items-center gap-2">
-                                                                    <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-slate-600'}"></span>
-                                                                    ${dev.nickname || 'Windows Desktop'}
-                                                                </span>
-                                                                <span class="text-xs text-slate-400 mt-1 font-mono">${dev.device_id.substring(0, 12)}...</span>
-                                                            </div>
-                                                        `;
-                                                        
-                                                        const btn = document.createElement('button');
-                                                        btn.className = `px-6 py-2 rounded-lg text-sm font-bold transition-all ${isOnline ? 'bg-cyan-500 hover:bg-cyan-400 text-black' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`;
-                                                        btn.innerText = isOnline ? 'Connect' : 'Offline';
-                                                        if (isOnline) {
-                                                            btn.onclick = () => window.location.href = '/connect?device_id=' + dev.device_id;
-                                                        }
-                                                        
-                                                        el.appendChild(btn);
-                                                        list.appendChild(el);
-                                                    });
-                                                }
-                                            } catch (e) {
-                                                console.error(e);
-                                            }
+                                        onClick={() => {
+                                            const devId = document.getElementById('directDeviceId').value.trim();
+                                            if (!devId) return;
+                                            window.location.href = '/connect?device_id=' + encodeURIComponent(devId);
                                         }}
-                                        className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                        className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-lg text-sm font-bold transition-colors"
                                     >
-                                        Load
+                                        Connect
                                     </button>
                                 </div>
-                            </div>
-                            <div id="devicesList" className="flex flex-col">
-                                <div className="text-slate-500 text-sm italic">Enter your email to view your devices.</div>
                             </div>
                         </div>
                     </section>
@@ -248,34 +207,7 @@ export default function Home() {
                         </div>
                     </section>
 
-                    {/* SECTION 4.5: Pricing */}
-                    <section className="py-24 px-6 border-b border-white/5">
-                        <div className="max-w-7xl mx-auto">
-                            <div className="text-center mb-16">
-                                <h2 className="text-3xl font-bold mb-4">Simple, Transparent Pricing</h2>
-                                <p className="text-slate-300">Choose the license that fits your needs.</p>
-                            </div>
-                            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                                {/* Lifetime */}
-                                <div className="bg-[#111827] border border-slate-800 p-8 rounded-3xl flex flex-col items-center text-center relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                    <h3 className="text-2xl font-bold mb-2 text-white">Lifetime Access</h3>
-                                    <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-500 mb-4">$25.00 <span className="text-lg text-slate-400 font-normal">USD</span></p>
-                                    <p className="text-slate-300 text-sm mb-8">Pay once, use forever. No recurring fees.</p>
-                                    <a href="http://localhost:3000/checkout.html" className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold transition-colors z-10 relative underline hover:no-underline">Purchase License</a>
-                                </div>
 
-                                {/* Weekly */}
-                                <div className="bg-[#111827] border border-slate-800 p-8 rounded-3xl flex flex-col items-center text-center relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                    <h3 className="text-2xl font-bold mb-2 text-white">Weekly Plan</h3>
-                                    <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 mb-4">$5.00 <span className="text-lg text-slate-400 font-normal">USD / week</span></p>
-                                    <p className="text-slate-300 text-sm mb-8">Flexible weekly access, cancel anytime.</p>
-                                    <a href="http://localhost:3000/checkout.html" className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors z-10 relative underline hover:no-underline">Subscribe Now</a>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
 
                     {/* SECTION 5: Downloads */}
                     <section id="download" className="py-24 px-6 scroll-mt-16">

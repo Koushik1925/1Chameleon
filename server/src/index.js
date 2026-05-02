@@ -64,17 +64,9 @@ const rateLimitMiddleware = async (req, res, next) => {
 
 app.use(rateLimitMiddleware);
 
-// Import License API Routes
-const activateRoute = require('./routes/activate');
-const validateRoute = require('./routes/validate');
-const paypalWebhookRoute = require('./routes/paypal-webhook');
-const successRoute = require('./routes/success');
+// Import API Routes
 const devicesRoute = require('./routes/devices');
 
-app.use(activateRoute);
-app.use(validateRoute);
-app.use(paypalWebhookRoute);
-app.use(successRoute);
 app.use('/devices', devicesRoute);
 
 // Serve static directory for checkout.html
