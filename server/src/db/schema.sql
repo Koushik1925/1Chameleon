@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS activations (
 CREATE INDEX IF NOT EXISTS idx_activations_license_id ON activations(license_id);
 CREATE INDEX IF NOT EXISTS idx_activations_device_id ON activations(device_id);
 
-// Persistent Devices
+-- Persistent Devices
 CREATE TABLE IF NOT EXISTS devices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255),
