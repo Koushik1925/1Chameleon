@@ -45,6 +45,12 @@
 
             socket.on('connect', () => {
                 console.log('Background connected to signaling server');
+                // Re-register the permanent session ID immediately if we have one.
+                // This ensures the agent survives server restarts without needing a manual refresh.
+                const savedSessionId = localStorage.getItem('chameleon_permanent_id');
+                if (savedSessionId) {
+                    socket.emit('agent:create_session', { sessionId: savedSessionId });
+                }
             });
 
             socket.on('agent:session_created', async (data) => {
