@@ -33,6 +33,12 @@ let powerBlockerId = null;
 let isControlPaused = false;
 let currentConnectionStatus = 'idle';
 
+// Modifier tracking for remote shortcut blocking
+let ctrlDown = false;
+let altDown = false;
+let metaDown = false;
+let shiftDown = false;
+
 // ── GPU / ENCODER FLAGS ───────────────────────────────────────────────────────
 // IMPORTANT: Do NOT call app.disableHardwareAcceleration().
 // Doing so kills NVENC / QuickSync H.264 encoding and forces the CPU to
@@ -118,15 +124,64 @@ function createBackgroundWindow() {
     ipcMain.on('webrtc:remote_input', async (event, data) => {
         if (isControlPaused) return; // FINAL INJECTION GUARD
         try {
+            // --- MODIFIER TRACKING AND NEUTRALIZATION ---
+            if (data.type === 'key_down' || data.type === 'key_up') {
+                const isDown = data.type === 'key_down';
+                const code = data.code;
+                let isModifier = false;
+
+                if (code === 'ControlLeft' || code === 'ControlRight') {
+                    ctrlDown = isDown;
+                    isModifier = true;
+                } else if (code === 'AltLeft' || code === 'AltRight') {
+                    altDown = isDown;
+                    isModifier = true;
+                } else if (code === 'MetaLeft' || code === 'MetaRight') {
+                    metaDown = isDown;
+                    isModifier = true;
+                } else if (code === 'ShiftLeft' || code === 'ShiftRight') {
+                    shiftDown = isDown;
+                    isModifier = true;
+                }
+
+                if (isModifier) {
+                    // Force release on the host if it's a key_up to prevent stuck keys
+                    if (!isDown) {
+                        const nutKey = keyMap[code];
+                        if (nutKey !== undefined) {
+                            keyboard.releaseKey(nutKey).catch(() => {});
+                        }
+                    }
+                    // NEVER inject modifier key downs -> prevents host OS from registering them
+                    return;
+                }
+
+                // --- STRICT SHORTCUT BLOCKING ---
+                if (ctrlDown || altDown || metaDown) {
+                    return; // Block any key if Ctrl/Alt/Meta is active
+                }
+
+                if (shiftDown) {
+                    // Allow Shift ONLY for printable characters (length === 1)
+                    if (!data.key || data.key.length !== 1) {
+                        return; // Block Shift+Arrow, Shift+Tab, etc.
+                    }
+                }
+            }
+
+            // Block mouse events if modifiers are held (e.g. Ctrl+Click, Alt+Drag)
+            if (data.type.startsWith('mouse_')) {
+                if (ctrlDown || altDown || metaDown) {
+                    return;
+                }
+            }
+
+            // --- INJECTION ---
             if (data.type === 'mouse_move') {
                 const screenWidth = await nutScreen.width();
                 const screenHeight = await nutScreen.height();
                 const targetX = Math.max(0, Math.min(Math.floor(data.x * screenWidth), screenWidth - 1));
                 const targetY = Math.max(0, Math.min(Math.floor(data.y * screenHeight), screenHeight - 1));
-                // FIRE-AND-FORGET: do NOT await mouse.setPosition().
-                // Awaiting blocks the IPC handler for 1-3ms on each mouse event.
-                // Since we only care about the LATEST position (not acknowledgment),
-                // fire the OS call and immediately return to handle the next event.
                 mouse.setPosition(new Point(targetX, targetY)).catch(() => {});
 
             } else if (data.type === 'mouse_down') {
@@ -138,27 +193,32 @@ function createBackgroundWindow() {
                 await mouse.releaseButton(btn);
 
             } else if (data.type === 'mouse_wheel') {
-                // Scroll wheel support — deltaY positive = scroll down
-                // nut-js scroll unit is 'lines', so divide pixels by a sensitivity factor
                 const lines = Math.round(data.deltaY / 100);
                 if (lines !== 0) {
                     await mouse.scrollDown(Math.abs(lines) * (lines > 0 ? 1 : -1));
                 }
 
             } else if (data.type === 'key_down') {
-                const nutKey = keyMap[data.code];
-                if (nutKey !== undefined) {
-                    await keyboard.pressKey(nutKey);
-                } else if (data.key && data.key.length === 1) {
-                    // Printable character not in keyMap (e.g. shifted symbols like : " { } [ ] < > ?)
-                    // Use keyboard.type() so nut-js handles the Shift modifier automatically
+                if (shiftDown && data.key && data.key.length === 1) {
+                    // Let nut.js handle shifted character generation natively (e.g. A, !, <)
                     await keyboard.type(data.key);
+                } else {
+                    const nutKey = keyMap[data.code];
+                    if (nutKey !== undefined) {
+                        await keyboard.pressKey(nutKey);
+                    } else if (data.key && data.key.length === 1) {
+                        await keyboard.type(data.key);
+                    }
                 }
 
             } else if (data.type === 'key_up') {
-                const nutKey = keyMap[data.code];
-                if (nutKey !== undefined) {
-                    await keyboard.releaseKey(nutKey);
+                if (shiftDown && data.key && data.key.length === 1) {
+                    // Character was already 'typed' via keyboard.type() in key_down
+                } else {
+                    const nutKey = keyMap[data.code];
+                    if (nutKey !== undefined) {
+                        await keyboard.releaseKey(nutKey);
+                    }
                 }
 
             } else if (data.type === 'clipboard_push') {
