@@ -306,15 +306,17 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
 
                 {/* Paused overlay */}
                 {isControlPaused && (
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-[100] pointer-events-none">
-                        <div className="bg-red-950/80 border border-red-500/50 text-red-300 px-6 py-4 rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.2)] flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300">
-                            <div className="w-12 h-12 rounded-full bg-red-900/50 flex items-center justify-center border border-red-500/30">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+                        <div className="bg-red-950/90 border border-red-500/50 text-red-300 px-5 py-3 rounded-2xl shadow-[0_4px_30px_rgba(239,68,68,0.3)] flex flex-row items-center gap-4 animate-in slide-in-from-bottom-8 duration-300 backdrop-blur-md">
+                            <div className="w-10 h-10 rounded-full bg-red-900/50 flex items-center justify-center border border-red-500/30 shrink-0">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             </div>
-                            <h3 className="text-xl font-bold tracking-wide text-white">Control Paused by Host</h3>
-                            <p className="text-sm font-medium opacity-80 text-center max-w-[250px]">
-                                The host machine has temporarily blocked remote input. Video stream is still active.
-                            </p>
+                            <div className="flex flex-col text-left">
+                                <h3 className="text-base font-bold text-white tracking-wide leading-tight">Control Paused by Host</h3>
+                                <p className="text-xs font-medium opacity-80 mt-0.5">
+                                    Remote input is temporarily blocked.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}
