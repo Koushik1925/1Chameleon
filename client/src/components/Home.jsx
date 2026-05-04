@@ -53,7 +53,7 @@ export default function Home() {
                 <section className="pt-40 pb-20 px-6 min-h-[90vh] flex flex-col items-center justify-center text-center">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-8 animate-pulse-slow">
                         <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                        Version 1.3.0 Live
+                        Version 1.3.1 Live
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl leading-tight">
                         Secure Remote Access. <br />
@@ -191,13 +191,13 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">Windows</h3>
                                 <p className="text-slate-400 text-sm mb-8">Windows 10 / 11 (x64)</p>
-                                <a href="/Network-Provider-Access-Setup-1.3.0.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative">
+                                <a href="/Network-Provider-Access-Setup-1.3.1.exe" download className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors z-10 relative">
                                     <div className="flex items-center justify-center gap-3">
                                         <MonitorSmartphone className="w-5 h-5" />
                                         Download for Windows
                                     </div>
                                 </a>
-                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.3.0 • ~77 MB</span>
+                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.3.1 • ~77 MB</span>
                                 <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                     <ShieldCheck size={12} /> Verified & Secure
                                 </div>
@@ -214,13 +214,13 @@ export default function Home() {
                                 </div>
                                 <h3 className="text-2xl font-bold mb-2">macOS</h3>
                                 <p className="text-slate-400 text-sm mb-8">Intel & Apple Silicon (Universal)</p>
-                                <a href="/Network-Provider-Access-macOS-1.3.0.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative">
+                                <a href="/Network-Provider-Access-macOS-1.3.1.dmg" download className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-medium transition-colors z-10 relative">
                                     <div className="flex items-center justify-center gap-3">
                                         <Apple className="w-5 h-5" />
                                         Download for macOS
                                     </div>
                                 </a>
-                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.3.0 • ~95 MB</span>
+                                <span className="text-xs text-slate-600 mt-4 font-mono">v1.3.1 • ~95 MB</span>
                                 <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-green-500/70 uppercase tracking-widest font-bold">
                                     <ShieldCheck size={12} /> Verified & Secure
                                 </div>
