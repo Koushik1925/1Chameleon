@@ -218,6 +218,26 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
         sendInputEvent({ type: 'key_up', key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey });
     }, [sendInputEvent]);
 
+    // ── Window Blur / Focus Loss ──────────────────────────────────────────────
+    // If the user triggers an OS shortcut (e.g. Win+D, Alt+Tab), the browser loses
+    // focus and never receives the key_up event. This leaves modifiers stuck in the 
+    // down state on the host, blocking all further input.
+    useEffect(() => {
+        const handleBlur = () => {
+            if (!sendInputEvent) return;
+            const modifiers = [
+                'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 
+                'MetaLeft', 'MetaRight', 'ShiftLeft', 'ShiftRight'
+            ];
+            modifiers.forEach(code => {
+                sendInputEvent({ type: 'key_up', code });
+            });
+        };
+
+        window.addEventListener('blur', handleBlur);
+        return () => window.removeEventListener('blur', handleBlur);
+    }, [sendInputEvent]);
+
     // ── Shared pointer-event props ────────────────────────────────────────────
     const pointerProps = {
         onTouchStart:  handleTouchStart,
