@@ -18,6 +18,7 @@ function ClientApp() {
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
   const [relayMode, setRelayMode] = useState(false);
+  const [isControlPaused, setIsControlPaused] = useState(false);
   // NOTE: relayFrame state REMOVED — relay frames bypass React state entirely.
   // The socket is passed directly to RemoteView which handles frames in a Worker.
   // This eliminates 8-15ms React reconciliation overhead per frame.
@@ -290,6 +291,10 @@ function ClientApp() {
               await navigator.clipboard.writeText(payload.text);
               console.log('[Clipboard] Pulled from host successfully.');
             }
+            if (payload.type === 'pause_state') {
+              setIsControlPaused(payload.paused);
+              console.log('[DC] Control pause state:', payload.paused);
+            }
           } catch (e) {
             console.error('[DC] Parse error:', e);
           }
@@ -387,6 +392,7 @@ function ClientApp() {
     isRemoteDescriptionSet.current = false;
     iceCandidateQueue.current = [];
     setRemoteStream(null);
+    setIsControlPaused(false);
   };
 
   const handleDisconnect = () => {
@@ -655,6 +661,7 @@ function ClientApp() {
             peerConnection={peerRef.current}
             sendInputEvent={sendInputEvent}
             relayMode={relayMode}
+            isControlPaused={isControlPaused}
             socket={socketRef.current}
             sessionId={sessionStartTimeRef.current ? lastSessionId : null}
             onDisconnect={() => {

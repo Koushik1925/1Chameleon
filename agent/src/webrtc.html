@@ -442,6 +442,9 @@
         function setupKeyboardChannel(channel) {
             channel.onopen = () => {
                 console.log('[DC] Keyboard channel open');
+                // Request current pause state to sync client on connection
+                ipcRenderer.send('session:request_pause_state');
+                
                 // NAT keepalive — smaller interval than default to prevent UDP hole from closing
                 channel.pingInterval = setInterval(() => {
                     if (channel.readyState === 'open') {
@@ -609,6 +612,12 @@
                 socket.connect();
             }
             cleanupSession();
+        });
+
+        ipcRenderer.on('session:pause_state', (event, isPaused) => {
+            if (keyboardChannel && keyboardChannel.readyState === 'open') {
+                keyboardChannel.send(JSON.stringify({ type: 'pause_state', paused: isPaused }));
+            }
         });
 
         // ── BOOT ──

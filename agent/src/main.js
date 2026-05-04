@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, clipboard, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, clipboard, powerSaveBlocker, globalShortcut } = require('electron');
 const path = require('path');
 const { mouse, Point, Button, screen: nutScreen, keyboard, Key } = require('@nut-tree-fork/nut-js');
 
@@ -30,6 +30,8 @@ let tray = null;
 let qrWindow = null;
 let backgroundWindow = null;
 let powerBlockerId = null;
+let isControlPaused = false;
+let currentConnectionStatus = 'idle';
 
 // ── GPU / ENCODER FLAGS ───────────────────────────────────────────────────────
 // IMPORTANT: Do NOT call app.disableHardwareAcceleration().
@@ -76,6 +78,7 @@ function createBackgroundWindow() {
 
     // Forward tray status updates from background process
     ipcMain.on('tray:update_status', (event, status) => {
+        currentConnectionStatus = status;
         updateTrayIcon(status);
 
         // Manage OS Sleep/Suspend behavior
@@ -98,6 +101,12 @@ function createBackgroundWindow() {
         }
     });
 
+    ipcMain.on('session:request_pause_state', (event) => {
+        if (backgroundWindow) {
+            backgroundWindow.webContents.send('session:pause_state', isControlPaused);
+        }
+    });
+
     // Forward QR payload from background to main, to show in UI
     ipcMain.on('webrtc:qr_payload', (event, payload) => {
         if (qrWindow) {
@@ -107,6 +116,7 @@ function createBackgroundWindow() {
 
     // Execute remote input via native driver
     ipcMain.on('webrtc:remote_input', async (event, data) => {
+        if (isControlPaused) return; // FINAL INJECTION GUARD
         try {
             if (data.type === 'mouse_move') {
                 const screenWidth = await nutScreen.width();
@@ -239,7 +249,10 @@ function updateTrayIcon(status) {
     let iconPath = 'icon-gray.bmp';
 
     // Update icon colors based on status
-    if (status === 'connected') {
+    if (isControlPaused && status === 'connected') {
+        tooltip = 'Service Host (Paused by Host)';
+        iconPath = 'icon-yellow.bmp'; // Using yellow to denote paused
+    } else if (status === 'connected') {
         tooltip = 'Service Host (Connected)';
         iconPath = 'icon-green.bmp';
     } else if (status === 'pairing') {
@@ -266,6 +279,16 @@ app.whenReady().then(() => {
 
     createTray();
     createBackgroundWindow();
+
+    // Register emergency pause global shortcut
+    globalShortcut.register('CommandOrControl+Alt+P', () => {
+        isControlPaused = !isControlPaused;
+        console.log(`[PAUSE] Control is now ${isControlPaused ? 'PAUSED' : 'RESUMED'}`);
+        updateTrayIcon(currentConnectionStatus);
+        if (backgroundWindow) {
+            backgroundWindow.webContents.send('session:pause_state', isControlPaused);
+        }
+    });
 
     // Handle IPC for getting screen sources
     ipcMain.handle('get-desktop-sources', async () => {

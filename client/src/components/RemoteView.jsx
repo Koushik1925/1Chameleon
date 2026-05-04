@@ -23,7 +23,7 @@ import TopToolbar from './TopToolbar';
  *   - bundlePolicy: 'max-bundle' is configured upstream in App.jsx.
  */
 
-export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, sendInputEvent, socket, sessionId }) {
+export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, isControlPaused, sendInputEvent, socket, sessionId }) {
     // ── Refs ─────────────────────────────────────────────────────────────────
     const videoRef     = useRef(null);
     const canvasRef    = useRef(null);  // relay rendering target
@@ -281,6 +281,21 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
                     <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 text-slate-500">
                         <div className="w-12 h-12 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin"></div>
                         <p>{relayMode ? 'Establishing Secure Cloud Relay...' : 'Waiting for direct STUN/TURN stream...'}</p>
+                    </div>
+                )}
+
+                {/* Paused overlay */}
+                {isControlPaused && (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-[100] pointer-events-none">
+                        <div className="bg-red-950/80 border border-red-500/50 text-red-300 px-6 py-4 rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.2)] flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300">
+                            <div className="w-12 h-12 rounded-full bg-red-900/50 flex items-center justify-center border border-red-500/30">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            </div>
+                            <h3 className="text-xl font-bold tracking-wide text-white">Control Paused by Host</h3>
+                            <p className="text-sm font-medium opacity-80 text-center max-w-[250px]">
+                                The host machine has temporarily blocked remote input. Video stream is still active.
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
