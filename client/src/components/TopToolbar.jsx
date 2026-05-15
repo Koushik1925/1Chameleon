@@ -185,7 +185,7 @@ export default function TopToolbar({
 
     return (
         <div
-            className={`absolute z-50 flex items-center transition-transform ${isDragging ? 'duration-0 opacity-90' : 'duration-300 ease-in-out'}`}
+            className={`hidden md:flex absolute z-50 items-center transition-transform ${isDragging ? 'duration-0 opacity-90' : 'duration-300 ease-in-out'}`}
             style={{ left: position.x, top: position.y }}
             onMouseDown={handleMouseDown}
         >

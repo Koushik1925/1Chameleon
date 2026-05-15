@@ -1,5 +1,10 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import TopToolbar from './TopToolbar';
+import { GestureHandler } from '../lib/gestureHandler';
+import MobileFAB from './MobileFAB';
+import MobileStatsOverlay from './MobileStatsOverlay';
+import MobileQuickSettings from './MobileQuickSettings';
+import MobileContextMenu from './MobileContextMenu';
 
 /**
  * RemoteView — Renders the live remote desktop stream.
@@ -34,6 +39,159 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     // RAF mouse coalescing
     const rafPendingRef       = useRef(false);
     const latestMouseEventRef = useRef(null);
+
+    // ── Mobile State ──────────────────────────────────────────────────────────
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showQuickSettings, setShowQuickSettings] = useState(false);
+    const [batteryLevel, setBatteryLevel] = useState(100);
+    const [networkQuality, setNetworkQuality] = useState('good');
+    const [contextMenuState, setContextMenuState] = useState({ isOpen: false, x: 0, y: 0 });
+    const gestureHandlerRef = useRef(null);
+
+    // ── Fullscreen & Orientation ──────────────────────────────────────────────
+    const toggleFullscreen = useCallback(async () => {
+        if (!isFullscreen) {
+            try {
+                if (containerRef.current?.requestFullscreen) {
+                    await containerRef.current.requestFullscreen();
+                } else if (containerRef.current?.webkitRequestFullscreen) {
+                    await containerRef.current.webkitRequestFullscreen();
+                }
+                setIsFullscreen(true);
+            } catch (err) {
+                console.error('Fullscreen error:', err);
+            }
+        } else {
+            try {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                }
+                setIsFullscreen(false);
+            } catch (err) {
+                console.error('Exit fullscreen error:', err);
+            }
+        }
+    }, [isFullscreen]);
+
+    useEffect(() => {
+        const handleOrientationChange = () => {
+            const isLandscape = window.innerHeight < window.innerWidth;
+            if (isLandscape && !isFullscreen) {
+                toggleFullscreen();
+            }
+        };
+        window.addEventListener('orientationchange', handleOrientationChange);
+        
+        // Also listen to standard fullscreen change events
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement));
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        
+        return () => {
+            window.removeEventListener('orientationchange', handleOrientationChange);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
+    }, [isFullscreen, toggleFullscreen]);
+
+    // ── Battery & Network Quality ──────────────────────────────────────────────
+    useEffect(() => {
+        const initBattery = async () => {
+            try {
+                const battery = await navigator.getBattery?.();
+                if (battery) {
+                    setBatteryLevel(Math.round(battery.level * 100));
+                    battery.addEventListener('levelchange', () => {
+                        setBatteryLevel(Math.round(battery.level * 100));
+                    });
+                }
+            } catch (e) {
+                // Battery API not available
+            }
+        };
+        initBattery();
+    }, []);
+
+    useEffect(() => {
+        const updateNetworkQuality = async () => {
+            if (!peerConnection) return;
+            try {
+                const stats = await peerConnection.getStats();
+                let ping = Infinity;
+                stats.forEach(report => {
+                    if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                        ping = Math.min(ping, report.currentRoundTripTime * 1000);
+                    }
+                });
+                if (ping < 80) setNetworkQuality('excellent');
+                else if (ping < 150) setNetworkQuality('good');
+                else if (ping < 300) setNetworkQuality('fair');
+                else setNetworkQuality('poor');
+            } catch (e) {
+                // Ignore stats error
+            }
+        };
+
+        const interval = setInterval(updateNetworkQuality, 2000);
+        return () => clearInterval(interval);
+    }, [peerConnection]);
+
+    // ── Mobile Clipboard Handlers ──────────────────────────────────────────────
+    const handlePushClipboard = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            sendInputEvent({ type: 'clipboard_push', text });
+        } catch (err) {
+            console.error("Failed to read clipboard:", err);
+        }
+    };
+
+    const handlePullClipboard = () => {
+        sendInputEvent({ type: 'clipboard_pull_request' });
+    };
+
+    // ── Gesture Handler ───────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!containerRef.current) return;
+        
+        gestureHandlerRef.current = new GestureHandler(containerRef.current, {
+            onDoubleTap: () => toggleFullscreen(),
+            onLongPress: (e) => {
+                const target = relayMode ? canvasRef.current : videoRef.current;
+                if (!target) return;
+                
+                const rect = target.getBoundingClientRect();
+                const pos = getPointerPosition({ clientX: e.x, clientY: e.y, target });
+                if (!pos) return;
+                
+                // Send right click
+                if (sendInputEvent) {
+                    sendInputEvent({ type: 'mouse_down', button: 2, x: pos.x, y: pos.y });
+                    sendInputEvent({ type: 'mouse_up', button: 2, x: pos.x, y: pos.y });
+                }
+                
+                // Show action sheet
+                setContextMenuState({ isOpen: true, x: e.x, y: e.y });
+            },
+            onSwipeDown: () => {
+                setShowQuickSettings(true);
+            },
+            onPinch: (e) => {
+                // Local zoom only
+                const target = relayMode ? canvasRef.current : videoRef.current;
+                if (target) {
+                    const clampedScale = Math.max(1, Math.min(3, e.scale));
+                    target.style.transform = `scale(${clampedScale})`;
+                }
+            }
+        });
+
+        return () => gestureHandlerRef.current?.destroy();
+    }, [relayMode, getPointerPosition, sendInputEvent, toggleFullscreen]);
 
     // ── WebRTC video setup ────────────────────────────────────────────────────
     useEffect(() => {
@@ -257,15 +415,71 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
             tabIndex={0}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
-            className="relative w-full h-full bg-[#0b0f14] overflow-hidden flex flex-col focus:outline-none"
+            className="remote-container relative w-full h-full bg-[#0b0f14] overflow-hidden flex flex-col focus:outline-none"
         >
             <TopToolbar
                 peerConnection={peerConnection}
                 sendInputEvent={sendInputEvent}
                 onDisconnect={onDisconnect}
+                isFullscreen={isFullscreen}
+                toggleFullscreen={toggleFullscreen}
             />
 
-            <div className={`flex-1 min-h-0 flex items-center justify-center relative touch-none overflow-hidden bg-black ${relayMode ? 'border-[4px] border-indigo-500/30' : ''}`}>
+            <MobileStatsOverlay 
+                peerConnection={peerConnection}
+                networkQuality={networkQuality}
+                batteryLevel={batteryLevel}
+            />
+
+            <MobileFAB 
+                isConnected={!!socket || !!stream}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={toggleFullscreen}
+                onDisconnect={onDisconnect}
+                sendInputEvent={sendInputEvent}
+                clipboardText=""
+                onClipboardPush={handlePushClipboard}
+                onClipboardPull={handlePullClipboard}
+            />
+
+            <MobileQuickSettings 
+                isOpen={showQuickSettings}
+                onClose={() => setShowQuickSettings(false)}
+                onUpdateSettings={(settings) => {
+                    sendInputEvent({ type: 'update_resolution', resolution: settings.quality, fps: settings.fps, bitrate: settings.bitrate });
+                }}
+            />
+
+            <MobileContextMenu 
+                isOpen={contextMenuState.isOpen}
+                position={{ x: contextMenuState.x, y: contextMenuState.y }}
+                onClose={() => setContextMenuState({ ...contextMenuState, isOpen: false })}
+                onAction={(action) => {
+                    if (!sendInputEvent) return;
+                    
+                    if (action === 'cut') {
+                        sendInputEvent({ type: 'key_down', code: 'ControlLeft' });
+                        sendInputEvent({ type: 'key_down', key: 'x' });
+                        sendInputEvent({ type: 'key_up', key: 'x' });
+                        sendInputEvent({ type: 'key_up', code: 'ControlLeft' });
+                    } else if (action === 'copy') {
+                        sendInputEvent({ type: 'key_down', code: 'ControlLeft' });
+                        sendInputEvent({ type: 'key_down', key: 'c' });
+                        sendInputEvent({ type: 'key_up', key: 'c' });
+                        sendInputEvent({ type: 'key_up', code: 'ControlLeft' });
+                    } else if (action === 'paste') {
+                        sendInputEvent({ type: 'key_down', code: 'ControlLeft' });
+                        sendInputEvent({ type: 'key_down', key: 'v' });
+                        sendInputEvent({ type: 'key_up', key: 'v' });
+                        sendInputEvent({ type: 'key_up', code: 'ControlLeft' });
+                    } else if (action === 'rename') {
+                        sendInputEvent({ type: 'key_down', key: 'F2' });
+                        sendInputEvent({ type: 'key_up', key: 'F2' });
+                    }
+                }}
+            />
+
+            <div className={`flex-1 min-h-0 flex items-center justify-center relative overflow-hidden bg-black ${relayMode ? 'border-[4px] border-indigo-500/30' : ''}`}>
 
                 {relayMode && (
                     <div className="absolute top-4 left-4 z-50 px-3 py-1.5 rounded-full bg-indigo-900/80 border border-indigo-400/50 text-indigo-300 text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex flex-row items-center gap-2">
