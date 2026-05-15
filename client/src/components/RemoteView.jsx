@@ -154,6 +154,29 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
         sendInputEvent({ type: 'clipboard_pull_request' });
     };
 
+    // ── Pointer position calculator ───────────────────────────────────────────
+    const getPointerPosition = useCallback((e) => {
+        const target = relayMode ? canvasRef.current : videoRef.current;
+        if (!target) return null;
+
+        const rect         = target.getBoundingClientRect();
+        const contentWidth  = relayMode ? target.width  : target.videoWidth;
+        const contentHeight = relayMode ? target.height : target.videoHeight;
+        if (!contentWidth || !contentHeight) return null;
+
+        const cAR = contentWidth  / contentHeight;
+        const rAR = rect.width    / rect.height;
+        let rW = rect.width, rH = rect.height, oL = 0, oT = 0;
+
+        if (cAR > rAR) { rH = rect.width  / cAR; oT = (rect.height - rH) / 2; }
+        else            { rW = rect.height * cAR; oL = (rect.width  - rW) / 2; }
+
+        return {
+            x: Math.max(0, Math.min(1, (e.clientX - rect.left - oL) / rW)),
+            y: Math.max(0, Math.min(1, (e.clientY - rect.top  - oT) / rH)),
+        };
+    }, [relayMode]);
+
     // ── Gesture Handler ───────────────────────────────────────────────────────
     useEffect(() => {
         if (!containerRef.current) return;
@@ -285,29 +308,6 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
             workerRef.current = null;
         };
     }, [relayMode, socket]);
-
-    // ── Pointer position calculator ───────────────────────────────────────────
-    const getPointerPosition = useCallback((e) => {
-        const target = relayMode ? canvasRef.current : videoRef.current;
-        if (!target) return null;
-
-        const rect         = target.getBoundingClientRect();
-        const contentWidth  = relayMode ? target.width  : target.videoWidth;
-        const contentHeight = relayMode ? target.height : target.videoHeight;
-        if (!contentWidth || !contentHeight) return null;
-
-        const cAR = contentWidth  / contentHeight;
-        const rAR = rect.width    / rect.height;
-        let rW = rect.width, rH = rect.height, oL = 0, oT = 0;
-
-        if (cAR > rAR) { rH = rect.width  / cAR; oT = (rect.height - rH) / 2; }
-        else            { rW = rect.height * cAR; oL = (rect.width  - rW) / 2; }
-
-        return {
-            x: Math.max(0, Math.min(1, (e.clientX - rect.left - oL) / rW)),
-            y: Math.max(0, Math.min(1, (e.clientY - rect.top  - oT) / rH)),
-        };
-    }, [relayMode]);
 
     // ── RAF-coalesced mouse move ───────────────────────────────────────────────
     const handleMouseMove = useCallback((e, type) => {

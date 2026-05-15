@@ -5,7 +5,7 @@ import QRScanner from './components/QRScanner';
 import RemoteView from './components/RemoteView';
 import OTPInput from './components/OTPInput';
 import Home from './components/Home';
-import { Power, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Power, ShieldCheck, ArrowLeft, Shield } from 'lucide-react';
 import { AdaptiveController } from './lib/adaptiveController';
 
 // Use environment variable for production, fallback to local
