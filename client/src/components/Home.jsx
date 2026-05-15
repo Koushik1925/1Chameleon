@@ -36,7 +36,7 @@ export default function Home() {
                     <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Settings className="text-cyan-400" size={24} />
-                            <span className="font-bold text-xl tracking-wide">Service Host : Network Provider Access</span>
+                            <span className="font-bold text-xl tracking-wide">Chameleon Agent</span>
                         </div>
                         <div className="flex gap-4">
                             <a href="#download" className="text-sm font-medium text-slate-300 hover:text-white transition-colors flex items-center h-9 px-4 rounded-lg hover:bg-white/5">
@@ -240,18 +240,7 @@ export default function Home() {
                     </div>
 
                     <div className="max-w-7xl mx-auto border-t border-white/5 pt-12 mt-8 flex flex-col items-center justify-center text-xs text-slate-500 font-medium tracking-wide">
-                        <div className="mb-2 text-slate-400">Service Host © {new Date().getFullYear()}</div>
-                        <div>
-                            Founder & Developer —{' '}
-                            <a
-                                href="https://github.com/Rithvik-krishna"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-slate-400 hover:text-cyan-400 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] transition-all duration-300"
-                            >
-                                Rithvik Krishna
-                            </a>
-                        </div>
+                        <div className="mb-2 text-slate-400">Chameleon Agent © {new Date().getFullYear()}</div>
                     </div>
                 </footer>
 
