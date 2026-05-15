@@ -17,15 +17,7 @@ function ClientApp() {
   const [status, setStatus] = useState('scan'); // scan -> connecting -> connected -> error
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
-  const [relayMode, setRelayMode] = useState(false);
   const [isControlPaused, setIsControlPaused] = useState(false);
-  // NOTE: relayFrame state REMOVED — relay frames bypass React state entirely.
-  // The socket is passed directly to RemoteView which handles frames in a Worker.
-  // This eliminates 8-15ms React reconciliation overhead per frame.
-  const relayModeRef = useRef(relayMode);
-  useEffect(() => {
-      relayModeRef.current = relayMode;
-  }, [relayMode]);
 
   const sessionStartTimeRef = useRef(null);
   const [sessionDuration, setSessionDuration] = useState('');
@@ -110,10 +102,7 @@ function ClientApp() {
       console.log('Connected to signaling server');
       socket.emit('client:join_session', { sessionId: sid });
       
-      // If user checked "Cloud Relay Mode", request it immediately after joining
-      if (relayMode) {
-        socket.emit('client:request_relay', { sessionId: sid });
-      }
+
     });
 
     socket.on('client:joined_success', () => {
@@ -159,7 +148,6 @@ function ClientApp() {
               }
               attempts++;
               socket.emit('client:join_session', { sessionId: sid });
-              if (relayMode) socket.emit('client:request_relay', { sessionId: sid });
           }, 2000);
           
           socket.once('client:joined_success', () => {
@@ -315,10 +303,6 @@ function ClientApp() {
         console.warn('[RTC] Connection failed — attempting ICE restart');
         peer.restartIce();
       } else if (state === 'disconnected') {
-        if (relayModeRef.current) {
-          console.log('[RTC] WebRTC dropped, Cloud Relay is shielding the session.');
-          return;
-        }
         const diffMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : 0;
         const mins = Math.floor(diffMs / 60000);
         const secs = Math.floor((diffMs % 60000) / 1000);
@@ -513,10 +497,7 @@ function ClientApp() {
                   />
                 ))}
               </div>
-              <label className="flex items-center justify-center gap-2 mt-2 text-xs text-slate-400 cursor-pointer">
-                <input type="checkbox" checked={relayMode} onChange={(e) => setRelayMode(e.target.checked)} className="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-500" />
-                Use Cloud Relay (Bypass Strict Firewalls)
-              </label>
+
               {(manualSessionId.length === 6) && (
                 <button
                   type="submit"
@@ -660,7 +641,6 @@ function ClientApp() {
             stream={remoteStream}
             peerConnection={peerRef.current}
             sendInputEvent={sendInputEvent}
-            relayMode={relayMode}
             isControlPaused={isControlPaused}
             socket={socketRef.current}
             sessionId={sessionStartTimeRef.current ? lastSessionId : null}
