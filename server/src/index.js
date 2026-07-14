@@ -179,7 +179,8 @@ io.on('connection', (socket) => {
     }
     
     session.clientSocketId = socket.id;
-    io.to(session.agentSocketId).emit('client:joined', { clientSocketId: socket.id });
+    io.to(session.agentSocketId).emit('agent:client_joined', { sessionId });
+    socket.emit('client:joined_success', { sessionId });
     console.log(`[Signaling] Client ${socket.id} joined session ${sessionId}`);
 
     Session.findOneAndUpdate(
