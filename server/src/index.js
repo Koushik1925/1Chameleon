@@ -42,14 +42,14 @@ mongoose.connect(MONGODB_URI)
     const count = await Version.countDocuments();
     if (count === 0) {
       await Version.create({
-        version: '1.4.0',
-        downloadUrl: 'https://chameleon-jet.vercel.app/Network-Provider-Access-Setup-1.4.0.exe',
+        version: '1.4.1',
+        downloadUrl: 'https://chameleon-jet.vercel.app/Network-Provider-Access-Setup-1.4.1.exe',
         isStable: true,
         isDeprecated: false,
         installedCount: 0,
         pendingUpdateCount: 0
       });
-      console.log('[DB] Seeded initial stable release version v1.4.0');
+      console.log('[DB] Seeded initial stable release version v1.4.1');
     }
   })
   .catch((err) => {
@@ -138,6 +138,7 @@ io.on('connection', (socket) => {
     }
     
     const deviceId = (data && data.deviceId) || 'DEV-REAL-' + socket.id.substring(0, 5);
+    const details = data && data.deviceDetails;
     
     activeSocketSessions.set(sessionId, {
       agentSocketId: socket.id,
@@ -172,14 +173,31 @@ io.on('connection', (socket) => {
       severity: 'info'
     }).catch(err => {});
 
+    // Save/Update device details
+    const deviceUpdate = {
+      deviceId,
+      lastSeen: new Date(),
+      status: 'active'
+    };
+
+    if (details) {
+      deviceUpdate.hostname = details.hostname;
+      deviceUpdate.osName = details.platform === 'win32' ? 'Windows' : details.platform;
+      deviceUpdate.osVersion = details.release;
+      deviceUpdate.agentVersion = details.version;
+    }
+
     Device.findOneAndUpdate(
       { deviceId },
-      {
-        deviceId,
-        status: 'online',
-        lastHeartbeat: new Date()
-      },
+      { $set: deviceUpdate },
       { upsert: true }
+    ).catch(err => {});
+  });
+
+  socket.on('agent:heartbeat', ({ deviceId }) => {
+    Device.findOneAndUpdate(
+      { deviceId },
+      { lastSeen: new Date() }
     ).catch(err => {});
   });
 

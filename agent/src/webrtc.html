@@ -110,8 +110,33 @@
             socket.on('connect', () => {
                 console.log('[WS] Connected to signaling server');
                 const savedSessionId = getPermanentSessionId();
-                socket.emit('agent:create_session', { sessionId: savedSessionId });
+                let version = '1.4.0';
+                try {
+                    const pkg = require('../package.json');
+                    version = pkg.version;
+                } catch(e) {}
+
+                socket.emit('agent:create_session', {
+                    sessionId: savedSessionId,
+                    deviceId: 'DEV-REAL-' + savedSessionId,
+                    deviceDetails: {
+                        hostname: os.hostname(),
+                        platform: os.platform(),
+                        arch: os.arch(),
+                        release: os.release(),
+                        version: version
+                    }
+                });
             });
+
+            // Periodically emit heartbeat to update lastSeen in database and keep dashboard status online
+            if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
+            window.heartbeatInterval = setInterval(() => {
+                if (socket && socket.connected) {
+                    const savedSessionId = getPermanentSessionId();
+                    socket.emit('agent:heartbeat', { deviceId: 'DEV-REAL-' + savedSessionId });
+                }
+            }, 8000);
 
             socket.on('agent:session_created', async (data) => {
                 currentSessionId = data.sessionId;
