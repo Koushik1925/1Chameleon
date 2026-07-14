@@ -69,6 +69,15 @@ app.get('/ping', (req, res) => {
   res.send('pong');
 });
 
+// Database Diagnostic Route
+app.get('/test-db', (req, res) => {
+  res.json({
+    readyState: mongoose.connection.readyState,
+    hasUri: !!process.env.MONGODB_URI,
+    env: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Root Welcome Route
 app.get('/', (req, res) => {
   res.send('Chameleon Signaling Backend is running. Please access the admin dashboard on the frontend port (default 5173).');
