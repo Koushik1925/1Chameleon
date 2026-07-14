@@ -11,6 +11,7 @@
         const { ipcRenderer } = require('electron');
         const { io } = require('socket.io-client');
         const QRCode = require('qrcode');
+        const os = require('os');
 
         const SIGNALING_URL = 'https://chameleon-1.onrender.com';
 
@@ -27,6 +28,22 @@
         let peerConnection = null;
         let localStream = null;
         let currentSessionId = null;
+
+        // Generate a 100% permanent 6-digit numeric code based on device hardware specs
+        function getPermanentSessionId() {
+            try {
+                const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
+                let hash = 0;
+                for (let i = 0; i < identifier.length; i++) {
+                    hash = (hash * 31 + identifier.charCodeAt(i)) & 0xffffffff;
+                }
+                const code = Math.abs(hash) % 900000 + 100000;
+                return code.toString();
+            } catch (e) {
+                // Fallback to random if hardware fetch fails
+                return Math.floor(100000 + Math.random() * 900000).toString();
+            }
+        }
 
         // DUAL DATA CHANNELS  ─ the core input-lag fix
         // mouse  → unordered + unreliable  (UDP semantics: drops are fine, new coord arrives immediately)
@@ -92,15 +109,12 @@
 
             socket.on('connect', () => {
                 console.log('[WS] Connected to signaling server');
-                const savedSessionId = localStorage.getItem('chameleon_permanent_id');
-                if (savedSessionId) {
-                    socket.emit('agent:create_session', { sessionId: savedSessionId });
-                }
+                const savedSessionId = getPermanentSessionId();
+                socket.emit('agent:create_session', { sessionId: savedSessionId });
             });
 
             socket.on('agent:session_created', async (data) => {
                 currentSessionId = data.sessionId;
-                localStorage.setItem('chameleon_permanent_id', data.sessionId);
                 const qrUrl = `https://chameleon-jet.vercel.app/?sess=${data.sessionId}`;
 
                 try {
@@ -681,7 +695,7 @@
         ipcRenderer.on('session:request_pairing', () => {
             if (!socket) initSignaling();
             if (!socket.connected) socket.connect();
-            const savedSessionId = localStorage.getItem('chameleon_permanent_id');
+            const savedSessionId = getPermanentSessionId();
             socket.emit('agent:create_session', { sessionId: savedSessionId });
         });
 
