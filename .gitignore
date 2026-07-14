@@ -30,3 +30,5 @@ tmp-icons/
 *.swp
 *.swo
 .DS_Store
+
+.vercel
