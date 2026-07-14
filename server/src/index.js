@@ -74,7 +74,9 @@ app.get('/test-db', (req, res) => {
   res.json({
     readyState: mongoose.connection.readyState,
     hasUri: !!process.env.MONGODB_URI,
-    env: process.env.NODE_ENV || 'development'
+    env: process.env.NODE_ENV || 'development',
+    activeSocketSessionsCount: activeSocketSessions.size,
+    activeSocketSessionsKeys: Array.from(activeSocketSessions.keys())
   });
 });
 
