@@ -40,14 +40,14 @@ mongoose.connect(MONGODB_URI)
     const count = await Version.countDocuments();
     if (count === 0) {
       await Version.create({
-        version: '1.3.3',
-        downloadUrl: 'https://chameleon-jet.vercel.app/Network-Provider-Access-Setup-1.3.3.exe',
+        version: '1.4.0',
+        downloadUrl: 'https://chameleon-jet.vercel.app/Network-Provider-Access-Setup-1.4.0.exe',
         isStable: true,
         isDeprecated: false,
         installedCount: 0,
         pendingUpdateCount: 0
       });
-      console.log('[DB] Seeded initial stable release version v1.3.3');
+      console.log('[DB] Seeded initial stable release version v1.4.0');
     }
   })
   .catch((err) => {
