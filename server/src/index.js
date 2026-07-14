@@ -7,6 +7,8 @@ const { Server } = require('socket.io');
 
 const Version = require('./models/Version');
 const Log = require('./models/Log');
+const Session = require('./models/Session');
+const Device = require('./models/Device');
 
 // Route Imports
 const agentRoutes = require('./routes/agent');
@@ -124,8 +126,11 @@ io.on('connection', (socket) => {
       sessionId = Math.floor(100000 + Math.random() * 900000).toString();
     }
     
+    const deviceId = (data && data.deviceId) || 'DEV-REAL-' + socket.id.substring(0, 5);
+    
     activeSocketSessions.set(sessionId, {
       agentSocketId: socket.id,
+      deviceId: deviceId,
       clientSocketId: null,
       adminSocketIds: new Set(),
       createdAt: Date.now()
@@ -133,18 +138,54 @@ io.on('connection', (socket) => {
     
     socket.emit('agent:session_created', { sessionId, expiresIn: 0 });
     console.log(`[Signaling] Session ${sessionId} created by agent ${socket.id}`);
+
+    // Sync to database
+    Session.findOneAndUpdate(
+      { sessionId },
+      {
+        sessionId,
+        deviceId,
+        sessionCode: sessionId,
+        clientLink: `https://chameleon-jet.vercel.app/?sess=${sessionId}`,
+        status: 'active',
+        startTime: new Date()
+      },
+      { upsert: true }
+    ).catch(err => console.error('[DB Sync] Session create error:', err));
+    
+    Log.create({
+      eventType: 'Session Started',
+      deviceId,
+      sessionId,
+      description: `Real agent started session ${sessionId}`,
+      severity: 'info'
+    }).catch(err => {});
+
+    Device.findOneAndUpdate(
+      { deviceId },
+      {
+        deviceId,
+        status: 'online',
+        lastHeartbeat: new Date()
+      },
+      { upsert: true }
+    ).catch(err => {});
   });
 
   socket.on('client:join_session', ({ sessionId }) => {
     const session = activeSocketSessions.get(sessionId);
     if (!session) {
-      return socket.emit('error', { message: 'Session not found or expired' });
+      return socket.emit('error', { message: 'Session not found' });
     }
     
     session.clientSocketId = socket.id;
-    io.to(session.agentSocketId).emit('agent:client_joined', { sessionId });
-    socket.emit('client:joined_success', { sessionId });
+    io.to(session.agentSocketId).emit('client:joined', { clientSocketId: socket.id });
     console.log(`[Signaling] Client ${socket.id} joined session ${sessionId}`);
+
+    Session.findOneAndUpdate(
+      { sessionId },
+      { status: 'active' }
+    ).catch(err => {});
   });
 
   socket.on('signal:sdp', ({ sessionId, sdp, to }) => {
@@ -244,6 +285,26 @@ io.on('connection', (socket) => {
         }
         activeSocketSessions.delete(sessionId);
         console.log(`[Signaling] Session ${sessionId} closed because agent disconnected`);
+
+        // Database Sync
+        Session.findOneAndUpdate(
+          { sessionId },
+          { status: 'completed', endTime: new Date() }
+        ).catch(err => {});
+
+        Log.create({
+          eventType: 'Session Ended',
+          deviceId: session.deviceId,
+          sessionId,
+          description: `Session ${sessionId} completed (agent disconnected)`,
+          severity: 'info'
+        }).catch(err => {});
+
+        Device.findOneAndUpdate(
+          { deviceId: session.deviceId },
+          { status: 'offline' }
+        ).catch(err => {});
+
       } else if (session.clientSocketId === socket.id) {
         io.to(session.agentSocketId).emit('session:ended', { reason: 'Client disconnected' });
         session.clientSocketId = null;
