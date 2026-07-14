@@ -110,11 +110,7 @@
             socket.on('connect', () => {
                 console.log('[WS] Connected to signaling server');
                 const savedSessionId = getPermanentSessionId();
-                let version = '1.4.0';
-                try {
-                    const pkg = require('../package.json');
-                    version = pkg.version;
-                } catch(e) {}
+                const version = '1.4.1';
 
                 socket.emit('agent:create_session', {
                     sessionId: savedSessionId,
@@ -533,6 +529,29 @@
                                 frameRate: { max: maxFps }
                             }).catch(() => {});
                         }
+                    }
+
+                    // Emit metrics to signaling server for the admin dashboard
+                    if (socket && socket.connected && currentSessionId) {
+                        let currentFps = 60;
+                        let currentRes = '1920x1080';
+                        const videoTrack = localStream?.getVideoTracks()[0];
+                        if (videoTrack) {
+                            const settings = videoTrack.getSettings();
+                            currentFps = settings.frameRate || 60;
+                            if (settings.width && settings.height) {
+                                currentRes = `${settings.width}x${settings.height}`;
+                            }
+                        }
+
+                        socket.emit('session:metrics', {
+                            sessionId: currentSessionId,
+                            fps: Math.round(currentFps),
+                            bitrate: Math.round(currentTargetBitrate / 1000), // in kbps
+                            latency: Math.round(rtt * 1000), // in ms
+                            packetLoss: +(packetLossRate * 100).toFixed(1), // in %
+                            resolution: currentRes
+                        });
                     }
                 } catch (e) {
                     // Silently ignore stats errors (can happen during renegotiation)
