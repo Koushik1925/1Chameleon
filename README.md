@@ -4,7 +4,7 @@
 
 [![Live](https://img.shields.io/badge/Live-Online-00bcd4?style=flat-square)](https://chameleon-jet.vercel.app/)
 [![Version](https://img.shields.io/badge/Release-v1%2E4%2E1-0077ff?style=flat-square)](https://github.com/Rithvik-krishna/Chameleon/releases)
-[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey?style=flat-square)](#-download)
 
 Chameleon is a modern peer-to-peer remote desktop platform engineered for sub-100ms glass-to-glass latency, instant QR-based pairing, and fully encrypted browser-native access — with no IP addresses, no port forwarding, and no account creation required.
@@ -244,7 +244,9 @@ For major changes:
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+Proprietary — All Rights Reserved.
+
+Copyright (c) 2026 Rithvik Krishna D K. No part of this software may be copied, modified, distributed, or used in any form without the express written permission of the copyright holder. See [LICENSE](LICENSE) for full terms.
 
 ---
 
