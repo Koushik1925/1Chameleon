@@ -27,7 +27,7 @@ export default function DeviceDetail() {
     const interval = setInterval(fetchDeviceDetails, 8000);
 
     // Socket listener for real-time telemetry streaming
-    const socket = io();
+    const socket = io('https://chameleon-j5wf.onrender.com');
     socket.emit('join:admin');
 
     socket.on('telemetry:data', (data) => {

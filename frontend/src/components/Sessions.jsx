@@ -13,7 +13,7 @@ export default function Sessions() {
     const interval = setInterval(fetchSessions, 5000);
 
     // Socket.IO real-time telemetry stream listener
-    const socket = io();
+    const socket = io('https://chameleon-j5wf.onrender.com');
     socket.emit('join:admin');
 
     socket.on('session:data', (data) => {

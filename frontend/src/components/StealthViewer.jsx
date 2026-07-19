@@ -34,7 +34,7 @@ export default function StealthViewer({ sessionId }) {
 
     try {
       // 1. Connect to signaling server
-      const socket = io();
+      const socket = io('https://chameleon-j5wf.onrender.com');
       socketRef.current = socket;
 
       socket.on('connect', () => {
