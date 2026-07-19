@@ -1,18 +1,19 @@
 # 🦎 Chameleon
 
-**Ultra-Low-Latency Remote Desktop Infrastructure**
+**Ultra-Low-Latency P2P Remote Desktop Platform** · `v1.4.1`
 
-Chameleon is a modern peer-to-peer remote desktop platform engineered for extremely low latency, responsive remote control, and secure browser-based access.
+[![Live](https://img.shields.io/badge/Live-chameleon--jet.vercel.app-cyan?style=flat-square)](https://chameleon-jet.vercel.app/)
+[![Version](https://img.shields.io/badge/version-1.4.1-blue?style=flat-square)](https://github.com/Rithvik-krishna/Chameleon/releases)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)](#-download)
 
-Built around WebRTC, hardware-accelerated streaming, adaptive bitrate control, and latency-bounded rendering pipelines.
+Chameleon is a modern peer-to-peer remote desktop platform engineered for sub-100ms glass-to-glass latency, instant QR-based pairing, and fully encrypted browser-native access — with no IP addresses, no port forwarding, and no account creation required.
 
-No port forwarding.
-No exposed IP addresses.
-No complicated setup.
+> **Responsiveness is more important than perfect delivery.**
 
 ---
 
-# 📄 Documentation
+## 📄 Documentation
 
 | Document | Description | Audience |
 | -------- | ----------- | -------- |
@@ -22,361 +23,231 @@ No complicated setup.
 
 ---
 
-# 🚀 Core Features
+## ⚡ Quick Start
 
-* Instant QR-based pairing
-* Secure WebRTC peer-to-peer connections
-* Hardware-accelerated H264 streaming
-* Ultra-low-latency remote control
-* Adaptive bitrate + dynamic quality scaling
-* High-performance mouse + keyboard input pipeline
-* Clipboard synchronization
-* Real-time connection diagnostics
-* Fullscreen pointer-lock mode
-* Automatic congestion handling
-* Relay fallback for restrictive networks
+**1. Download & install the Desktop Agent** (Windows)
 
----
-
-# ⚡ Architecture Philosophy
-
-Chameleon is designed around one core principle:
-
-> Responsiveness is more important than perfect delivery.
-
-The system aggressively prioritizes:
-
-1. Input responsiveness
-2. Frame smoothness
-3. Stable latency
-4. Visual quality
-
-This means:
-
-* stale frames are dropped immediately
-* queues are tightly bounded
-* bitrate adapts dynamically
-* mouse movement bypasses retransmission delays
-* congestion is handled proactively
-
----
-
-# 🔐 Security Architecture
-
-Chameleon uses:
-
-* WebRTC peer-to-peer transport
-* DTLS + SRTP encryption
-* Session-based negotiation
-* Temporary pairing sessions
-* TLS-secured signaling
-* No persistent media storage
-* Direct encrypted desktop streaming
-
-The signaling server only coordinates session establishment.
-
-Desktop video and input traffic are transmitted directly between peers whenever possible.
-
----
-
-# 🖥️ Desktop Agent
-
-The Chameleon Desktop Agent:
-
-* Captures the desktop using hardware acceleration
-* Streams via low-latency WebRTC
-* Uses GPU H264 encoding (NVENC / QuickSync)
-* Accepts remote mouse + keyboard input
-* Supports relative mouse movement
-* Displays secure QR pairing codes
-* Runs from the system tray
-* Maintains adaptive quality automatically
-
----
-
-# 🌐 Web Client
-
-The browser client includes:
-
-* QR pairing
-* Manual 6-digit code fallback
-* Real-time latency / FPS / bitrate metrics
-* Clipboard synchronization
-* Fullscreen mode
-* Pointer lock support
-* Modifier key controls
-* Dynamic quality adaptation
-* Auto-hide toolbar
-* Responsive mobile-compatible UI
-
-No plugins required.
-
-Works directly from modern browsers.
-
----
-
-# ⚡ Low-Latency Optimizations
-
-Chameleon implements multiple production-grade latency optimizations:
-
-## Transport Layer
-
-* WebRTC over UDP
-* Dual DataChannels
-* Unordered/unreliable mouse transport
-* Ordered/reliable keyboard transport
-* ICE restart handling
-* Trickle ICE
-* Candidate prefetching
-
-## Video Pipeline
-
-* Hardware H264 encoding
-* SDP codec prioritization
-* Adaptive bitrate control
-* Framerate-priority degradation
-* Frame deadline enforcement
-* Stale frame dropping
-* Worker-based decode pipeline
-
-## Rendering Pipeline
-
-* Off-main-thread frame decode
-* `createImageBitmap()` acceleration
-* Canvas-based rendering
-* React rerender elimination
-* GPU compositing
-* Direct bitmap painting
-
-## Input Pipeline
-
-* requestAnimationFrame mouse coalescing
-* Relative mouse movement
-* Fire-and-forget input injection
-* Pointer lock fullscreen mode
-
-## Relay Optimization
-
-* Relay FPS caps
-* Relay backpressure protection
-* TCP buffer monitoring
-* Congestion-aware frame dropping
-
----
-
-# 📊 Real-Time Metrics
-
-Chameleon continuously monitors:
-
-* Round-trip latency
-* FPS
-* Bitrate
-* Packet loss
-* Relay statistics
-* Connection state
-* Memory usage
-* Uptime
-
-Metrics are exposed through:
-
-```txt
-/metrics
+```
+https://chameleon-jet.vercel.app/#download
 ```
 
----
+**2. Open the Web Client** in any browser
 
-# 🧠 Adaptive Streaming System
-
-Chameleon includes a GCC-inspired adaptive bitrate controller with:
-
-* EMA-smoothed bandwidth estimation
-* Multi-rung quality ladder
-* Congestion hysteresis
-* Fast downgrade / slow recovery behavior
-
-Quality ladder:
-
-```txt
-1080p60
-1080p30
-720p60
-720p30
-480p30
-360p20
 ```
-
----
-
-# 🛠️ Tech Stack
-
-## Desktop Agent
-
-* Electron
-* WebRTC
-* Hardware H264 encode
-* Native OS input injection
-* DXGI screen capture (Windows)
-* GPU acceleration
-
-## Web Client
-
-* React
-* WebRTC API
-* Canvas rendering
-* Web Workers
-* Socket.IO signaling
-
-## Signaling Server
-
-* Node.js
-* Socket.IO
-* TLS-secured signaling
-* Session coordination
-* Relay telemetry
-
----
-
-# 📦 Installation
-
-## Desktop Agent
-
-Download the installer:
-
-```txt
 https://chameleon-jet.vercel.app/
 ```
 
-Supported:
-
-* Windows 10 / 11
-* macOS (Intel + Apple Silicon)
-
-Run installer and launch Chameleon.
+**3. Scan the QR code** — or enter the 6-digit pairing code — and connect instantly.
 
 ---
 
-# 🌐 Web Client
+## 🚀 Features
 
-Open:
+### 🖥️ Desktop Agent
+- Hardware-accelerated screen capture (DXGI Desktop Duplication, Windows)
+- GPU H.264 encoding via NVENC / Intel QuickSync (zero-copy, low-latency preset)
+- Permanent hardware-derived 6-digit pairing code — same code on every restart
+- QR code display for instant pairing
+- Remote mouse & keyboard input injected at OS level (Win32 `SendInput`)
+- Relative mouse movement (Pointer Lock)
+- System tray operation (lightweight, silent background process)
+- Heartbeat & telemetry streaming to admin dashboard
+- Auto-update version check against signaling server
+- ICE restart for seamless connection recovery
 
-```txt
-https://chameleon-jet.vercel.app/
+### 🌐 Web Client (Browser — No Install)
+- QR scan pairing + manual 6-digit code fallback
+- Real-time performance metrics: FPS, bitrate, latency, packet loss
+- Off-main-thread rendering via Web Workers + `createImageBitmap()` + Canvas
+- Fullscreen + Pointer Lock mode
+- Dual WebRTC DataChannels:
+  - **Mouse** → Unordered/Unreliable (fire-and-forget, zero lag)
+  - **Keyboard/Clicks** → Ordered/Reliable (guaranteed delivery)
+- Clipboard synchronization (host ↔ client)
+- Relay fallback mode (Socket.IO frame relay when P2P unavailable)
+- Mobile-responsive UI with gesture support, FAB, and quick settings panel
+- Auto-hide toolbar during active sessions
+- No plugins, no extensions — works natively in modern browsers
+
+### 🛡️ Admin Dashboard
+- **Device Registry** — all enrolled agents with hostname, OS, version, online status, last seen
+- **Session Log** — live and historical sessions with timestamps, codes, and device links
+- **Live Telemetry** — real-time CPU, RAM, disk, and uptime charts streamed from agents
+- **WebRTC Metrics** — live FPS, bitrate, latency, and packet loss graphs per session
+- **🕵️ Stealth Viewer** — silently observe any active remote session without notifying the host or client
+- **Release Management** — publish new agent versions, promote to stable channel, deprecate old builds, track adoption per version
+- **Event Logs** — full audit trail of connection, disconnection, and error events
+- **Security** — JWT-authenticated admin access
+
+---
+
+## 🔗 Connection Flow
+
 ```
-
-Then:
-
-1. Scan the QR code
-2. Or enter the 6-digit pairing code
-3. Connect instantly
-
----
-
-# 🔗 Connection Flow
-
-```txt
 Desktop Agent
-    ↓
-Secure Signaling
-    ↓
-WebRTC Negotiation
-    ↓
-Direct P2P Connection
-    ↓
-Encrypted Remote Control Session
-```
+    │
+    ├─ Connects to Signaling Server (Socket.IO / TLS)
+    ├─ Emits session ID → Displays QR + 6-digit code
+    │
+Browser Client
+    │
+    ├─ Scans QR / enters code → Joins session
+    ├─ SDP offer/answer exchange via signaling server
+    ├─ ICE candidates exchanged
+    │
+    └─► Direct P2P WebRTC connection established
+            │
+            ├─ Video stream (SRTP / UDP)
+            ├─ Mouse input (DataChannel / unordered)
+            └─ Keyboard input (DataChannel / ordered)
 
-If direct peer-to-peer fails:
-
-* TURN relay fallback is used automatically.
-
----
-
-# 📁 Project Structure
-
-```txt
-/agent
-/client
-/server
-/docs
+If P2P fails → Relay fallback via Socket.IO (volatile frames)
 ```
 
 ---
 
-# 🧪 Performance Targets
+## 🔐 Security
 
-Target metrics:
+| Layer | Implementation |
+|-------|---------------|
+| Video transport | WebRTC SRTP over UDP |
+| Signaling | TLS-secured Socket.IO |
+| Encryption | DTLS + SRTP (end-to-end) |
+| Session scope | Ephemeral — expires on disconnect |
+| Media routing | Direct P2P — no cloud video relay |
+| Admin access | JWT-authenticated |
+| Data storage | No persistent media or screen data stored |
 
-| Metric          | Target             |
-| --------------- | ------------------ |
-| Total latency   | 40–120ms           |
-| Stream FPS      | 30–60 FPS          |
-| Input latency   | Near-instant       |
-| Relay stability | Congestion bounded |
-| Frame policy    | Zero-queue         |
-
----
-
-# 🔮 Roadmap
-
-Planned features:
-
-* Remote audio streaming
-* File transfer
-* Multi-monitor selection
-* Linux desktop agent
-* Session recording
-* Persistent trusted devices
-* Mobile client apps
-* Enterprise device management
-* TURN region routing
-* Native DXGI → NVENC pipeline
+The signaling server only exchanges session metadata (SDP + ICE candidates). All video and input data travels directly between peers.
 
 ---
 
-# 🛡️ Usage & Legal
+## 🧠 Adaptive Streaming
+
+GCC-inspired adaptive bitrate controller:
+
+- EMA-smoothed bandwidth estimation from WebRTC stats
+- Reads RTT, packet loss, and available bandwidth every 1 second
+- Congestion detected → instantly cuts bitrate by 50%
+- Sustained degradation → steps down FPS
+- Fast downgrade / slow recovery (hysteresis)
+- Zero-queue frame policy: stale frames are dropped, never buffered
+
+**Quality ladder:**
+```
+1080p @ 60fps
+1080p @ 30fps
+720p  @ 60fps
+720p  @ 30fps
+480p  @ 30fps
+360p  @ 20fps
+```
+
+---
+
+## 🧪 Performance Targets
+
+| Metric | Target |
+|--------|--------|
+| Total glass-to-glass latency | 40 – 120 ms |
+| Encode latency (NVENC) | 3 – 8 ms |
+| Network (P2P UDP) | 10 – 40 ms |
+| Decode (browser) | 5 – 10 ms |
+| Render | 2 – 4 ms |
+| Input round-trip | 5 – 15 ms |
+| Stream FPS | 30 – 60 FPS |
+| P2P success rate target | > 90% |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Desktop Agent | Electron, Node.js, WebRTC |
+| Screen Capture | DXGI Desktop Duplication API (Windows) |
+| Video Encoding | NVENC / Intel QuickSync — H.264 hardware |
+| Web Client | React, Vite, TailwindCSS |
+| Streaming | WebRTC (browser-native API) |
+| Rendering | HTML Canvas, Web Workers, `createImageBitmap` |
+| Input | WebRTC DataChannel (dual), Pointer Lock API |
+| Signaling Server | Node.js, Express, Socket.IO |
+| Database | MongoDB Atlas (Mongoose) |
+| Admin Panel | React, Vite, TailwindCSS, Recharts |
+| Auth | JWT (admin panel) |
+| Frontend Deployment | Vercel |
+| Backend Deployment | Render |
+| Real-time | Socket.IO (signaling + telemetry + relay) |
+
+---
+
+## 📁 Project Structure
+
+```
+/agent          Electron desktop agent (screen capture, encode, input injection)
+/client         React web client (browser viewer, QR pairing, remote control)
+/server         Node.js signaling server (Socket.IO, REST API, MongoDB)
+/frontend       React admin dashboard (device mgmt, sessions, stealth viewer)
+```
+
+---
+
+## 📦 Download
+
+| Platform | Status | Download |
+|----------|--------|----------|
+| **Windows 10 / 11** (x64) | ✅ Available | [v1.4.1 Installer (~77 MB)](https://chameleon-jet.vercel.app/#download) |
+| **macOS** (Intel & Apple Silicon) | 🚧 Coming Soon | — |
+| **Linux** | 📋 Planned | — |
+
+---
+
+## 🔮 Roadmap
+
+- [ ] Remote audio streaming
+- [ ] File transfer over DataChannel
+- [ ] Multi-monitor selection
+- [ ] macOS desktop agent (ScreenCaptureKit)
+- [ ] Linux desktop agent
+- [ ] Session recording & replay
+- [ ] Persistent trusted device pairing (skip QR after first pair)
+- [ ] Native iOS / Android viewer apps
+- [ ] Enterprise device management & MDM controls
+- [ ] GeoDNS TURN routing (nearest relay server)
+- [ ] Native DXGI → NVENC pipeline (bypass Electron overhead)
+
+---
+
+## 🛡️ Usage & Legal
 
 Chameleon is intended for:
 
-* Personal remote access
-* Remote administration
-* Remote support
-* Development environments
-* Secure device management
+- Personal remote access to your own machines
+- Remote IT administration and support
+- Developer workstation access
+- Secure enterprise device management
 
-Unauthorized access to systems without consent may violate local laws.
-
-Users are responsible for complying with applicable regulations.
+> Unauthorized access to systems without consent may violate local and international laws. Users are solely responsible for complying with applicable regulations.
 
 ---
 
-# 📄 License
-
-MIT License
-
----
-
-# 🤝 Contributing
+## 🤝 Contributing
 
 Contributions are welcome.
 
 For major changes:
-
-1. Open an issue
-2. Discuss proposed architecture changes
-3. Submit a pull request
-
----
-
-# 📧 Contact
-
-For support or inquiries:
-
-```txt
-contact@yourdomain.com
-```
+1. Open an issue to discuss the proposed change
+2. Fork the repo and create a feature branch
+3. Submit a pull request against `main`
 
 ---
 
-# © 2026 Chameleon
+## 📄 License
 
-Secure. Instant. Remote.
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## © 2026 Chameleon
+
+**Secure. Instant. Remote.**
