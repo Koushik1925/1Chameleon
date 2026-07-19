@@ -2,10 +2,10 @@
 
 **Ultra-Low-Latency P2P Remote Desktop Platform** · `v1.4.1`
 
-[![Live](https://img.shields.io/badge/Live-chameleon--jet.vercel.app-cyan?style=flat-square)](https://chameleon-jet.vercel.app/)
-[![Version](https://img.shields.io/badge/version-1.4.1-blue?style=flat-square)](https://github.com/Rithvik-krishna/Chameleon/releases)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)](#-download)
+[![Live](https://img.shields.io/badge/Live-chameleon--jet.vercel.app-00bcd4?style=flat-square)](https://chameleon-jet.vercel.app/)
+[![Version](https://img.shields.io/badge/version-1.4.1-0077ff?style=flat-square)](https://github.com/Rithvik-krishna/Chameleon/releases)
+[![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey?style=flat-square)](#-download)
 
 Chameleon is a modern peer-to-peer remote desktop platform engineered for sub-100ms glass-to-glass latency, instant QR-based pairing, and fully encrypted browser-native access — with no IP addresses, no port forwarding, and no account creation required.
 
