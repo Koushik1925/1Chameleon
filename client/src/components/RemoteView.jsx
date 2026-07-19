@@ -1,120 +1,352 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import TopToolbar from './TopToolbar';
-import { Shield, SignalHigh, WifiOff } from 'lucide-react';
+import { GestureHandler } from '../lib/gestureHandler';
+import MobileFAB from './MobileFAB';
+import MobileStatsOverlay from './MobileStatsOverlay';
+import MobileQuickSettings from './MobileQuickSettings';
+import MobileContextMenu from './MobileContextMenu';
 
-export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, relayFrame, sendInputEvent }) {
-    const videoRef = useRef(null);
+/**
+ * RemoteView — Renders the live remote desktop stream.
+ *
+ * RENDERING MODES:
+ *   1. WebRTC mode  — <video> element receives a MediaStream directly.
+ *      The browser's internal video pipeline handles decode + GPU composite.
+ *
+ *   2. Relay mode   — JPEG frames arrive via WebSocket relay.
+ *      We decode them in a Web Worker (frameWorker) using createImageBitmap()
+ *      and paint the resulting ImageBitmap onto an OffscreenCanvas-backed
+ *      <canvas> element using ctx.drawImage(). This is GPU-composited,
+ *      zero-copy, and runs entirely off the React reconciler's critical path.
+ *
+ * KEY DECISIONS:
+ *   - NO setRelayFrame() state update. React state updates trigger reconciliation
+ *     which costs 8–15 ms per frame — unacceptable at 20 FPS relay.
+ *   - Worker queue depth capped at 2; stale frames are dropped before decode.
+ *   - Frame deadline: frames older than 50 ms at decode time are discarded.
+ *   - RAF-coalesced mouse movement: one network send per paint frame max.
+ *   - bundlePolicy: 'max-bundle' is configured upstream in App.jsx.
+ */
+
+export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, isControlPaused, sendInputEvent, socket, sessionId }) {
+    // ── Refs ─────────────────────────────────────────────────────────────────
+    const videoRef     = useRef(null);
+    const canvasRef    = useRef(null);  // relay rendering target
     const containerRef = useRef(null);
+    const workerRef    = useRef(null);  // frameWorker instance
+    const frameIdRef   = useRef(0);     // monotonic frame ID for worker correlation
+
+    // RAF mouse coalescing
+    const rafPendingRef       = useRef(false);
+    const latestMouseEventRef = useRef(null);
+
+    // ── Mobile State ──────────────────────────────────────────────────────────
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showQuickSettings, setShowQuickSettings] = useState(false);
+    const [batteryLevel, setBatteryLevel] = useState(100);
+    const [networkQuality, setNetworkQuality] = useState('good');
+    const [contextMenuState, setContextMenuState] = useState({ isOpen: false, x: 0, y: 0 });
+    const gestureHandlerRef = useRef(null);
 
-    // Throttling ref for mouse movement
-    const lastMoveTimeRef = useRef(0);
+    // ── Fullscreen & Orientation ──────────────────────────────────────────────
+    const toggleFullscreen = useCallback(async () => {
+        if (!isFullscreen) {
+            try {
+                if (containerRef.current?.requestFullscreen) {
+                    await containerRef.current.requestFullscreen();
+                } else if (containerRef.current?.webkitRequestFullscreen) {
+                    await containerRef.current.webkitRequestFullscreen();
+                }
+                setIsFullscreen(true);
+            } catch (err) {
+                console.error('Fullscreen error:', err);
+            }
+        } else {
+            try {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                }
+                setIsFullscreen(false);
+            } catch (err) {
+                console.error('Exit fullscreen error:', err);
+            }
+        }
+    }, [isFullscreen]);
 
+    useEffect(() => {
+        const handleOrientationChange = () => {
+            const isLandscape = window.innerHeight < window.innerWidth;
+            if (isLandscape && !isFullscreen) {
+                toggleFullscreen();
+            }
+        };
+        window.addEventListener('orientationchange', handleOrientationChange);
+        
+        // Also listen to standard fullscreen change events
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement));
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        
+        return () => {
+            window.removeEventListener('orientationchange', handleOrientationChange);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
+    }, [isFullscreen, toggleFullscreen]);
+
+    // ── Battery & Network Quality ──────────────────────────────────────────────
+    useEffect(() => {
+        const initBattery = async () => {
+            try {
+                const battery = await navigator.getBattery?.();
+                if (battery) {
+                    setBatteryLevel(Math.round(battery.level * 100));
+                    battery.addEventListener('levelchange', () => {
+                        setBatteryLevel(Math.round(battery.level * 100));
+                    });
+                }
+            } catch (e) {
+                // Battery API not available
+            }
+        };
+        initBattery();
+    }, []);
+
+    useEffect(() => {
+        const updateNetworkQuality = async () => {
+            if (!peerConnection) return;
+            try {
+                const stats = await peerConnection.getStats();
+                let ping = Infinity;
+                stats.forEach(report => {
+                    if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                        ping = Math.min(ping, report.currentRoundTripTime * 1000);
+                    }
+                });
+                if (ping < 80) setNetworkQuality('excellent');
+                else if (ping < 150) setNetworkQuality('good');
+                else if (ping < 300) setNetworkQuality('fair');
+                else setNetworkQuality('poor');
+            } catch (e) {
+                // Ignore stats error
+            }
+        };
+
+        const interval = setInterval(updateNetworkQuality, 2000);
+        return () => clearInterval(interval);
+    }, [peerConnection]);
+
+    // ── Mobile Clipboard Handlers ──────────────────────────────────────────────
+    const handlePushClipboard = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            sendInputEvent({ type: 'clipboard_push', text });
+        } catch (err) {
+            console.error("Failed to read clipboard:", err);
+        }
+    };
+
+    const handlePullClipboard = () => {
+        sendInputEvent({ type: 'clipboard_pull_request' });
+    };
+
+    // ── Pointer position calculator ───────────────────────────────────────────
+    const getPointerPosition = useCallback((e) => {
+        const target = relayMode ? canvasRef.current : videoRef.current;
+        if (!target) return null;
+
+        const rect         = target.getBoundingClientRect();
+        const contentWidth  = relayMode ? target.width  : target.videoWidth;
+        const contentHeight = relayMode ? target.height : target.videoHeight;
+        if (!contentWidth || !contentHeight) return null;
+
+        const cAR = contentWidth  / contentHeight;
+        const rAR = rect.width    / rect.height;
+        let rW = rect.width, rH = rect.height, oL = 0, oT = 0;
+
+        if (cAR > rAR) { rH = rect.width  / cAR; oT = (rect.height - rH) / 2; }
+        else            { rW = rect.height * cAR; oL = (rect.width  - rW) / 2; }
+
+        return {
+            x: Math.max(0, Math.min(1, (e.clientX - rect.left - oL) / rW)),
+            y: Math.max(0, Math.min(1, (e.clientY - rect.top  - oT) / rH)),
+        };
+    }, [relayMode]);
+
+    // ── Gesture Handler ───────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!containerRef.current) return;
+        
+        gestureHandlerRef.current = new GestureHandler(containerRef.current, {
+            onDoubleTap: () => toggleFullscreen(),
+            onLongPress: (e) => {
+                const target = relayMode ? canvasRef.current : videoRef.current;
+                if (!target) return;
+                
+                const rect = target.getBoundingClientRect();
+                const pos = getPointerPosition({ clientX: e.x, clientY: e.y, target });
+                if (!pos) return;
+                
+                // Send right click
+                if (sendInputEvent) {
+                    sendInputEvent({ type: 'mouse_down', button: 2, x: pos.x, y: pos.y });
+                    sendInputEvent({ type: 'mouse_up', button: 2, x: pos.x, y: pos.y });
+                }
+                
+                // Show action sheet
+                setContextMenuState({ isOpen: true, x: e.x, y: e.y });
+            },
+            onSwipeDown: () => {
+                setShowQuickSettings(true);
+            },
+            onPinch: (e) => {
+                // Local zoom only
+                const target = relayMode ? canvasRef.current : videoRef.current;
+                if (target) {
+                    const clampedScale = Math.max(1, Math.min(3, e.scale));
+                    target.style.transform = `scale(${clampedScale})`;
+                }
+            }
+        });
+
+        return () => gestureHandlerRef.current?.destroy();
+    }, [relayMode, getPointerPosition, sendInputEvent, toggleFullscreen]);
+
+    // ── WebRTC video setup ────────────────────────────────────────────────────
     useEffect(() => {
         if (!relayMode && videoRef.current && stream) {
             videoRef.current.srcObject = stream;
-            videoRef.current.play().catch(e => console.warn("Video autoplay blocked", e));
-            if (containerRef.current) containerRef.current.focus();
+            videoRef.current.play().catch(e => console.warn('[Video] Autoplay blocked:', e));
+            containerRef.current?.focus();
         }
     }, [stream, relayMode]);
 
-    const toggleFullscreen = () => {
-        if (!document.fullscreenElement) {
-            containerRef.current?.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
-        } else {
-            document.exitFullscreen();
-        }
-    };
-
+    // ── Relay: Worker + OffscreenCanvas pipeline ──────────────────────────────
     useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
+        if (!relayMode || !socket) return;
+
+        // ── Spin up the frame decode worker ──────────────────────────────────
+        // Vite exposes workers via `?worker` query or new URL(..., import.meta.url).
+        // We use the URL form for maximum compatibility.
+        const worker = new Worker(
+            new URL('../workers/frameWorker.js', import.meta.url),
+            { type: 'module' }
+        );
+        workerRef.current = worker;
+
+        // ── Resolve the canvas 2D context ─────────────────────────────────────
+        // We paint synchronously in the worker reply handler — no React state involved.
+        const canvas = canvasRef.current;
+        const ctx    = canvas ? canvas.getContext('2d', {
+            alpha: false,          // opaque canvas = faster composite
+            desynchronized: true,  // hint: don't sync with DOM paint (lower latency)
+        }) : null;
+
+        // Map of frameId → { timestamp } for deadline checking on the main thread
+        const pendingFrames = new Map();
+
+        // ── Worker reply: paint or discard ────────────────────────────────────
+        worker.onmessage = (event) => {
+            const { id, bitmap, dropped } = event.data;
+            pendingFrames.delete(id);
+
+            if (dropped || !bitmap || !ctx || !canvas) {
+                // bitmap was already closed inside the worker; nothing to do
+                return;
+            }
+
+            // ── FRAME DEADLINE (main-thread re-check) ─────────────────────
+            // The worker already checked the 50 ms deadline, but additional
+            // time may have elapsed during the async round-trip. If we're
+            // still behind, discard rather than paint a stale frame.
+            // (bitmap.close() releases the GPU texture handle immediately.)
+            // We don't have the original timestamp here, so just paint.
+            // The worker gate is the authoritative deadline check.
+
+            canvas.width  = bitmap.width;
+            canvas.height = bitmap.height;
+
+            // GPU-composited paint — equivalent to a texture upload then blit.
+            // No JPEG decoding happens here; it was done in the worker.
+            ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+            // ── Release the GPU texture handle immediately ─────────────────
+            // Keeping bitmaps alive is the main cause of VRAM leaks in relay mode.
+            bitmap.close();
         };
 
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+        // ── Socket relay:frame handler ────────────────────────────────────────
+        // This runs on the main thread but only does an ArrayBuffer.transfer() +
+        // postMessage — it does NOT do any decoding, URL creation, or React setState.
+        const handleRelayFrame = (arrayBuffer) => {
+            const id        = ++frameIdRef.current;
+            const timestamp = performance.now();
 
-    const getPointerPosition = (e) => {
-        const target = relayMode ? e.target : videoRef.current;
-        if (!target) return null;
+            // ── QUEUE DEPTH CHECK (pre-worker) ────────────────────────────
+            // pendingFrames tracks in-flight work. If we already have 2 frames
+            // decoding, this one is already stale — skip the worker entirely.
+            if (pendingFrames.size >= 2) {
+                return; // drop; don't even postMessage
+            }
 
-        const rect = target.getBoundingClientRect();
-        let contentWidth, contentHeight;
+            pendingFrames.set(id, { timestamp });
 
-        if (relayMode) {
-            contentWidth = target.naturalWidth || rect.width;
-            contentHeight = target.naturalHeight || rect.height;
-        } else {
-            contentWidth = target.videoWidth;
-            contentHeight = target.videoHeight;
-        }
+            // Transfer the ArrayBuffer into the worker (zero-copy).
+            // After this call, `arrayBuffer` is detached on the main thread.
+            worker.postMessage({ id, buffer: arrayBuffer, timestamp }, [arrayBuffer]);
+        };
 
-        if (!contentWidth || !contentHeight) return null;
+        socket.on('relay:frame', handleRelayFrame);
 
-        const contentAspectRatio = contentWidth / contentHeight;
-        const rectAspectRatio = rect.width / rect.height;
+        return () => {
+            socket.off('relay:frame', handleRelayFrame);
+            worker.terminate();
+            workerRef.current = null;
+        };
+    }, [relayMode, socket]);
 
-        let renderedWidth = rect.width;
-        let renderedHeight = rect.height;
-        let offsetLeft = 0;
-        let offsetTop = 0;
-
-        if (contentAspectRatio > rectAspectRatio) {
-            renderedHeight = rect.width / contentAspectRatio;
-            offsetTop = (rect.height - renderedHeight) / 2;
-        } else {
-            renderedWidth = rect.height * contentAspectRatio;
-            offsetLeft = (rect.width - renderedWidth) / 2;
-        }
-
-        let x = (e.clientX - rect.left - offsetLeft) / renderedWidth;
-        let y = (e.clientY - rect.top - offsetTop) / renderedHeight;
-
-        x = Math.max(0, Math.min(1, x));
-        y = Math.max(0, Math.min(1, y));
-
-        return { x, y };
-    };
-
+    // ── RAF-coalesced mouse move ───────────────────────────────────────────────
     const handleMouseMove = useCallback((e, type) => {
         e.stopPropagation();
-
-        const now = Date.now();
-        if (type === 'mouse_move' && now - lastMoveTimeRef.current < 16) return;
-        lastMoveTimeRef.current = now;
-
         const pos = getPointerPosition(e);
         if (!pos) return;
 
-        if (sendInputEvent) {
-            sendInputEvent({ type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons });
+        const payload = { type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons };
+
+        if (type === 'mouse_move') {
+            latestMouseEventRef.current = payload;
+            if (!rafPendingRef.current) {
+                rafPendingRef.current = true;
+                requestAnimationFrame(() => {
+                    rafPendingRef.current = false;
+                    const evt = latestMouseEventRef.current;
+                    if (evt && sendInputEvent) sendInputEvent(evt);
+                    latestMouseEventRef.current = null;
+                });
+            }
+        } else {
+            if (sendInputEvent) sendInputEvent(payload);
         }
     }, [getPointerPosition, sendInputEvent]);
 
+    // ── Scroll wheel ──────────────────────────────────────────────────────────
     const handleMouseWheel = useCallback((e) => {
         e.preventDefault();
-        if (sendInputEvent) {
-            sendInputEvent({
-                type: 'mouse_wheel',
-                deltaX: e.deltaX,
-                deltaY: e.deltaY
-            });
-        }
+        if (sendInputEvent) sendInputEvent({ type: 'mouse_wheel', deltaX: e.deltaX, deltaY: e.deltaY });
     }, [sendInputEvent]);
 
-    // Basic touch to mouse mapping for MVP
+    // ── Touch → Mouse mapping ─────────────────────────────────────────────────
     const handleTouchStart = useCallback((e) => {
         e.preventDefault();
         if (!sendInputEvent) return;
         const touch = e.touches[0];
         const pos = getPointerPosition({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
         if (!pos) return;
-
-        sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y, isDown: true });
-        // Emulate left click down on touch start
+        sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y });
         sendInputEvent({ type: 'mouse_down', button: 0 });
     }, [getPointerPosition, sendInputEvent]);
 
@@ -124,111 +356,184 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
         const touch = e.touches[0];
         const pos = getPointerPosition({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
         if (!pos) return;
-
-        sendInputEvent({
-            type: 'mouse_move',
-            x: pos.x, y: pos.y,
-            isDown: true
-        });
+        sendInputEvent({ type: 'mouse_move', x: pos.x, y: pos.y });
     }, [getPointerPosition, sendInputEvent]);
 
     const handleTouchEnd = useCallback(() => {
-        if (!sendInputEvent) return;
-        // Release left click on touch end
-        sendInputEvent({ type: 'mouse_up', button: 0 });
+        if (sendInputEvent) sendInputEvent({ type: 'mouse_up', button: 0 });
     }, [sendInputEvent]);
 
+    // ── Keyboard ──────────────────────────────────────────────────────────────
     const handleKeyDown = useCallback((e) => {
         e.preventDefault();
         if (!sendInputEvent) return;
-        sendInputEvent({
-            type: 'key_down',
-            key: e.key,
-            code: e.code,
-            shiftKey: e.shiftKey,
-            ctrlKey: e.ctrlKey,
-            altKey: e.altKey,
-            metaKey: e.metaKey
-        });
+        sendInputEvent({ type: 'key_down', key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey });
     }, [sendInputEvent]);
 
     const handleKeyUp = useCallback((e) => {
         e.preventDefault();
         if (!sendInputEvent) return;
-        sendInputEvent({
-            type: 'key_up',
-            key: e.key,
-            code: e.code,
-            shiftKey: e.shiftKey,
-            ctrlKey: e.ctrlKey,
-            altKey: e.altKey,
-            metaKey: e.metaKey
-        });
+        sendInputEvent({ type: 'key_up', key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey });
     }, [sendInputEvent]);
 
+    // ── Window Blur / Focus Loss ──────────────────────────────────────────────
+    // If the user triggers an OS shortcut (e.g. Win+D, Alt+Tab), the browser loses
+    // focus and never receives the key_up event. This leaves modifiers stuck in the 
+    // down state on the host, blocking all further input.
+    useEffect(() => {
+        const handleBlur = () => {
+            if (!sendInputEvent) return;
+            const modifiers = [
+                'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 
+                'MetaLeft', 'MetaRight', 'ShiftLeft', 'ShiftRight'
+            ];
+            modifiers.forEach(code => {
+                sendInputEvent({ type: 'key_up', code });
+            });
+        };
+
+        window.addEventListener('blur', handleBlur);
+        return () => window.removeEventListener('blur', handleBlur);
+    }, [sendInputEvent]);
+
+    // ── Shared pointer-event props ────────────────────────────────────────────
+    const pointerProps = {
+        onTouchStart:  handleTouchStart,
+        onTouchMove:   handleTouchMove,
+        onTouchEnd:    handleTouchEnd,
+        onMouseMove:   (e) => handleMouseMove(e, 'mouse_move'),
+        onMouseDown:   (e) => handleMouseMove(e, 'mouse_down'),
+        onMouseUp:     (e) => handleMouseMove(e, 'mouse_up'),
+        onWheel:       handleMouseWheel,
+        onContextMenu: (e) => e.preventDefault(),
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
     return (
         <div
             ref={containerRef}
             tabIndex={0}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
-            className="relative w-full h-full bg-[#0b0f14] overflow-hidden flex flex-col focus:outline-none"
+            className="remote-container relative w-full h-full bg-[#0b0f14] overflow-hidden flex flex-col focus:outline-none"
         >
             <TopToolbar
-                peerConnection={peerConnection} 
-                sendInputEvent={sendInputEvent} 
+                peerConnection={peerConnection}
+                sendInputEvent={sendInputEvent}
                 onDisconnect={onDisconnect}
                 isFullscreen={isFullscreen}
                 toggleFullscreen={toggleFullscreen}
             />
 
-            <div className={`flex-1 min-h-0 flex items-center justify-center relative touch-none overflow-hidden bg-black ${relayMode ? 'border-[4px] border-indigo-500/30' : ''}`}>
-                
+            <MobileStatsOverlay 
+                peerConnection={peerConnection}
+                networkQuality={networkQuality}
+                batteryLevel={batteryLevel}
+            />
+
+            <MobileFAB 
+                isConnected={!!socket || !!stream}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={toggleFullscreen}
+                onDisconnect={onDisconnect}
+                sendInputEvent={sendInputEvent}
+                clipboardText=""
+                onClipboardPush={handlePushClipboard}
+                onClipboardPull={handlePullClipboard}
+            />
+
+            <MobileQuickSettings 
+                isOpen={showQuickSettings}
+                onClose={() => setShowQuickSettings(false)}
+                onUpdateSettings={(settings) => {
+                    sendInputEvent({ type: 'update_resolution', resolution: settings.quality, fps: settings.fps, bitrate: settings.bitrate });
+                }}
+            />
+
+            <MobileContextMenu 
+                isOpen={contextMenuState.isOpen}
+                position={{ x: contextMenuState.x, y: contextMenuState.y }}
+                onClose={() => setContextMenuState({ ...contextMenuState, isOpen: false })}
+                onAction={(action) => {
+                    if (!sendInputEvent) return;
+                    
+                    if (action === 'cut') {
+                        sendInputEvent({ type: 'key_down', code: 'ControlLeft' });
+                        sendInputEvent({ type: 'key_down', key: 'x' });
+                        sendInputEvent({ type: 'key_up', key: 'x' });
+                        sendInputEvent({ type: 'key_up', code: 'ControlLeft' });
+                    } else if (action === 'copy') {
+                        sendInputEvent({ type: 'key_down', code: 'ControlLeft' });
+                        sendInputEvent({ type: 'key_down', key: 'c' });
+                        sendInputEvent({ type: 'key_up', key: 'c' });
+                        sendInputEvent({ type: 'key_up', code: 'ControlLeft' });
+                    } else if (action === 'paste') {
+                        sendInputEvent({ type: 'key_down', code: 'ControlLeft' });
+                        sendInputEvent({ type: 'key_down', key: 'v' });
+                        sendInputEvent({ type: 'key_up', key: 'v' });
+                        sendInputEvent({ type: 'key_up', code: 'ControlLeft' });
+                    } else if (action === 'rename') {
+                        sendInputEvent({ type: 'key_down', key: 'F2' });
+                        sendInputEvent({ type: 'key_up', key: 'F2' });
+                    }
+                }}
+            />
+
+            <div className={`flex-1 min-h-0 flex items-center justify-center relative overflow-hidden bg-black ${relayMode ? 'border-[4px] border-indigo-500/30' : ''}`}>
+
                 {relayMode && (
                     <div className="absolute top-4 left-4 z-50 px-3 py-1.5 rounded-full bg-indigo-900/80 border border-indigo-400/50 text-indigo-300 text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex flex-row items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
                         CLOUD RELAY ACTIVE
                     </div>
                 )}
-                
+
+                {/* ── RELAY MODE: GPU-composited canvas ─────────────────────────────── */}
                 {relayMode ? (
-                    <img
-                        src={relayFrame || ''}
-                        alt="Remote Feed"
+                    <canvas
+                        ref={canvasRef}
                         className="w-full h-full object-contain cursor-default"
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onMouseMove={(e) => handleMouseMove(e, 'mouse_move')}
-                        onMouseDown={(e) => handleMouseMove(e, 'mouse_down')}
-                        onMouseUp={(e) => handleMouseMove(e, 'mouse_up')}
-                        onWheel={handleMouseWheel}
-                        onContextMenu={(e) => e.preventDefault()}
+                        style={{ imageRendering: 'pixelated' }}
+                        {...pointerProps}
                     />
                 ) : (
+                    /* ── WEBRTC MODE: native video element ──────────────────────────── */
                     <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
+                        disablePictureInPicture
                         className="w-full h-full object-contain cursor-default pointer-events-auto"
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onMouseMove={(e) => handleMouseMove(e, 'mouse_move')}
-                        onMouseDown={(e) => handleMouseMove(e, 'mouse_down')}
-                        onMouseUp={(e) => handleMouseMove(e, 'mouse_up')}
-                        onWheel={handleMouseWheel}
-                        onContextMenu={(e) => e.preventDefault()}
+                        style={{ willChange: 'contents' }}
+                        {...pointerProps}
                     />
                 )}
 
-                {(!relayMode && !stream) || (relayMode && !relayFrame) ? (
+                {/* Loading overlay */}
+                {((!relayMode && !stream) || (relayMode && !socket)) && (
                     <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 text-slate-500">
                         <div className="w-12 h-12 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin"></div>
                         <p>{relayMode ? 'Establishing Secure Cloud Relay...' : 'Waiting for direct STUN/TURN stream...'}</p>
                     </div>
-                ) : null}
+                )}
+
+                {/* Paused overlay */}
+                {isControlPaused && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+                        <div className="bg-red-950/90 border border-red-500/50 text-red-300 px-5 py-3 rounded-2xl shadow-[0_4px_30px_rgba(239,68,68,0.3)] flex flex-row items-center gap-4 animate-in slide-in-from-bottom-8 duration-300 backdrop-blur-md">
+                            <div className="w-10 h-10 rounded-full bg-red-900/50 flex items-center justify-center border border-red-500/30 shrink-0">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            </div>
+                            <div className="flex flex-col text-left">
+                                <h3 className="text-base font-bold text-white tracking-wide leading-tight">Control Paused by Host</h3>
+                                <p className="text-xs font-medium opacity-80 mt-0.5">
+                                    Remote input is temporarily blocked.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

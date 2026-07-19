@@ -1,5 +1,4 @@
 const { contextBridge, ipcRenderer } = require('electron');
-console.log('[Preload] Initializing bridge...');
 
 contextBridge.exposeInMainWorld('electronAPI', {
     // Methods for QR Window
@@ -11,11 +10,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     startPairing: () => ipcRenderer.send('webrtc:start_pairing'), // Optional manual trigger from tray
     onStartSession: (callback) => ipcRenderer.on('webrtc:start_session', (_event, url) => callback(url)),
     sendQRPayload: (payload) => ipcRenderer.send('webrtc:qr_payload', payload),
-    updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status),
-
-    device: {
-      getId: () => ipcRenderer.invoke('device:getId'),
-      isLinked: () => ipcRenderer.invoke('device:isLinked')
-    },
-    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+    updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status)
 });

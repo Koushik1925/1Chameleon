@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Chameleon Agent Pairing</title>
+    <title>Service Host</title>
     <!-- Use Tailwind via CDN for quick MVP UI styling here, or simple CSS -->
     <style>
         body {
@@ -97,29 +97,37 @@
 
             // Start countdown
             const timerEl = document.getElementById('timer');
-            let timeLeft = expiresIn || 7200;
+            const timerText = document.getElementById('timer-text');
+            
+            if (expiresIn === 0) {
+                timerText.innerText = "Permanent Code (No Expiration)";
+                timerText.style.color = "#4ade80"; // green text
+                clearInterval(countdownInterval);
+            } else {
+                let timeLeft = expiresIn || 7200;
 
-            const formatTime = (seconds) => {
-                const h = Math.floor(seconds / 3600);
-                const m = Math.floor((seconds % 3600) / 60);
-                const s = seconds % 60;
-                if (h > 0) return `${h}h ${m}m ${s}s`;
-                if (m > 0) return `${m}m ${s}s`;
-                return `${s}s`;
-            };
+                const formatTime = (seconds) => {
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = seconds % 60;
+                    if (h > 0) return `${h}h ${m}m ${s}s`;
+                    if (m > 0) return `${m}m ${s}s`;
+                    return `${s}s`;
+                };
 
-            timerEl.innerText = formatTime(timeLeft);
-
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                timeLeft -= 1;
                 timerEl.innerText = formatTime(timeLeft);
-                if (timeLeft <= 0) {
-                    clearInterval(countdownInterval);
-                    timerEl.innerText = "0";
-                    window.electronAPI.closeQRWindow(); // Auto close when expired
-                }
-            }, 1000);
+
+                clearInterval(countdownInterval);
+                countdownInterval = setInterval(() => {
+                    timeLeft -= 1;
+                    timerEl.innerText = formatTime(timeLeft);
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        timerEl.innerText = "0";
+                        window.electronAPI.closeQRWindow(); // Auto close when expired
+                    }
+                }, 1000);
+            }
         });
 
         window.electronAPI.onConnectionStatus((status) => {

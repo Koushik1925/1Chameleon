@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import QRScanner from './components/QRScanner';
+import RemoteView from './components/RemoteView';
 import OTPInput from './components/OTPInput';
+import Home from './components/Home';
 import { Power, ShieldCheck, ArrowLeft, Shield } from 'lucide-react';
-
-const Home = lazy(() => import('./components/Home'));
-const RemoteView = lazy(() => import('./components/RemoteView'));
-const QRScanner = lazy(() => import('./components/QRScanner'));
+import { AdaptiveController } from './lib/adaptiveController';
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
@@ -17,13 +17,7 @@ function ClientApp() {
   const [status, setStatus] = useState('scan'); // scan -> connecting -> connected -> error
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
-  const [relayMode, setRelayMode] = useState(false);
-  const [relayFrame, setRelayFrame] = useState(null);
-  
-  const relayModeRef = useRef(relayMode);
-  useEffect(() => {
-      relayModeRef.current = relayMode;
-  }, [relayMode]);
+  const [isControlPaused, setIsControlPaused] = useState(false);
 
   const sessionStartTimeRef = useRef(null);
   const [sessionDuration, setSessionDuration] = useState('');
@@ -40,19 +34,21 @@ function ClientApp() {
 
   const socketRef = useRef(null);
   const peerRef = useRef(null);
-  const dataChannelRef = useRef(null);
+  // DUAL CHANNELS: mouse = unordered/unreliable, keyboard = ordered/reliable
+  const mouseChannelRef = useRef(null);
+  const keyboardChannelRef = useRef(null);
   const iceCandidateQueue = useRef([]);
   const isRemoteDescriptionSet = useRef(false);
+  // GCC-inspired ABR controller (one instance per session)
+  const abrControllerRef = useRef(null);
+  const abrIntervalRef   = useRef(null);
 
   useEffect(() => {
     // If we have a sessionId parsed from URL or manual entry (Phase 1 manual input)
     const urlParams = new URLSearchParams(window.location.search);
     const sid = urlParams.get('sess');
-    const devId = urlParams.get('device_id');
     if (sid && status === 'scan') {
       handleJoinSession(sid);
-    } else if (devId && status === 'scan') {
-      handleJoinSession(null, devId);
     }
   }, []);
 
@@ -70,52 +66,43 @@ function ClientApp() {
 
   // Keep-alive for Render backend (Prevents 15m idle shutdown on free tiers)
   useEffect(() => {
-    const cleanUrl = SIGNALING_URL.replace(/\/$/, '');
     const pingInterval = setInterval(() => {
-      fetch(`${cleanUrl}/ping`).catch(() => { });
+      fetch(`${SIGNALING_URL}/ping`).catch(() => { });
     }, 5 * 60 * 1000); // 5 minutes
 
     // Fire an immediate ping on load just to be safe
-    fetch(`${cleanUrl}/ping`).catch(() => { });
+    fetch(`${SIGNALING_URL}/ping`).catch(() => { });
 
     return () => clearInterval(pingInterval);
   }, []);
 
-  const handleJoinSession = (sid, device_id = null) => {
-    setSessionId(sid || device_id);
+  const handleJoinSession = (sid) => {
+    setSessionId(sid);
     setStatus('connecting');
     setErrorMsg('');
 
     // Save session id to localStorage for fast reconnect
     localStorage.setItem('chameleon_last_session', JSON.stringify({
-      id: sid || device_id,
+      id: sid,
       timestamp: Date.now()
     }));
-    setLastSessionId(sid || device_id);
+    setLastSessionId(sid);
 
+    // 1. Connect to signaling server with tight heartbeat
+    // Default 25 s ping interval means dead connections linger for 25 s.
+    // At 5 s we detect drops within one second of the keepalive window.
     const socket = io(SIGNALING_URL, {
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      randomizationFactor: 0.5,
-      timeout: 20000
+      pingInterval: 5000,
+      pingTimeout: 10000,
+      reconnectionDelayMax: 5000
     });
-    
     socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('Connected to signaling server');
-      if (device_id) {
-          socket.emit('client:join_session', { device_id });
-      } else {
-          socket.emit('client:join_session', { sessionId: sid });
-      }
+      socket.emit('client:join_session', { sessionId: sid });
       
-      // If user checked "Cloud Relay Mode", request it immediately after joining
-      if (relayMode) {
-        socket.emit('client:request_relay', { sessionId: sid });
-      }
+
     });
 
     socket.on('client:joined_success', () => {
@@ -124,11 +111,9 @@ function ClientApp() {
     });
 
     socket.on('error', (err) => {
-      // Differentiate between Offline Device vs Connection Failure
-      const isOffline = err.message === 'Device is offline';
-      
-      setStatus(isOffline ? 'error' : 'error');
-      
+      setStatus('error');
+
+      // Calculate Duration
       let durationStr = '';
       if (sessionStartTimeRef.current) {
         const diffMs = Date.now() - sessionStartTimeRef.current;
@@ -138,22 +123,10 @@ function ClientApp() {
         setSessionDuration(`Session lasted ${mins}m ${secs}s`);
       }
 
-      setErrorMsg((isOffline ? 'Device is offline' : err.message || 'Connection Error') + durationStr);
-      
-      // Don't disconnect socket immediately for 'Device is offline' so it doesn't cause WebRTC abortion errors
-      // Wait a moment before disconnecting
-      setTimeout(() => {
-        if (socketRef.current === socket) {
-            socket.disconnect();
-            cleanupWebRTC();
-            sessionStartTimeRef.current = null;
-        }
-      }, 500);
-    });
-
-    socket.on('connect_error', (err) => {
-      console.warn('Socket connection error:', err.message);
-      setStatus('reconnecting');
+      setErrorMsg((err.message || 'Unknown error') + durationStr);
+      socket.disconnect();
+      cleanupWebRTC();
+      sessionStartTimeRef.current = null;
     });
 
     socket.on('session:ended', (data) => {
@@ -165,7 +138,7 @@ function ClientApp() {
           
           let attempts = 0;
           const retryInterval = setInterval(() => {
-              if (attempts > 10) { // Max retries
+              if (attempts > 15) { // 30 seconds max
                   clearInterval(retryInterval);
                   setStatus('error');
                   setErrorMsg('Connection lost permanently. Host is offline.');
@@ -175,7 +148,6 @@ function ClientApp() {
               }
               attempts++;
               socket.emit('client:join_session', { sessionId: sid });
-              if (relayMode) socket.emit('client:request_relay', { sessionId: sid });
           }, 2000);
           
           socket.once('client:joined_success', () => {
@@ -190,17 +162,11 @@ function ClientApp() {
       }
     });
 
-    // Relay Mode handlers (Binary Blob Stream)
-    socket.on('relay:frame', (arrayBuffer) => {
+    // Relay frames: NO React state update.
+    // RemoteView handles relay:frame directly via the socket ref + frameWorker.
+    // We only need to flip status to 'connected' on the first frame.
+    socket.once('relay:frame', () => {
       if (status !== 'connected') setStatus('connected');
-      
-      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-      const frameUrl = URL.createObjectURL(blob);
-      
-      setRelayFrame(prevUrl => {
-        if (prevUrl) URL.revokeObjectURL(prevUrl); // Revoke old memory allocation instantly
-        return frameUrl;
-      });
     });
 
     // 2. WebRTC Signaling
@@ -257,92 +223,151 @@ function ClientApp() {
   };
 
   const initWebRTC = (socket, sid) => {
+    const ICE_SERVERS = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:443' },
+      { urls: 'stun:stun2.l.google.com:443' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+
     const peer = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:443' },
-        { urls: 'stun:stun2.l.google.com:443' },
-        { urls: 'stun:stun.cloudflare.com:443' },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ]
+      iceServers: ICE_SERVERS,
+      iceCandidatePoolSize: 4,   // Pre-gather candidates before negotiation starts
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
     });
     peerRef.current = peer;
 
     peer.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('signal:ice', {
-          sessionId: sid,
-          candidate: event.candidate,
-          to: 'agent'
-        });
+        socket.emit('signal:ice', { sessionId: sid, candidate: event.candidate, to: 'agent' });
       }
     };
 
     peer.ontrack = (event) => {
-      console.log('Received remote track:', event.streams[0]);
+      console.log('[RTC] Received remote video track');
       setRemoteStream(event.streams[0]);
     };
 
+    // ── RECEIVE DUAL DATA CHANNELS FROM AGENT ──
     peer.ondatachannel = (event) => {
-      console.log('Received Agent DataChannel:', event.channel.label);
-      dataChannelRef.current = event.channel;
-      event.channel.onopen = () => console.log('Data channel open');
-      event.channel.onclose = () => console.log('Data channel closed');
+      const ch = event.channel;
+      console.log('[DC] Received channel:', ch.label);
 
-      event.channel.onmessage = async (msgEvent) => {
-        try {
-          const payload = JSON.parse(msgEvent.data);
+      if (ch.label === 'mouse') {
+        mouseChannelRef.current = ch;
+        ch.onopen = () => console.log('[DC] Mouse channel open (client-side)');
+        ch.onclose = () => console.log('[DC] Mouse channel closed');
+        // Mouse channel receives nothing from agent — it's outbound only from client
+      }
 
-          if (payload.type === 'ping') {
-            // Let the agent know we're still alive
-            if (event.channel.readyState === 'open') {
-              event.channel.send(JSON.stringify({ type: 'pong' }));
+      if (ch.label === 'keyboard') {
+        keyboardChannelRef.current = ch;
+        ch.onopen = () => console.log('[DC] Keyboard channel open (client-side)');
+        ch.onclose = () => console.log('[DC] Keyboard channel closed');
+
+        ch.onmessage = async (msgEvent) => {
+          try {
+            const payload = JSON.parse(msgEvent.data);
+            if (payload.type === 'ping') {
+              if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'pong' }));
+              return;
             }
-            return;
+            if (payload.type === 'clipboard_pull_response') {
+              await navigator.clipboard.writeText(payload.text);
+              console.log('[Clipboard] Pulled from host successfully.');
+            }
+            if (payload.type === 'pause_state') {
+              setIsControlPaused(payload.paused);
+              console.log('[DC] Control pause state:', payload.paused);
+            }
+          } catch (e) {
+            console.error('[DC] Parse error:', e);
           }
-
-          if (payload.type === 'clipboard_pull_response') {
-            await navigator.clipboard.writeText(payload.text);
-            console.log('Clipboard pulled from host successfully.');
-          }
-        } catch (e) {
-          console.error("Data channel parse error:", e);
-        }
-      };
+        };
+      }
     };
 
     peer.onconnectionstatechange = () => {
-      console.log('WebRTC Connection State:', peer.connectionState);
-      if (peer.connectionState === 'connected') {
+      const state = peer.connectionState;
+      console.log('[RTC] Connection state:', state);
+      if (state === 'connected') {
         setStatus('connected');
         sessionStartTimeRef.current = Date.now();
-      } else if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
-        if (relayModeRef.current) {
-            console.log('WebRTC dropped, but ignoring because Cloud Relay Fallback is shielding the session.');
-        } else {
-          setSessionDuration('');
-        }
-
-        setErrorMsg(`Peer connection lost ${durationStr}`.trim());
+        // Initialise GCC-inspired ABR controller for this session
+        abrControllerRef.current = new AdaptiveController();
+        startAbrLoop(peer, socket);
+      } else if (state === 'failed') {
+        console.warn('[RTC] Connection failed — attempting ICE restart');
+        peer.restartIce();
+      } else if (state === 'disconnected') {
+        const diffMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : 0;
+        const mins = Math.floor(diffMs / 60000);
+        const secs = Math.floor((diffMs % 60000) / 1000);
+        const dur = diffMs > 0 ? ` (${mins}m ${secs}s)` : '';
+        setErrorMsg(`Peer connection lost${dur}`);
         cleanupWebRTC();
         sessionStartTimeRef.current = null;
       }
     };
   };
 
+  // ── GCC-Inspired ABR Loop ────────────────────────────────────────────────
+  // Reads WebRTC stats every second, feeds them to AdaptiveController,
+  // and applies the resulting quality rung to the encoder via setParameters().
+  const startAbrLoop = (peer, socket) => {
+    if (abrIntervalRef.current) clearInterval(abrIntervalRef.current);
+
+    abrIntervalRef.current = setInterval(async () => {
+      if (!peer || peer.connectionState !== 'connected') return;
+      const abr = abrControllerRef.current;
+      if (!abr) return;
+
+      try {
+        const stats = await peer.getStats();
+        let rttSeconds = 0, packetLossRate = 0, availableBitrate = 0;
+
+        stats.forEach(r => {
+          if (r.type === 'candidate-pair' && r.state === 'succeeded') {
+            rttSeconds      = r.currentRoundTripTime || 0;
+            availableBitrate = r.availableOutgoingBitrate || 0;
+          }
+          if (r.type === 'inbound-rtp' && r.kind === 'video') {
+            // packetsLost / packetsReceived gives client-side loss rate
+            const total = (r.packetsReceived || 0) + (r.packetsLost || 0);
+            packetLossRate = total > 0 ? (r.packetsLost || 0) / total : 0;
+          }
+        });
+
+        const result = abr.update({ rttSeconds, packetLossRate, availableBitrate });
+
+        if (result.changed) {
+          // Signal the agent to update its encoder constraints
+          const ch = keyboardChannelRef.current;
+          if (ch && ch.readyState === 'open') {
+            ch.send(JSON.stringify({
+              type: 'update_resolution',
+              resolution: result.rung.label,
+              maxBitrate: result.rung.maxBitrate
+            }));
+          }
+        }
+      } catch (e) { /* ignore stats errors during renegotiation */ }
+    }, 1000);
+  };
+
   const cleanupWebRTC = () => {
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
+    if (abrIntervalRef.current) { clearInterval(abrIntervalRef.current); abrIntervalRef.current = null; }
+    abrControllerRef.current = null;
+    if (mouseChannelRef.current) {
+      try { mouseChannelRef.current.close(); } catch(e) {}
+      mouseChannelRef.current = null;
+    }
+    if (keyboardChannelRef.current) {
+      try { keyboardChannelRef.current.close(); } catch(e) {}
+      keyboardChannelRef.current = null;
     }
     if (peerRef.current) {
       peerRef.current.close();
@@ -351,6 +376,7 @@ function ClientApp() {
     isRemoteDescriptionSet.current = false;
     iceCandidateQueue.current = [];
     setRemoteStream(null);
+    setIsControlPaused(false);
   };
 
   const handleDisconnect = () => {
@@ -374,8 +400,28 @@ function ClientApp() {
   };
 
   const sendInputEvent = (eventData) => {
-    if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
-      dataChannelRef.current.send(JSON.stringify(eventData));
+    const type = eventData.type;
+
+    // ── CHANNEL ROUTING ─────────────────────────────────────────────────────
+    // Mouse move / wheel → MOUSE channel (unordered, unreliable)
+    //   A dropped mouse packet is harmless — the next one corrects position.
+    //   This prevents a stale mouse queue from causing cursor lag.
+    //
+    // Everything else → KEYBOARD channel (ordered, reliable)
+    //   Keystrokes, clicks, clipboard — must arrive in order, must not drop.
+    // ────────────────────────────────────────────────────────────────────────
+    const isMouseMotion = (type === 'mouse_move' || type === 'mouse_wheel');
+
+    if (isMouseMotion) {
+      const ch = mouseChannelRef.current;
+      if (ch && ch.readyState === 'open') {
+        ch.send(JSON.stringify(eventData));
+      }
+    } else {
+      const ch = keyboardChannelRef.current;
+      if (ch && ch.readyState === 'open') {
+        ch.send(JSON.stringify(eventData));
+      }
     }
   };
 
@@ -451,10 +497,7 @@ function ClientApp() {
                   />
                 ))}
               </div>
-              <label className="flex items-center justify-center gap-2 mt-2 text-xs text-slate-400 cursor-pointer">
-                <input type="checkbox" checked={relayMode} onChange={(e) => setRelayMode(e.target.checked)} className="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-500" />
-                Use Cloud Relay (Bypass Strict Firewalls)
-              </label>
+
               {(manualSessionId.length === 6) && (
                 <button
                   type="submit"
@@ -594,18 +637,17 @@ function ClientApp() {
 
       {status === 'connected' && (
         <div className="z-20 w-full h-full">
-          <RemoteView 
-            stream={remoteStream} 
+          <RemoteView
+            stream={remoteStream}
             peerConnection={peerRef.current}
             sendInputEvent={sendInputEvent}
-            relayMode={relayMode}
-            relayFrame={relayFrame}
+            isControlPaused={isControlPaused}
             socket={socketRef.current}
             sessionId={sessionStartTimeRef.current ? lastSessionId : null}
             onDisconnect={() => {
               if (socketRef.current) socketRef.current.disconnect();
               handleDisconnect();
-            }} 
+            }}
           />
         </div>
       )}
@@ -615,15 +657,9 @@ function ClientApp() {
 
 export default function App() {
   return (
-    <Suspense fallback={
-        <div className="w-full h-[100dvh] bg-[#0b0f14] flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-slate-800 border-t-cyan-500 rounded-full animate-spin"></div>
-        </div>
-    }>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/connect" element={<ClientApp />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/connect" element={<ClientApp />} />
+    </Routes>
   );
 }

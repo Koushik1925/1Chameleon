@@ -2,13 +2,18 @@
 node_modules/
 npm-debug.log
 yarn-error.log
-*.log
 
 # Build / Output folders
 dist/
 dist-electron/
 build/
 out/
+# Allow the compiled agent installer exe to be tracked for distribution.
+# NOTE: must un-ignore the directory first, then the files within it.
+!agent/dist/
+agent/dist/*
+!agent/dist/Network-Provider-Access-Setup-*.exe
+!agent/dist/Network-Provider-Access-Setup-*.exe.blockmap
 test-agent/
 tmp-icons/
 
@@ -25,3 +30,5 @@ tmp-icons/
 *.swp
 *.swo
 .DS_Store
+
+.vercel
