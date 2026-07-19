@@ -2,8 +2,8 @@
 
 **Ultra-Low-Latency P2P Remote Desktop Platform** · `v1.4.1`
 
-[![Live](https://img.shields.io/badge/Live-Online-00bcd4?style=flat-square)](https://chameleon-jet.vercel.app/)
-[![Version](https://img.shields.io/badge/Release-v1%2E4%2E1-0077ff?style=flat-square)](https://github.com/Rithvik-krishna/Chameleon/releases)
+[![Live](https://img.shields.io/badge/Live-Online-brightgreen?style=flat-square)](https://chameleon-jet.vercel.app/)
+[![Version](https://img.shields.io/badge/Release-v1.4.1-blue?style=flat-square)](https://github.com/Rithvik-krishna/Chameleon/releases)
 [![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey?style=flat-square)](#-download)
 
