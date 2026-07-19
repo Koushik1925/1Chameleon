@@ -2,7 +2,7 @@ const { io } = require('socket.io-client');
 const { getOrGenerateDeviceId, getRefreshToken } = require('../storage/identity');
 const { ipcMain } = require('electron');
 
-const SIGNALING_URL = process.env.SIGNALING_URL || 'https://chameleon-j5wf.onrender.com';
+const SIGNALING_URL = process.env.SIGNALING_URL || 'https://chameleon-1.onrender.com';
 
 class Daemon {
     constructor() {

@@ -26,7 +26,7 @@ export default function Dashboard() {
     fetchRecentLogs();
 
     // 2. Establish Socket.IO listener for live telemetry streams
-    const socket = io('https://chameleon-j5wf.onrender.com');
+    const socket = io('https://chameleon-1.onrender.com');
     socket.emit('join:admin');
 
     socket.on('telemetry:data', (data) => {

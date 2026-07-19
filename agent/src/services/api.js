@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 class Api {
-  constructor(baseUrl = 'https://chameleon-j5wf.onrender.com') {
+  constructor(baseUrl = 'https://chameleon-1.onrender.com') {
     this.baseUrl = baseUrl;
     this.api = axios.create({
       baseURL: baseUrl,

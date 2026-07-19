@@ -5,7 +5,7 @@ const { Api } = require('./api');
 class RegistrationManager {
   constructor() {
     // Determine the base URL dynamically based on environment or fallback to production
-    const baseUrl = process.env.SIGNALING_URL || 'https://chameleon-j5wf.onrender.com';
+    const baseUrl = process.env.SIGNALING_URL || 'https://chameleon-1.onrender.com';
     this.api = new Api(baseUrl);
     this.setupIpcHandlers();
   }
