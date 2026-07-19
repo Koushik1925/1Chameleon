@@ -12,6 +12,16 @@ No complicated setup.
 
 ---
 
+# 📄 Documentation
+
+| Document | Description | Audience |
+| -------- | ----------- | -------- |
+| [📋 Product Requirements Document (PRD)](https://drive.google.com/file/d/1-dx6894K1POnM05E_XqEYlUfchyejp1Q/view?usp=sharing) | Product vision, user stories, functional & non-functional requirements, roadmap | Product, Engineering, Investors |
+| [🔧 Technical Design Document (TDD)](https://drive.google.com/file/d/1-dx6894K1POnM05E_XqEYlUfchyejp1Q/view?usp=sharing) | Low-level implementation details, data models, API specs, algorithms | Developers |
+| [🏗️ System Architecture Document (SAD)](https://drive.google.com/file/d/1-dx6894K1POnM05E_XqEYlUfchyejp1Q/view?usp=sharing) | Infrastructure topology, deployment architecture, networking, scalability design | Infrastructure & Backend Teams |
+
+---
+
 # 🚀 Core Features
 
 * Instant QR-based pairing
