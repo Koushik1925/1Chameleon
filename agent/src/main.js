@@ -360,8 +360,24 @@ app.whenReady().then(() => {
             qrWindow.close();
         }
     });
+
+    // macOS: auto-open QR window at startup so the UI is reachable without
+    // a visible tray icon (BMP tray icons do not render in the macOS Menu Bar).
+    // Windows startup path is unaffected — the block is never entered on win32.
+    if (process.platform === 'darwin') {
+        createQRWindow();
+    }
 });
 
 app.on('window-all-closed', () => {
     // Overriding default behavior to keep app running in tray
+});
+
+// macOS: clicking the Dock icon when all windows are closed should reopen
+// the QR pairing window. createQRWindow() is idempotent — it focuses the
+// existing window if one is already open, so it is safe to call repeatedly.
+app.on('activate', () => {
+    if (process.platform === 'darwin') {
+        createQRWindow();
+    }
 });
