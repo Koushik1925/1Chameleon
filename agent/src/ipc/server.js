@@ -1,13 +1,11 @@
 const net = require('net');
-const path = require('path');
 const { daemon } = require('../core/daemon');
-
-const PIPE_NAME = 'chameleon-agent';
-const PIPE_PATH = `\\\\.\\pipe\\${PIPE_NAME}`;
+const { getIPCPath } = require('../platform/ipc');
 
 function startIPCServer() {
+    const ipcPath = getIPCPath();
     const server = net.createServer((stream) => {
-        console.log('[IPC] Client connected to named pipe.');
+        console.log('[IPC] Client connected to local endpoint.');
 
         stream.on('data', (data) => {
             try {
@@ -35,8 +33,8 @@ function startIPCServer() {
         console.error('[IPC] Server Error:', err);
     });
 
-    server.listen(PIPE_PATH, () => {
-        console.log(`[IPC] Named pipe server listening on ${PIPE_PATH}`);
+    server.listen(ipcPath, () => {
+        console.log(`[IPC] Local server listening on ${ipcPath}`);
     });
 }
 

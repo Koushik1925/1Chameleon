@@ -16,19 +16,24 @@ The `/agent/src` directory contains the Electron main process, hidden background
 - `socket.io-client` (Signaling & telemetry)
 - `electron-store` & `safeStorage` (OS keychain credential encryption)
 - `qrcode` (QR canvas generation)
-- `child_process` (PowerShell hardware GUID queries)
+- `child_process` (isolated Windows PowerShell and macOS `ioreg` identity providers)
 
 #### Folder Structure & Module Responsibilities
 
 | File | Exact Responsibility | Exported API | Callers / Usage |
 |---|---|---|---|
-| `main.js` | Electron Main Process. Manages window lifecycles, system tray, native input injection via `nut-js`, global shortcuts (`Cmd/Ctrl+Alt+P`), and Chromium GPU flags. | Internal process events (`app.whenReady`, `ipcMain.on`) | App entry point (`package.json` `main`) |
+| `main.js` | Electron Main Process. Orchestrates windows, tray state, IPC events, pause control, and platform services. It does not select operating systems or call `nut-js`/`desktopCapturer` directly. | Internal process events (`app.whenReady`, `ipcMain.on`) | App entry point (`package.json` `main`) |
 | `webrtc.html` | Hidden background renderer window. Handles screen capture (`getUserMedia`/`desktopCapturer`), WebRTC P2P PeerConnection, dual DataChannel messaging, adaptive bitrate control, and Socket.IO signaling. | Embedded script runtime | Loaded by `main.js` (`createBackgroundWindow`) |
 | `core/daemon.js` | Background reconnection daemon. Maintains WebSocket signaling state with custom exponential backoff & jitter. | `daemon` (Instance of `Daemon` class) | Used in `ipc/server.js` |
 | `storage/identity.js` | Generates hardware-derived Device IDs (hashed `MachineGuid` + motherboard serial) and manages encrypted token storage via Electron `safeStorage`. | `getOrGenerateDeviceId()`, `saveTokens()`, `getRefreshToken()`, `clearTokens()` | Used in `core/daemon.js`, `services/registrationManager.js`, `webrtc.html` |
 | `services/api.js` | Axios HTTP client for registering devices with the signaling server. | `Api` class (`registerDevice`) | Used in `services/registrationManager.js` |
 | `services/registrationManager.js` | Manages device registration status and IPC handlers for identity checking. | `registrationManager` | Used in `core/daemon.js` |
-| `ipc/server.js` | Windows Named Pipe server (`\\.\pipe\chameleon-agent`) for local process communication & CLI status queries. | `startIPCServer()` | Called during daemon boot |
+| `ipc/server.js` | Platform-neutral local IPC server for status and reconnect commands. Endpoint selection is delegated to `platform/ipc`. | `startIPCServer()` | Currently exported but not wired into startup |
+| `platform/identity/` | Routes hardware identity to the preserved Windows PowerShell/WMI provider or macOS `ioreg`/`sysctl` provider. | `getHardwareIds()` | `storage/identity.js` |
+| `platform/input/` | Owns `nut-js`, key mapping, modifier neutralization, coordinate mapping, mouse/keyboard injection, and input clipboard writes. | `createNativeInputController()` | `main.js` |
+| `platform/ipc/` | Returns the Windows named-pipe address or POSIX Unix-domain socket path. | `getIPCPath()` | `ipc/server.js` |
+| `platform/permissions.js` | Probes macOS Accessibility and Screen Recording state and rate-limits guidance dialogs; no-op elsewhere. | Permission check functions | `platform/startup/` |
+| `platform/runtime/`, `platform/screen/`, `platform/startup/`, `platform/tray/` | Encapsulate Chromium switches, Electron capture-source discovery, login/Dock startup behavior, native tray image selection, and packaged tray-resource paths. | Focused service methods | `main.js` |
 | `qr.html` / `preload.js` | Electron renderer window for rendering QR code and 6-digit numeric pairing key to host user. | IPC bridge (`window.electronAPI`) | Created by `main.js` (`createQRWindow`) |
 
 #### Anti-Patterns in `/agent`
@@ -133,8 +138,12 @@ The `/frontend/src` directory contains the admin management portal for monitorin
 ```
 [Agent Component]
   main.js
-   ├── requires @nut-tree-fork/nut-js (Native Win32 SendInput)
    ├── requires electron (Tray, BrowserWindow, powerSaveBlocker, safeStorage)
+   ├── delegates native behavior to platform/*
+   │    ├── input -> @nut-tree-fork/nut-js
+   │    ├── screen -> electron.desktopCapturer
+   │    ├── tray/startup/runtime -> Electron platform behavior
+   │    └── identity/ipc/permissions -> OS-specific providers
    └── loads webrtc.html
         ├── requires socket.io-client
         ├── requires qrcode
@@ -193,6 +202,10 @@ RemoteView.jsx (DOM Event: mousemove / keydown / touch)
       main.js (Electron Main Process)
              │
              ├─► Checks `isControlPaused` emergency lock
+             │
+             ▼
+      platform/input (Native Input Boundary)
+             │
              ├─► Neutralizes modifier keys (Ctrl/Alt/Meta/Shift)
              │
              ▼
@@ -323,7 +336,7 @@ Changing code in the following files can directly impact streaming latency or CP
 
 | Subproject / Directory | Safe Changes | Risky Changes | Forbidden Changes | Rarely Modified Files |
 |---|---|---|---|---|
-| `/agent` | Adding tray menu options, updating UI styles in `qr.html`, tweaking heartbeat intervals. | Modifying `keyMap` bindings, altering `safeStorage` encryption logic. | Calling `app.disableHardwareAcceleration()`, blocking the main thread during input injection. | `storage/identity.js`, `ipc/server.js` |
+| `/agent` | Adding tray menu options, updating UI styles in `qr.html`, tweaking heartbeat intervals. | Modifying `platform/input` key bindings, platform identity providers, or `safeStorage` encryption logic. | Calling `app.disableHardwareAcceleration()`, bypassing the platform layer, blocking the main thread during input injection. | `storage/identity.js`, `platform/identity/`, `platform/input/` |
 | `/client` | Adding toolbar buttons, updating mobile overlay UI, adjusting Tailwind styles. | Modifying `AdaptiveController` threshold logic, changing touch gesture thresholds. | Calling React `setState` inside high-frequency `relay:frame` handlers, storing WebRTC PeerConnection in `useState`. | `workers/frameWorker.js`, `lib/adaptiveController.js` |
 | `/server` | Adding administrative log routes, expanding telemetry statistics, updating version seed data. | Modifying Socket.IO signaling event names, altering MongoDB Mongoose index definitions. | Disabling CORS or JWT authentication middleware on administrative endpoints. | `middleware/adminAuth.js`, `db/index.js` |
 | `/frontend` | Adding dashboard widgets, customizing Recharts graph colors, updating device management tables. | Changing Socket.IO admin room subscription names (`admin:dashboard`). | Hardcoding authentication tokens or API credentials in client code. | `App.jsx`, `components/Login.jsx` |

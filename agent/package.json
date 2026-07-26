@@ -3,8 +3,9 @@
   "version": "1.4.1",
   "main": "src/main.js",
   "scripts": {
-    "start": "set ELECTRON_RUN_AS_NODE=0 && electron .",
-    "build": "electron-builder"
+    "start": "node start.js",
+    "build": "electron-builder",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -49,7 +50,7 @@
       "perMachine": false,
       "runAfterFinish": true
     },
-    "extraFiles": [
+    "extraResources": [
       "assets/**/*"
     ]
   },

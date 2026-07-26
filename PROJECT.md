@@ -59,10 +59,12 @@ The repository is structured as a decoupled multi-component codebase:
 │   ├── build/           # Build assets (app icons, installers)
 │   └── src/
 │       ├── core/        # Persistent daemon process & socket reconnection
-│       ├── ipc/         # Named pipe IPC server for local process comms
+│       ├── ipc/         # Platform-neutral local IPC server
+│       ├── platform/    # Identity, input, IPC, permissions, runtime, screen,
+│       │                # startup, and tray platform services
 │       ├── services/    # REST API client & device registration manager
 │       ├── storage/     # Hardware fingerprinting & safeStorage credentials
-│       ├── main.js      # Electron Main Process (Tray, Nut.js input injection, OS shortcuts)
+│       ├── main.js      # Electron Main Process orchestration and OS shortcuts
 │       ├── preload.js   # Context bridge for renderer windows
 │       ├── qr.html      # Desktop agent pairing UI & QR code display window
 │       └── webrtc.html  # Hidden background renderer window (Screen capture & WebRTC)
@@ -117,7 +119,7 @@ The repository is structured as a decoupled multi-component codebase:
 ## 5. Data Flow
 
 ### Video Streaming Data Flow (P2P WebRTC Mode)
-1. **Capture**: Desktop Agent uses Chromium `desktopCapturer` / DXGI Desktop Duplication API to capture raw screen frames.
+1. **Capture**: The agent requests sources through `platform/screen`; Chromium/Electron performs native screen capture on the host OS.
 2. **Encode**: Hardware encoder (NVENC / Intel QuickSync) encodes frames into H.264 Baseline Profile in GPU memory.
 3. **Transport**: Encoded RTP packets travel over direct WebRTC UDP stream (`MediaStreamTrack`).
 4. **Decode & Render**: Browser `<video>` element decodes frames using hardware acceleration and paints to screen.
@@ -128,7 +130,7 @@ The repository is structured as a decoupled multi-component codebase:
 3. **Routing**:
    - `mouse_move` & `mouse_wheel` ➔ **Mouse Channel** (`ordered: false, maxRetransmits: 0`).
    - Keystrokes, clicks, clipboard ➔ **Keyboard Channel** (`ordered: true`).
-4. **Injection**: Desktop Agent receives payload over DataChannel and invokes `@nut-tree-fork/nut-js` (`mouse.setPosition`, `keyboard.pressKey`) to inject at OS level.
+4. **Injection**: The Electron main process enforces the pause guard, then delegates the unchanged payload to `platform/input`, which invokes `@nut-tree-fork/nut-js` at OS level.
 
 ### Relay Fallback Data Flow
 If direct WebRTC P2P fails due to symmetric NAT:
@@ -202,6 +204,7 @@ If direct WebRTC P2P fails due to symmetric NAT:
 - **`GestureHandler` (`client/src/lib/gestureHandler.js`)**: Mobile gesture recognition engine for double-tap (fullscreen), long-press (right-click), swipe-down (quick settings), and pinch-to-zoom.
 - **`frameWorker` (`client/src/workers/frameWorker.js`)**: Off-main-thread Web Worker that decodes JPEG ArrayBuffers into `ImageBitmap` objects for zero-copy GPU canvas rendering.
 - **`identity` (`agent/src/storage/identity.js`)**: Hardware identifier extraction and encrypted credential storage utility.
+- **Platform services (`agent/src/platform/`)**: Keep OS selection and native integrations out of `main.js` while preserving the application-facing contracts for identity, input, IPC, permissions, runtime switches, screen capture, startup, and tray icons.
 
 ---
 
@@ -339,7 +342,7 @@ cd agent && npm run build
 - **`AdaptiveController.js`**: Client-side GCC congestion control algorithm that dynamically scales bitrate and resolution.
 - **`frameWorker.js`**: Dedicated Web Worker handling ArrayBuffer JPEG frame decoding off the main UI thread.
 - **`daemon.js`**: Electron background class managing persistent socket connections with exponential backoff.
-- **`identity.js`**: Hardware fingerprinting module that generates immutable device IDs from Win32 WMI / OS attributes.
+- **`identity.js`**: Platform-neutral device ID and credential store backed by platform-specific hardware identity providers.
 - **`agent_simulator.js`**: Standalone test harness simulating multiple desktop agents for stress testing.
 
 ---
