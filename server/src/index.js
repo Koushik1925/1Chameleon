@@ -56,8 +56,12 @@ mongoose.connect(MONGODB_URI)
     console.error('[DB] Connection failure:', err);
   });
 
-// Mount REST Endpoints
-app.use('/api/agent', agentRoutes);
+const userAuthRoutes = require('./routes/userAuth');
+const { authLimiter, apiLimiter, helmetMiddleware } = require('./middleware/securityMiddleware');
+
+app.use(helmetMiddleware);
+app.use('/api/auth', authLimiter, userAuthRoutes);
+app.use('/api/agent', apiLimiter, agentRoutes);
 app.use('/api/admin/auth', authRoutes);
 app.use('/api/admin/devices', deviceRoutes);
 app.use('/api/admin/sessions', sessionRoutes);
