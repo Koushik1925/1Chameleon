@@ -5,6 +5,10 @@ import QRScanner from './components/QRScanner';
 import RemoteView from './components/RemoteView';
 import OTPInput from './components/OTPInput';
 import Home from './components/Home';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import DeviceApprove from './components/DeviceApprove';
+import MyDevices from './components/MyDevices';
 import { Power, ShieldCheck, ArrowLeft, Shield } from 'lucide-react';
 import { AdaptiveController } from './lib/adaptiveController';
 
@@ -660,6 +664,10 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/connect" element={<ClientApp />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/device" element={<DeviceApprove />} />
+      <Route path="/my-devices" element={<MyDevices />} />
     </Routes>
   );
 }

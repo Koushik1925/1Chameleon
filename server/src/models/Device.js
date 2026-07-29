@@ -1,7 +1,14 @@
 const mongoose = require('mongoose');
 
 const deviceSchema = new mongoose.Schema({
-  deviceId: { type: String, required: true, unique: true },
+  deviceId: { type: String, required: true, unique: true, index: true },
+  deviceTokenHash: { type: String }, // Hashed Device Token for unattended host authentication
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+  claimedAt: { type: Date },
+  trusted: { type: Boolean, default: true },
+  lastIPAddress: String,
+  deviceFingerprint: String,
+
   hostname: String,
   publicIp: String,
   country: String,
@@ -37,6 +44,8 @@ const deviceSchema = new mongoose.Schema({
   // History logs
   previousSuspensions: { type: Number, default: 0 },
   previousBans: { type: Number, default: 0 }
+}, {
+  timestamps: true
 });
 
 module.exports = mongoose.model('Device', deviceSchema);
