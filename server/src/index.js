@@ -173,32 +173,34 @@ io.on('connection', (socket) => {
       severity: 'info'
     }).catch(err => {});
 
-    // Save/Update device details
-    const deviceUpdate = {
-      deviceId,
-      lastSeen: new Date(),
-      status: 'active'
-    };
+    // Save/Update device details ONLY if valid device hardware details are provided
+    if (details && details.hostname && details.hostname !== 'Unknown') {
+      const deviceUpdate = {
+        deviceId,
+        hostname: details.hostname,
+        osName: details.platform === 'win32' ? 'Windows' : details.platform,
+        osVersion: details.release,
+        agentVersion: details.version,
+        lastSeen: new Date(),
+        status: 'active'
+      };
 
-    if (details) {
-      deviceUpdate.hostname = details.hostname;
-      deviceUpdate.osName = details.platform === 'win32' ? 'Windows' : details.platform;
-      deviceUpdate.osVersion = details.release;
-      deviceUpdate.agentVersion = details.version;
+      Device.findOneAndUpdate(
+        { deviceId },
+        { $set: deviceUpdate },
+        { upsert: true }
+      ).catch(err => {});
     }
-
-    Device.findOneAndUpdate(
-      { deviceId },
-      { $set: deviceUpdate },
-      { upsert: true }
-    ).catch(err => {});
   });
 
   socket.on('agent:heartbeat', ({ deviceId }) => {
-    Device.findOneAndUpdate(
-      { deviceId },
-      { lastSeen: new Date() }
-    ).catch(err => {});
+    if (deviceId && !deviceId.startsWith('DEV-REAL-')) {
+      Device.findOneAndUpdate(
+        { deviceId },
+        { lastSeen: new Date() },
+        { upsert: false }
+      ).catch(err => {});
+    }
   });
 
   socket.on('client:join_session', ({ sessionId }) => {

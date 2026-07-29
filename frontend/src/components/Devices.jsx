@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Eye, AlertTriangle, CheckCircle, Ban } from 'lucide-react';
+import { Search, Eye, AlertTriangle, CheckCircle, Ban, Trash2 } from 'lucide-react';
 
 export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showUnknown, setShowUnknown] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDevices();
     const interval = setInterval(fetchDevices, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [showUnknown]);
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('/api/admin/devices', {
+      const url = showUnknown ? '/api/admin/devices?includeUnknown=true' : '/api/admin/devices';
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await response.json();
@@ -25,6 +27,21 @@ export default function Devices() {
       console.error('Error fetching devices:', err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePurgeUnknown = async () => {
+    if (!window.confirm('Are you sure you want to purge all temporary/unknown socket records?')) return;
+    try {
+      const response = await fetch('/api/admin/devices/cleanup-unknown', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      alert(data.message || 'Unknown records cleaned up');
+      fetchDevices();
+    } catch (err) {
+      console.error('Error cleaning up unknown devices:', err.message);
     }
   };
 
@@ -83,9 +100,18 @@ export default function Devices() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-slate-100">Registered Devices</h2>
-        <p className="text-sm text-slate-400 mt-1">List of all active, suspended, and hardware fingerprint banned agents</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-100">Registered Devices</h2>
+          <p className="text-sm text-slate-400 mt-1">List of all active, suspended, and hardware fingerprint banned agents</p>
+        </div>
+        <button
+          onClick={handlePurgeUnknown}
+          className="flex items-center space-x-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+          <span>Purge Unknown Records</span>
+        </button>
       </div>
 
       {/* Filters Bar */}

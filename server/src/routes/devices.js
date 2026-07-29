@@ -8,11 +8,48 @@ const adminAuth = require('../middleware/adminAuth');
 // All device routes require admin authentication
 router.use(adminAuth);
 
-// 1. Get all devices
+// 1. Get all devices (filters out temporary 'Unknown' socket connections by default)
 router.get('/', async (req, res) => {
   try {
-    const devices = await Device.find().sort({ lastSeen: -1 });
+    const { includeUnknown } = req.query;
+    let query = {};
+    
+    if (includeUnknown !== 'true') {
+      query = {
+        $and: [
+          { hostname: { $exists: true } },
+          { hostname: { $ne: null } },
+          { hostname: { $ne: 'Unknown' } },
+          { hostname: { $ne: 'N/A' } },
+          { hostname: { $ne: '' } }
+        ]
+      };
+    }
+    
+    const devices = await Device.find(query).sort({ lastSeen: -1 });
     res.json(devices);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Purge all dummy/temporary 'Unknown' device records from MongoDB
+router.post('/cleanup-unknown', async (req, res) => {
+  try {
+    const result = await Device.deleteMany({
+      $or: [
+        { hostname: { $exists: false } },
+        { hostname: null },
+        { hostname: 'Unknown' },
+        { hostname: 'N/A' },
+        { hostname: '' }
+      ]
+    });
+    
+    res.json({ 
+      message: `Successfully purged ${result.deletedCount} unknown/dummy device records`,
+      deletedCount: result.deletedCount
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
