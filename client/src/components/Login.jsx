@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Shield, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '607598122306-oal27tlr3v870b9bupenf55p6oecmg5j.apps.googleusercontent.com';
 
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -10,6 +11,47 @@ export default function Login({ onLoginSuccess }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load Google Identity Services Script dynamically
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = () => {
+      if (window.google && GOOGLE_CLIENT_ID) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse
+        });
+      }
+    };
+    document.body.appendChild(script);
+  }, []);
+
+  const handleGoogleCredentialResponse = async (response) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`${SIGNALING_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: response.credential })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Google login failed');
+
+      localStorage.setItem('chameleon_access_token', data.accessToken);
+      localStorage.setItem('chameleon_refresh_token', data.refreshToken);
+      localStorage.setItem('chameleon_user', JSON.stringify(data.user));
+
+      if (onLoginSuccess) onLoginSuccess(data.user);
+      navigate('/my-devices');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,8 +85,11 @@ export default function Login({ onLoginSuccess }) {
   };
 
   const handleGoogleLogin = () => {
-    // In production, opens Google OAuth popup or redirects to Google Identity API
-    alert('Google OAuth Client ID integration ready. Configure VITE_GOOGLE_CLIENT_ID in your environment.');
+    if (window.google) {
+      window.google.accounts.id.prompt();
+    } else {
+      setError('Google Identity Services loading... Please try again in a moment.');
+    }
   };
 
   return (
