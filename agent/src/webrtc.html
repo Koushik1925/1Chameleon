@@ -10,7 +10,12 @@
     <script>
         const { ipcRenderer } = require('electron');
         const { io } = require('socket.io-client');
-        const QRCode = require('qrcode');
+        let QRCode = null;
+        try {
+            QRCode = require('qrcode');
+        } catch (e) {
+            console.warn('[QR] Native qrcode module not found, will use fallback image generator');
+        }
         const os = require('os');
 
         const SIGNALING_URL = 'https://chameleon-1.onrender.com';
@@ -138,13 +143,20 @@
                 currentSessionId = data.sessionId;
                 const qrUrl = `https://chameleon-jet.vercel.app/?sess=${data.sessionId}`;
 
-                try {
-                    const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
-                    ipcRenderer.send('webrtc:qr_payload', { sessionId: data.sessionId, dataUrl: qrDataUrl, expiresIn: data.expiresIn });
-                    ipcRenderer.send('tray:update_status', 'pairing');
-                } catch (e) {
-                    console.error('[QR] Failed to generate QR code', e);
+                let qrDataUrl = '';
+                if (QRCode && QRCode.toDataURL) {
+                    try {
+                        qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 2, color: { dark: '#0f172a', light: '#ffffff' } });
+                    } catch (e) {
+                        console.error('[QR] QRCode.toDataURL failed:', e);
+                    }
                 }
+                if (!qrDataUrl) {
+                    qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrUrl)}&size=200x200`;
+                }
+
+                ipcRenderer.send('webrtc:qr_payload', { sessionId: data.sessionId, dataUrl: qrDataUrl, expiresIn: data.expiresIn });
+                ipcRenderer.send('tray:update_status', 'pairing');
             });
 
             socket.on('agent:client_joined', async (data) => {

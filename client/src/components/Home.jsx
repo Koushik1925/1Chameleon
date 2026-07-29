@@ -38,10 +38,13 @@ export default function Home() {
                             <Settings className="text-cyan-400" size={24} />
                             <span className="font-bold text-xl tracking-wide">Chameleon Agent</span>
                         </div>
-                        <div className="flex gap-4">
-                            <a href="#download" className="text-sm font-medium text-slate-300 hover:text-white transition-colors flex items-center h-9 px-4 rounded-lg hover:bg-white/5">
-                                Download Agent
-                            </a>
+                        <div className="flex items-center gap-3">
+                            <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors h-9 px-4 rounded-lg hover:bg-white/5 flex items-center">
+                                Sign In
+                            </Link>
+                            <Link to="/signup" className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors h-9 px-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center">
+                                Create Account
+                            </Link>
                             <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
                                 Connect
                             </Link>
