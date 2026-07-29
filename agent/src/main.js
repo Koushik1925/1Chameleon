@@ -1,30 +1,13 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, desktopCapturer, clipboard, powerSaveBlocker, globalShortcut } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, clipboard, powerSaveBlocker, globalShortcut, nativeImage } = require('electron');
 const path = require('path');
-const { mouse, Point, Button, screen: nutScreen, keyboard, Key } = require('@nut-tree-fork/nut-js');
+const { createNativeInputController } = require('./platform/input');
+const runtimeService = require('./platform/runtime');
+const screenService = require('./platform/screen');
+const startupService = require('./platform/startup');
+const trayService = require('./platform/tray');
 
-const keyMap = {
-    'Escape': Key.Escape, 'Tab': Key.Tab, 'ShiftLeft': Key.LeftShift, 'ShiftRight': Key.RightShift,
-    'ControlLeft': Key.LeftControl, 'ControlRight': Key.RightControl, 'AltLeft': Key.LeftAlt, 'AltRight': Key.RightAlt,
-    'MetaLeft': Key.LeftSuper, 'MetaRight': Key.RightSuper, 'Enter': Key.Return, 'NumpadEnter': Key.Return,
-    'Backspace': Key.Backspace, 'Space': Key.Space, 'ArrowUp': Key.Up, 'ArrowDown': Key.Down,
-    'ArrowLeft': Key.Left, 'ArrowRight': Key.Right, 'Home': Key.Home, 'End': Key.End,
-    'PageUp': Key.PageUp, 'PageDown': Key.PageDown, 'Delete': Key.Delete, 'Insert': Key.Insert, 'CapsLock': Key.CapsLock,
-
-    'KeyA': Key.A, 'KeyB': Key.B, 'KeyC': Key.C, 'KeyD': Key.D, 'KeyE': Key.E, 'KeyF': Key.F, 'KeyG': Key.G,
-    'KeyH': Key.H, 'KeyI': Key.I, 'KeyJ': Key.J, 'KeyK': Key.K, 'KeyL': Key.L, 'KeyM': Key.M, 'KeyN': Key.N,
-    'KeyO': Key.O, 'KeyP': Key.P, 'KeyQ': Key.Q, 'KeyR': Key.R, 'KeyS': Key.S, 'KeyT': Key.T, 'KeyU': Key.U,
-    'KeyV': Key.V, 'KeyW': Key.W, 'KeyX': Key.X, 'KeyY': Key.Y, 'KeyZ': Key.Z,
-
-    'Digit1': Key.Num1, 'Digit2': Key.Num2, 'Digit3': Key.Num3, 'Digit4': Key.Num4, 'Digit5': Key.Num5,
-    'Digit6': Key.Num6, 'Digit7': Key.Num7, 'Digit8': Key.Num8, 'Digit9': Key.Num9, 'Digit0': Key.Num0,
-
-    'Numpad1': Key.Num1, 'Numpad2': Key.Num2, 'Numpad3': Key.Num3, 'Numpad4': Key.Num4, 'Numpad5': Key.Num5,
-    'Numpad6': Key.Num6, 'Numpad7': Key.Num7, 'Numpad8': Key.Num8, 'Numpad9': Key.Num9, 'Numpad0': Key.Num0,
-
-    'Minus': Key.Minus, 'Equal': Key.Equal, 'BracketLeft': Key.BracketLeft, 'BracketRight': Key.BracketRight,
-    'Backslash': Key.Backslash, 'Semicolon': Key.Semicolon, 'Quote': Key.Quote, 'Comma': Key.Comma,
-    'Period': Key.Period, 'Slash': Key.Slash, 'Backquote': Key.Grave
-};
+const nativeInput = createNativeInputController(clipboard);
+const trayAssetsDirectory = trayService.getAssetsDirectory(app.isPackaged);
 
 let tray = null;
 let qrWindow = null;
@@ -33,30 +16,11 @@ let powerBlockerId = null;
 let isControlPaused = false;
 let currentConnectionStatus = 'idle';
 
-// Modifier tracking for remote shortcut blocking
-let ctrlDown = false;
-let altDown = false;
-let metaDown = false;
-let shiftDown = false;
-
 // ── GPU / ENCODER FLAGS ───────────────────────────────────────────────────────
 // IMPORTANT: Do NOT call app.disableHardwareAcceleration().
 // Doing so kills NVENC / QuickSync H.264 encoding and forces the CPU to
 // encode every frame in software — the #1 cause of high CPU and encode latency.
-try {
-    // Allow Chromium's hardware video encoder to use the GPU
-    app.commandLine.appendSwitch('enable-accelerated-video-encode');
-    // Use the GPU process for video decode on the viewer side too
-    app.commandLine.appendSwitch('enable-accelerated-video-decode');
-    // Prefer H.264 hardware encode path in WebRTC (overrides VP8 default)
-    app.commandLine.appendSwitch('enable-features', 'WebRtcHideLocalIpsWithMdns,PlatformHEVCEncoderSupport');
-    // Ignore self-signed cert errors for the dev signaling server
-    app.commandLine.appendSwitch('ignore-certificate-errors');
-    // Prevent shader cache permission errors on Windows
-    app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
-} catch (e) {
-    console.error('[GPU] Flag error:', e);
-}
+runtimeService.configure(app.commandLine);
 
 // Prevent multiple instances
 try {
@@ -75,8 +39,8 @@ function createBackgroundWindow() {
     backgroundWindow = new BrowserWindow({
         show: false, // Keep hidden!
         webPreferences: {
-            nodeIntegration: true, // Needed for simple MVP, better to use preload in prod
-            contextIsolation: false, // Needed to use desktopCapturer directly in renderer easily for MVP
+            nodeIntegration: true, // Preserve the existing hidden-renderer module contract
+            contextIsolation: false, // Preserve the existing hidden-renderer runtime contract
         }
     });
 
@@ -124,106 +88,7 @@ function createBackgroundWindow() {
     ipcMain.on('webrtc:remote_input', async (event, data) => {
         if (isControlPaused) return; // FINAL INJECTION GUARD
         try {
-            // --- MODIFIER TRACKING AND NEUTRALIZATION ---
-            if (data.type === 'key_down' || data.type === 'key_up') {
-                const isDown = data.type === 'key_down';
-                const code = data.code;
-                let isModifier = false;
-
-                if (code === 'ControlLeft' || code === 'ControlRight') {
-                    ctrlDown = isDown;
-                    isModifier = true;
-                } else if (code === 'AltLeft' || code === 'AltRight') {
-                    altDown = isDown;
-                    isModifier = true;
-                } else if (code === 'MetaLeft' || code === 'MetaRight') {
-                    metaDown = isDown;
-                    isModifier = true;
-                } else if (code === 'ShiftLeft' || code === 'ShiftRight') {
-                    shiftDown = isDown;
-                    isModifier = true;
-                }
-
-                if (isModifier) {
-                    // Force release on the host if it's a key_up to prevent stuck keys
-                    if (!isDown) {
-                        const nutKey = keyMap[code];
-                        if (nutKey !== undefined) {
-                            keyboard.releaseKey(nutKey).catch(() => {});
-                        }
-                    }
-                    // NEVER inject modifier key downs -> prevents host OS from registering them
-                    return;
-                }
-
-                // --- STRICT SHORTCUT BLOCKING ---
-                if (ctrlDown || altDown || metaDown) {
-                    return; // Block any key if Ctrl/Alt/Meta is active
-                }
-
-                if (shiftDown) {
-                    // Allow Shift ONLY for printable characters (length === 1)
-                    if (!data.key || data.key.length !== 1) {
-                        return; // Block Shift+Arrow, Shift+Tab, etc.
-                    }
-                }
-            }
-
-            // Block mouse events if modifiers are held (e.g. Ctrl+Click, Alt+Drag)
-            if (data.type.startsWith('mouse_')) {
-                if (ctrlDown || altDown || metaDown) {
-                    return;
-                }
-            }
-
-            // --- INJECTION ---
-            if (data.type === 'mouse_move') {
-                const screenWidth = await nutScreen.width();
-                const screenHeight = await nutScreen.height();
-                const targetX = Math.max(0, Math.min(Math.floor(data.x * screenWidth), screenWidth - 1));
-                const targetY = Math.max(0, Math.min(Math.floor(data.y * screenHeight), screenHeight - 1));
-                mouse.setPosition(new Point(targetX, targetY)).catch(() => {});
-
-            } else if (data.type === 'mouse_down') {
-                const btn = data.button === 2 ? Button.RIGHT : (data.button === 1 ? Button.MIDDLE : Button.LEFT);
-                await mouse.pressButton(btn);
-
-            } else if (data.type === 'mouse_up') {
-                const btn = data.button === 2 ? Button.RIGHT : (data.button === 1 ? Button.MIDDLE : Button.LEFT);
-                await mouse.releaseButton(btn);
-
-            } else if (data.type === 'mouse_wheel') {
-                const lines = Math.round(data.deltaY / 100);
-                if (lines !== 0) {
-                    await mouse.scrollDown(Math.abs(lines) * (lines > 0 ? 1 : -1));
-                }
-
-            } else if (data.type === 'key_down') {
-                if (shiftDown && data.key && data.key.length === 1) {
-                    // Let nut.js handle shifted character generation natively (e.g. A, !, <)
-                    await keyboard.type(data.key);
-                } else {
-                    const nutKey = keyMap[data.code];
-                    if (nutKey !== undefined) {
-                        await keyboard.pressKey(nutKey);
-                    } else if (data.key && data.key.length === 1) {
-                        await keyboard.type(data.key);
-                    }
-                }
-
-            } else if (data.type === 'key_up') {
-                if (shiftDown && data.key && data.key.length === 1) {
-                    // Character was already 'typed' via keyboard.type() in key_down
-                } else {
-                    const nutKey = keyMap[data.code];
-                    if (nutKey !== undefined) {
-                        await keyboard.releaseKey(nutKey);
-                    }
-                }
-
-            } else if (data.type === 'clipboard_push') {
-                clipboard.writeText(data.text);
-            }
+            await nativeInput.handleRemoteInput(data);
         } catch (e) {
             console.error('[INPUT] Native driver error:', e);
         }
@@ -272,8 +137,11 @@ function createQRWindow() {
 
 // Tray Management
 function createTray() {
-    const { nativeImage } = require('electron');
-    const icon = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon-gray.bmp'));
+    const icon = trayService.createIcon(
+        nativeImage,
+        trayAssetsDirectory,
+        'icon-gray'
+    );
 
     tray = new Tray(icon);
     tray.setToolTip('Service Host (Idle)');
@@ -304,38 +172,37 @@ function updateContext_menu() {
 }
 
 function updateTrayIcon(status) {
-    const { nativeImage } = require('electron');
     let tooltip = 'Service Host';
-    let iconPath = 'icon-gray.bmp';
+    let iconBase = 'icon-gray';
 
     // Update icon colors based on status
     if (isControlPaused && status === 'connected') {
         tooltip = 'Service Host (Paused by Host)';
-        iconPath = 'icon-yellow.bmp'; // Using yellow to denote paused
+        iconBase = 'icon-yellow';
     } else if (status === 'connected') {
         tooltip = 'Service Host (Connected)';
-        iconPath = 'icon-green.bmp';
+        iconBase = 'icon-green';
     } else if (status === 'pairing') {
         tooltip = 'Service Host (Pairing...)';
-        iconPath = 'icon-yellow.bmp';
+        iconBase = 'icon-yellow';
     } else {
         tooltip = 'Service Host (Idle)';
     }
 
     if (tray) {
         tray.setToolTip(tooltip);
-        tray.setImage(nativeImage.createFromPath(path.join(__dirname, '..', 'assets', iconPath)));
+        tray.setImage(
+            trayService.createIcon(
+                nativeImage,
+                trayAssetsDirectory,
+                iconBase
+            )
+        );
     }
 }
 
-app.whenReady().then(() => {
-    // Basic Auto-start Logic
-    if (app.isPackaged) {
-        app.setLoginItemSettings({
-            openAtLogin: true,
-            path: app.getPath('exe')
-        });
-    }
+app.whenReady().then(async () => {
+    startupService.configureAutoStart(app);
 
     createTray();
     createBackgroundWindow();
@@ -351,17 +218,24 @@ app.whenReady().then(() => {
     });
 
     // Handle IPC for getting screen sources
-    ipcMain.handle('get-desktop-sources', async () => {
-        return await desktopCapturer.getSources({ types: ['screen'] });
-    });
+    ipcMain.handle(
+        'get-desktop-sources',
+        () => screenService.getDesktopSources()
+    );
 
     ipcMain.on('qr:close', () => {
         if (qrWindow) {
             qrWindow.close();
         }
     });
+
+    await startupService.runPostReady(createQRWindow);
 });
 
 app.on('window-all-closed', () => {
     // Overriding default behavior to keep app running in tray
+});
+
+app.on('activate', () => {
+    startupService.handleActivate(createQRWindow);
 });

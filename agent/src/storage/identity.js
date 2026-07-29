@@ -1,4 +1,3 @@
-const { execSync } = require('child_process');
 const crypto = require('crypto');
 const { safeStorage, app } = require('electron');
 const os = require('os');
@@ -26,24 +25,7 @@ function saveStore(data) {
     }
 }
 
-function getHardwareIds() {
-    let machineGuid = '';
-    let boardSerial = '';
-    try {
-        if (os.platform() === 'win32') {
-            machineGuid = execSync('powershell.exe -Command "(Get-ItemProperty -Path \'HKLM:\\SOFTWARE\\Microsoft\\Cryptography\').MachineGuid"').toString().trim();
-            boardSerial = execSync('powershell.exe -Command "(Get-WmiObject win32_baseboard | Select-Object -ExpandProperty SerialNumber)"').toString().trim();
-        } else {
-            machineGuid = os.hostname();
-            boardSerial = 'unknown-board';
-        }
-    } catch (e) {
-        console.warn('[Identity] Failed to read hardware IDs, using fallback');
-        machineGuid = os.hostname();
-        boardSerial = os.cpus()[0].model;
-    }
-    return { machineGuid, boardSerial };
-}
+const { getHardwareIds } = require('../platform/identity');
 
 function getOrGenerateDeviceId() {
     const store = loadStore();
