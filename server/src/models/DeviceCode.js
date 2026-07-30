@@ -9,6 +9,8 @@ const deviceCodeSchema = new mongoose.Schema({
     default: 'pending' 
   },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deviceId: { type: String },
+  hostname: { type: String },
   deviceToken: { type: String },
   expires: { type: Date, required: true }
 }, {

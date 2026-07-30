@@ -259,6 +259,8 @@ router.post('/device-code', async (req, res) => {
     const deviceCode = new DeviceCode({
       deviceCode: deviceCodeStr,
       userCode: userCodeStr,
+      deviceId: deviceId || '',
+      hostname: hostname || '',
       status: 'pending',
       expires
     });
@@ -292,16 +294,17 @@ router.post('/device-approve', authenticateUser, async (req, res) => {
     const deviceTokenHash = crypto.createHash('sha256').update(deviceTokenStr).digest('hex');
 
     // Register / Claim Device to User account
+    const targetDeviceId = record.deviceId || deviceId;
     let deviceRecord = null;
-    if (deviceId) {
+    if (targetDeviceId) {
       deviceRecord = await Device.findOneAndUpdate(
-        { deviceId },
+        { deviceId: targetDeviceId },
         {
           $set: {
             owner: req.user._id,
             deviceTokenHash,
             claimedAt: new Date(),
-            hostname: hostname || 'Desktop Host',
+            hostname: record.hostname || hostname || 'Desktop Host',
             lastSeen: new Date(),
             status: 'active'
           }
