@@ -5,6 +5,7 @@ const runtimeService = require('./platform/runtime');
 const screenService = require('./platform/screen');
 const startupService = require('./platform/startup');
 const trayService = require('./platform/tray');
+require('./services/authManager');
 
 const nativeInput = createNativeInputController(clipboard);
 const trayAssetsDirectory = trayService.getAssetsDirectory(app.isPackaged);

@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     startPairing: () => ipcRenderer.send('webrtc:start_pairing'), // Optional manual trigger from tray
     onStartSession: (callback) => ipcRenderer.on('webrtc:start_session', (_event, url) => callback(url)),
     sendQRPayload: (payload) => ipcRenderer.send('webrtc:qr_payload', payload),
-    updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status)
+    updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status),
+    startDeviceLogin: () => ipcRenderer.invoke('auth:startDeviceLogin')
 });

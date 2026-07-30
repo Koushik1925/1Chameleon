@@ -97,6 +97,14 @@
 
         <p id="timer-text">Expires in <span class="timer" id="timer">--</span></p>
         <div id="success-msg" class="success-text">Connected Successfully!</div>
+
+        <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #334155;">
+            <button id="login-btn" onclick="handleDesktopLogin()" style="width: 100%; padding: 0.65rem 1rem; background: linear-gradient(135deg, #06b6d4, #2563eb); color: white; border: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>Link PC to Account</span>
+            </button>
+            <p id="auth-status-msg" style="font-size: 0.75rem; margin-top: 0.5rem; color: #38bdf8; display: none; text-align: center;"></p>
+        </div>
     </div>
 
     <script>
@@ -160,6 +168,29 @@
                 window.electronAPI.closeQRWindow();
             }
         });
+
+        async function handleDesktopLogin() {
+            const btn = document.getElementById('login-btn');
+            const msg = document.getElementById('auth-status-msg');
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            msg.style.display = 'block';
+            msg.innerText = 'Opening browser to complete sign-in...';
+            try {
+                const res = await window.electronAPI.startDeviceLogin();
+                if (res && res.success) {
+                    msg.innerText = `Approve code ${res.userCode} in browser...`;
+                } else {
+                    msg.innerText = (res && res.error) || 'Failed to start device login';
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+            } catch (e) {
+                msg.innerText = 'Error launching authorization flow';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
     </script>
 </body>
 
