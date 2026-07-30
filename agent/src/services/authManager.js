@@ -71,6 +71,10 @@ class AuthManager {
           if (data.deviceToken && data.refreshToken) {
             saveTokens(data.refreshToken, data.deviceToken);
             console.log('[AuthManager] Device successfully authorized and claimed by user:', data.user.email);
+            const { BrowserWindow } = require('electron');
+            BrowserWindow.getAllWindows().forEach(win => {
+              try { win.webContents.send('auth:approved', { user: data.user }); } catch (e) {}
+            });
             ipcMain.emit('auth:status-changed', { loggedIn: true, user: data.user });
           }
         } else if (data.error && data.error.includes('expired')) {

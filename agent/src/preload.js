@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onStartSession: (callback) => ipcRenderer.on('webrtc:start_session', (_event, url) => callback(url)),
     sendQRPayload: (payload) => ipcRenderer.send('webrtc:qr_payload', payload),
     updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status),
-    startDeviceLogin: () => ipcRenderer.invoke('auth:startDeviceLogin')
+    startDeviceLogin: () => ipcRenderer.invoke('auth:startDeviceLogin'),
+    onAuthApproved: (callback) => ipcRenderer.on('auth:approved', (_event, value) => callback(value))
 });
