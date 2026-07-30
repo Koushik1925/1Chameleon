@@ -2,6 +2,21 @@ const { shell, ipcMain } = require('electron');
 const { getOrGenerateDeviceId, saveTokens, getRefreshToken, clearTokens } = require('../storage/identity');
 const { Api } = require('./api');
 
+function getPermanentDeviceId() {
+  try {
+    const os = require('os');
+    const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
+    let hash = 0;
+    for (let i = 0; i < identifier.length; i++) {
+      hash = (hash * 31 + identifier.charCodeAt(i)) & 0xffffffff;
+    }
+    const code = Math.abs(hash) % 900000 + 100000;
+    return 'DEV-REAL-' + code.toString();
+  } catch (e) {
+    return 'DEV-REAL-100000';
+  }
+}
+
 class AuthManager {
   constructor() {
     const baseUrl = process.env.SIGNALING_URL || 'https://chameleon-1.onrender.com';
@@ -12,7 +27,7 @@ class AuthManager {
 
   async startDeviceAuthFlow() {
     try {
-      const deviceId = getOrGenerateDeviceId();
+      const deviceId = getPermanentDeviceId();
       const hostname = require('os').hostname();
 
       // 1. Request device login code from server
