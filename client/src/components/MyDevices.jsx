@@ -142,7 +142,7 @@ export default function MyDevices() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {devices.map((device) => {
-                const isOnline = new Date() - new Date(device.lastSeen) < 30000;
+                const isOnline = device.isOnline !== undefined ? device.isOnline : (new Date() - new Date(device.lastSeen) < 30000);
 
                 return (
                   <div key={device.deviceId} className="bg-slate-950/60 backdrop-blur-xl border border-slate-900 rounded-2xl p-6 flex flex-col justify-between space-y-4">

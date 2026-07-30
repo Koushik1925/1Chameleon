@@ -229,7 +229,20 @@ router.post('/logout-all', authenticateUser, async (req, res) => {
 // 7. Get Current User Profile & Devices
 router.get('/me', authenticateUser, async (req, res) => {
   try {
-    const devices = await Device.find({ owner: req.user._id, status: { $ne: 'banned' } });
+    const rawDevices = await Device.find({ owner: req.user._id, status: { $ne: 'banned' } });
+    const isDeviceOnline = req.app.get('isDeviceOnline');
+
+    const devices = rawDevices.map(device => {
+      const devObj = device.toObject();
+      const socketOnline = isDeviceOnline ? isDeviceOnline(devObj.deviceId) : false;
+      const recentSeen = (new Date() - new Date(devObj.lastSeen)) < 30000;
+      devObj.isOnline = socketOnline || recentSeen;
+      if (socketOnline) {
+        devObj.lastSeen = new Date();
+      }
+      return devObj;
+    });
+
     res.json({
       user: {
         id: req.user._id,

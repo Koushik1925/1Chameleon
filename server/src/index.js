@@ -100,6 +100,16 @@ app.set('io', io);
 
 // Keep track of active WebRTC signaling sockets
 const activeSocketSessions = new Map();
+app.set('activeSocketSessions', activeSocketSessions);
+app.set('isDeviceOnline', (deviceId) => {
+  if (!deviceId) return false;
+  for (const session of activeSocketSessions.values()) {
+    if (session.deviceId === deviceId) {
+      return true;
+    }
+  }
+  return false;
+});
 
 io.on('connection', (socket) => {
   console.log(`[Socket] Connected client: ${socket.id}`);
