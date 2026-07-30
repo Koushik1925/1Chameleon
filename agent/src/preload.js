@@ -12,5 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sendQRPayload: (payload) => ipcRenderer.send('webrtc:qr_payload', payload),
     updateTrayStatus: (status) => ipcRenderer.send('tray:update_status', status),
     startDeviceLogin: () => ipcRenderer.invoke('auth:startDeviceLogin'),
-    onAuthApproved: (callback) => ipcRenderer.on('auth:approved', (_event, value) => callback(value))
+    onAuthApproved: (callback) => ipcRenderer.on('auth:approved', (_event, value) => callback(value)),
+    getAuthState: () => ipcRenderer.invoke('auth:getAuthState'),
+    logoutDevice: () => ipcRenderer.invoke('auth:logout')
 });

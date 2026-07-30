@@ -53,7 +53,7 @@ function getOrGenerateDeviceId() {
     return deviceId;
 }
 
-function saveTokens(refreshToken, licenseId) {
+function saveTokens(refreshToken, licenseId, user = null) {
     const store = loadStore();
     if (safeStorage && safeStorage.isEncryptionAvailable()) {
         const encryptedToken = safeStorage.encryptString(refreshToken).toString('base64');
@@ -62,7 +62,22 @@ function saveTokens(refreshToken, licenseId) {
         store.refresh_token_plain = refreshToken;
     }
     store.license_id = licenseId;
+    if (user) {
+        store.user_email = user.email;
+        store.user_name = user.profile?.name || user.email;
+    }
     saveStore(store);
+}
+
+function getUserInfo() {
+    const store = loadStore();
+    if (store.user_email || store.refresh_token_encrypted || store.refresh_token_plain) {
+        return {
+            email: store.user_email || 'Account User',
+            name: store.user_name || store.user_email || 'Account User'
+        };
+    }
+    return null;
 }
 
 function getRefreshToken() {
@@ -86,6 +101,8 @@ function clearTokens() {
     delete store.refresh_token_encrypted;
     delete store.refresh_token_plain;
     delete store.license_id;
+    delete store.user_email;
+    delete store.user_name;
     saveStore(store);
 }
 
@@ -93,5 +110,6 @@ module.exports = {
     getOrGenerateDeviceId,
     saveTokens,
     getRefreshToken,
+    getUserInfo,
     clearTokens
 };

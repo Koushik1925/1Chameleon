@@ -1,5 +1,5 @@
 const { shell, ipcMain } = require('electron');
-const { getOrGenerateDeviceId, saveTokens, getRefreshToken, clearTokens } = require('../storage/identity');
+const { getOrGenerateDeviceId, saveTokens, getRefreshToken, getUserInfo, clearTokens } = require('../storage/identity');
 const { Api } = require('./api');
 
 function getPermanentDeviceId() {
@@ -69,11 +69,11 @@ class AuthManager {
 
           // Save Device Token and User Refresh Token securely
           if (data.deviceToken && data.refreshToken) {
-            saveTokens(data.refreshToken, data.deviceToken);
+            saveTokens(data.refreshToken, data.deviceToken, data.user);
             console.log('[AuthManager] Device successfully authorized and claimed by user:', data.user.email);
             const { BrowserWindow } = require('electron');
             BrowserWindow.getAllWindows().forEach(win => {
-              try { win.webContents.send('auth:approved', { user: data.user }); } catch (e) {}
+              try { win.webContents.send('auth:approved', { user: data.user, hostname: require('os').hostname() }); } catch (e) {}
             });
             ipcMain.emit('auth:status-changed', { loggedIn: true, user: data.user });
           }
@@ -90,6 +90,16 @@ class AuthManager {
 
   setupIpcHandlers() {
     ipcMain.handle('auth:startDeviceLogin', () => this.startDeviceAuthFlow());
+    ipcMain.handle('auth:getAuthState', () => {
+      const user = getUserInfo();
+      const token = getRefreshToken();
+      const isLinked = !!(token || user);
+      return {
+        isLinked,
+        user: user || (isLinked ? { email: 'Account User' } : null),
+        hostname: require('os').hostname()
+      };
+    });
     ipcMain.handle('auth:logout', () => {
       clearTokens();
       ipcMain.emit('auth:status-changed', { loggedIn: false });
