@@ -198,7 +198,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('agent:heartbeat', ({ deviceId }) => {
-    if (deviceId && !deviceId.startsWith('DEV-REAL-')) {
+    if (deviceId) {
       Device.findOneAndUpdate(
         { deviceId },
         { lastSeen: new Date() },
