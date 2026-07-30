@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown, Loader2, MonitorSmartphone, Apple } from 'lucide-react';
+import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown, Loader2, MonitorSmartphone, Apple, User } from 'lucide-react';
 
 export default function Home() {
     const [scrolled, setScrolled] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [user, setUser] = useState(() => {
+        try {
+            const saved = localStorage.getItem('chameleon_user');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    });
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -38,17 +46,33 @@ export default function Home() {
                             <Settings className="text-cyan-400" size={24} />
                             <span className="font-bold text-xl tracking-wide">Chameleon Agent</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors h-9 px-4 rounded-lg hover:bg-white/5 flex items-center">
-                                Sign In
-                            </Link>
-                            <Link to="/signup" className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors h-9 px-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center">
-                                Create Account
-                            </Link>
-                            <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-                                Connect
-                            </Link>
-                        </div>
+                        {user ? (
+                            <div className="flex items-center gap-3">
+                                <Link to="/my-devices" className="flex items-center gap-2.5 text-sm font-medium text-slate-200 hover:text-white bg-slate-900/80 border border-slate-800 h-9 px-3.5 rounded-lg hover:border-slate-700 transition-all">
+                                    {user.profile?.avatar ? (
+                                        <img src={user.profile.avatar} alt="Avatar" className="w-5 h-5 rounded-full object-cover border border-cyan-400/40" />
+                                    ) : (
+                                        <User size={16} className="text-cyan-400" />
+                                    )}
+                                    <span>{user.profile?.name || user.email}</span>
+                                </Link>
+                                <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                                    Connect
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors h-9 px-4 rounded-lg hover:bg-white/5 flex items-center">
+                                    Sign In
+                                </Link>
+                                <Link to="/signup" className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors h-9 px-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center">
+                                    Create Account
+                                </Link>
+                                <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                                    Connect
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </nav>
 

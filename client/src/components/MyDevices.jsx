@@ -90,12 +90,16 @@ export default function MyDevices() {
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-950/60 backdrop-blur-xl border border-slate-900 rounded-2xl p-6 shadow-2xl">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
+            {user?.profile?.avatar ? (
+              <img src={user.profile.avatar} alt="Avatar" className="w-12 h-12 rounded-xl object-cover border border-cyan-500/30 shadow-lg shadow-cyan-500/20" />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+            )}
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">My Devices Control Center</h1>
-              <p className="text-xs text-slate-400">Logged in as {user?.email || 'User'}</p>
+              <h1 className="text-2xl font-bold tracking-tight">Welcome, {user?.profile?.name || 'User'}</h1>
+              <p className="text-xs text-slate-400">Signed in as <span className="text-cyan-400 font-semibold">{user?.email}</span></p>
             </div>
           </div>
 
