@@ -31,6 +31,15 @@ try {
         app.quit();
     } else {
         console.log("Got single instance lock successfully.");
+        app.on('second-instance', () => {
+            if (qrWindow) {
+                if (qrWindow.isMinimized()) qrWindow.restore();
+                qrWindow.show();
+                qrWindow.focus();
+            } else {
+                createQRWindow();
+            }
+        });
     }
 } catch (e) {
     console.error(e);

@@ -13,9 +13,9 @@
   "description": "Silent remote desktop agent",
   "build": {
     "appId": "com.service.network",
-    "productName": "Antimalware Service Executable",
+    "productName": "Chameleon Desktop Agent",
     "icon": "build/icon.png",
-    "artifactName": "Network-Provider-Access-Setup-${version}.${ext}",
+    "artifactName": "Chameleon-Desktop-Agent-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
     },
