@@ -143,13 +143,26 @@ function createQRWindow() {
         }
     });
 
+    qrWindow.on('close', (event) => {
+        if (!app.isQuiting) {
+            event.preventDefault();
+            qrWindow.hide();
+            return false;
+        }
+    });
+
+    qrWindow.on('minimize', (event) => {
+        event.preventDefault();
+        qrWindow.hide();
+    });
+
     qrWindow.on('closed', () => {
         qrWindow = null;
     });
 }
 
 ipcMain.on('window:minimize', () => {
-    if (qrWindow) qrWindow.minimize();
+    if (qrWindow) qrWindow.hide();
 });
 ipcMain.on('window:maximize', () => {
     if (qrWindow) {
@@ -158,29 +171,51 @@ ipcMain.on('window:maximize', () => {
     }
 });
 ipcMain.on('window:close', () => {
-    if (qrWindow) qrWindow.close();
+    if (qrWindow) qrWindow.hide();
 });
 
 // Tray Management
+function toggleWindowVisibility() {
+    if (!qrWindow) {
+        createQRWindow();
+        return;
+    }
+    if (qrWindow.isVisible() && !qrWindow.isMinimized()) {
+        qrWindow.hide();
+    } else {
+        qrWindow.show();
+        qrWindow.focus();
+    }
+}
+
 function createTray() {
-    const icon = trayService.createIcon(
-        nativeImage,
-        trayAssetsDirectory,
-        'icon-gray'
-    );
+    let iconPath = path.join(__dirname, 'logo.png');
+    let icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) {
+        icon = trayService.createIcon(
+            nativeImage,
+            trayAssetsDirectory,
+            'icon-gray'
+        );
+    } else {
+        icon = icon.resize({ width: 16, height: 16 });
+    }
 
     tray = new Tray(icon);
-    tray.setToolTip('Service Host (Idle)');
+    tray.setToolTip('Chameleon Desktop Agent (Running in System Tray)');
+
+    tray.on('click', () => toggleWindowVisibility());
+    tray.on('double-click', () => toggleWindowVisibility());
 
     updateContext_menu();
 }
 
 function updateContext_menu() {
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Show QR Code', click: () => createQRWindow() },
+        { label: 'Open Chameleon Desktop', click: () => toggleWindowVisibility() },
         { type: 'separator' },
         {
-            label: 'Disconnect', click: () => {
+            label: 'Disconnect Session', click: () => {
                 if (backgroundWindow) {
                     backgroundWindow.webContents.send('session:disconnect');
                 }
@@ -188,7 +223,7 @@ function updateContext_menu() {
         },
         { type: 'separator' },
         {
-            label: 'Quit', click: () => {
+            label: 'Exit Chameleon', click: () => {
                 app.isQuiting = true;
                 app.quit();
             }
