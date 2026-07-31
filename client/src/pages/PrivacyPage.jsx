@@ -82,7 +82,7 @@ export default function PrivacyPage() {
                     </PolicySection>
 
                     <PolicySection title="11. Contact Privacy Officer">
-                        <p>If you have questions regarding this Privacy Policy, please email <a href="mailto:privacy@chameleon.dev" className="text-cyan-400 underline font-semibold">privacy@chameleon.dev</a>.</p>
+                        <p>If you have questions regarding this Privacy Policy, please email <a href="mailto:chameleonagent.contact@gmail.com" className="text-cyan-400 underline font-semibold">chameleonagent.contact@gmail.com</a>.</p>
                     </PolicySection>
 
                 </div>

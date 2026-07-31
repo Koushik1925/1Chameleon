@@ -125,10 +125,10 @@ export default function SecurityPage() {
                                 Security is our highest priority. If you discover a vulnerability or security flaw in Chameleon software or infrastructure, please disclose it responsibly to our security team.
                             </p>
                             <a 
-                                href="mailto:security@chameleon.dev" 
+                                href="mailto:chameleonagent.contact@gmail.com" 
                                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition-colors"
                             >
-                                Report Vulnerability (security@chameleon.dev)
+                                Report Vulnerability (chameleonagent.contact@gmail.com)
                             </a>
                         </div>
                     </div>

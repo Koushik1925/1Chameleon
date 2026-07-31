@@ -107,7 +107,7 @@ export default function DeleteAccountPage() {
                                 <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-mono font-bold shrink-0">2</div>
                                 <div>
                                     <h4 className="font-bold text-white">Send Deletion Email Request</h4>
-                                    <p className="text-slate-400">Email our privacy team at <a href="mailto:privacy@chameleon.dev?subject=Account Deletion Request" className="text-cyan-400 underline font-mono">privacy@chameleon.dev</a> from your registered account email address with the subject line <em>"Account Deletion Request"</em>.</p>
+                                    <p className="text-slate-400">Email our privacy team at <a href="mailto:chameleonagent.contact@gmail.com?subject=Account Deletion Request" className="text-cyan-400 underline font-mono">chameleonagent.contact@gmail.com</a> from your registered account email address with the subject line <em>"Account Deletion Request"</em>.</p>
                                 </div>
                             </div>
 
@@ -122,16 +122,16 @@ export default function DeleteAccountPage() {
 
                         <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                             <a 
-                                href="mailto:privacy@chameleon.dev?subject=Account Deletion Request"
+                                href="mailto:chameleonagent.contact@gmail.com?subject=Account Deletion Request"
                                 className="w-full sm:w-auto px-6 py-3 bg-red-500 hover:bg-red-400 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all"
                             >
                                 <Trash2 size={18} />
-                                Email privacy@chameleon.dev to Delete
+                                Email chameleonagent.contact@gmail.com to Delete
                             </a>
 
                             <div className="text-xs text-slate-400 flex items-center gap-1.5">
                                 <Mail size={14} className="text-slate-500" />
-                                <span>Direct Support: support@chameleon.dev</span>
+                                <span>Direct Support: chameleonagent.contact@gmail.com</span>
                             </div>
                         </div>
                     </div>

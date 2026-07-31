@@ -71,7 +71,7 @@ export default function TermsPage() {
                     </PolicySection>
 
                     <PolicySection title="11. Legal Contact">
-                        <p>Questions concerning these terms should be addressed to <a href="mailto:legal@chameleon.dev" className="text-cyan-400 underline font-semibold">legal@chameleon.dev</a>.</p>
+                        <p>Questions concerning these terms should be addressed to <a href="mailto:chameleonagent.contact@gmail.com" className="text-cyan-400 underline font-semibold">chameleonagent.contact@gmail.com</a>.</p>
                     </PolicySection>
 
                 </div>

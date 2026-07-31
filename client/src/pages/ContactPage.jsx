@@ -41,8 +41,8 @@ export default function ContactPage() {
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Technical Support</h4>
-                                    <a href="mailto:support@chameleon.dev" className="text-lg font-bold text-white hover:text-cyan-400 transition-colors">
-                                        support@chameleon.dev
+                                    <a href="mailto:chameleonagent.contact@gmail.com" className="text-base md:text-lg font-bold text-white hover:text-cyan-400 transition-colors break-all">
+                                        chameleonagent.contact@gmail.com
                                     </a>
                                     <p className="text-xs text-slate-400 mt-1">Assistance with desktop agent pairing, WebRTC networks, and bug reports.</p>
                                 </div>
@@ -55,8 +55,8 @@ export default function ContactPage() {
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Business & Licensing</h4>
-                                    <a href="mailto:biz@chameleon.dev" className="text-lg font-bold text-white hover:text-cyan-400 transition-colors">
-                                        biz@chameleon.dev
+                                    <a href="mailto:chameleonagent.contact@gmail.com" className="text-base md:text-lg font-bold text-white hover:text-cyan-400 transition-colors break-all">
+                                        chameleonagent.contact@gmail.com
                                     </a>
                                     <p className="text-xs text-slate-400 mt-1">Custom enterprise hosting, SLA support, and white-label inquiries.</p>
                                 </div>

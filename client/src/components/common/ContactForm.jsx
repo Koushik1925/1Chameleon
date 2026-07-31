@@ -29,7 +29,7 @@ export default function ContactForm() {
             setFormData({ name: '', email: '', subject: 'General Support', message: '' });
         } catch (err) {
             setStatus('error');
-            setErrorMsg('Failed to send message. Please try again or email support@chameleon.dev directly.');
+            setErrorMsg('Failed to send message. Please try again or email chameleonagent.contact@gmail.com directly.');
         }
     };
 
