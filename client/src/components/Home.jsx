@@ -48,9 +48,9 @@ export default function Home() {
 
             <div className="relative z-10">
                 <section className="pt-40 pb-20 px-6 min-h-[90vh] flex flex-col items-center justify-center text-center">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-8 animate-pulse-slow">
-                        <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                        Version 1.4.1 Live
+                    <div className="inline-flex items-center gap-2 text-cyan-400 text-xs md:text-sm font-mono font-semibold uppercase tracking-widest mb-6">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                        Version 1.5.0 Live
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl leading-tight">
                         Secure Remote Access. <br />

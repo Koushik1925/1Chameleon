@@ -18,7 +18,7 @@ export default function PageHero({
 
             <div className="max-w-4xl mx-auto relative z-10">
                 {badge && (
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-6">
+                    <div className="inline-flex items-center gap-2 text-cyan-400 text-xs md:text-sm font-mono font-semibold uppercase tracking-widest mb-4">
                         <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
                         {badge}
                     </div>

@@ -59,7 +59,7 @@ export default function FeaturesPage() {
                     <div className="max-w-5xl mx-auto bg-gradient-to-r from-cyan-950/40 via-slate-900 to-blue-950/40 border border-cyan-500/20 rounded-3xl p-10 md:p-16 text-center backdrop-blur-xl relative overflow-hidden shadow-2xl">
                         <div className="absolute -top-24 -right-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
                         
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-mono mb-6">
+                        <div className="inline-flex items-center gap-2 text-cyan-400 text-xs font-mono font-semibold uppercase tracking-widest mb-4">
                             <ShieldCheck size={14} />
                             Zero Complex Setup
                         </div>

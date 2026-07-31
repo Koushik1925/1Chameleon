@@ -32,8 +32,8 @@ export default function FAQPage() {
 
                 {/* Support CTA */}
                 <section className="px-6 max-w-3xl mx-auto text-center bg-slate-900/60 border border-slate-800 rounded-3xl p-10 backdrop-blur-xl">
-                    <div className="w-12 h-12 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-4">
-                        <MessageSquare size={24} />
+                    <div className="text-cyan-400 flex items-center justify-center mx-auto mb-3">
+                        <MessageSquare size={28} />
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">Still have questions?</h3>
                     <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
