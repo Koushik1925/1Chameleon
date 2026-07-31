@@ -46,7 +46,11 @@
       ]
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Chameleon Desktop Agent",
       "perMachine": false,
       "runAfterFinish": true
     },
