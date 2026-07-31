@@ -41,11 +41,18 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                 
                 {/* Brand Logo */}
-                <Link to="/" className="flex items-center gap-2.5 group">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-transform">
-                        <Settings className="text-black" size={20} />
+                <Link to="/" className="flex items-center gap-3 group">
+                    <img 
+                        src="/logo.png" 
+                        alt="Chameleon Logo" 
+                        className="w-10 h-10 object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform" 
+                    />
+                    <div className="flex flex-col">
+                        <span className="font-extrabold text-xl tracking-tight text-white leading-none">chameleon</span>
+                        <span className="text-[9px] font-extrabold tracking-[1.4px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent uppercase mt-0.5">
+                            SEE. CONNECT. CONTROL.
+                        </span>
                     </div>
-                    <span className="font-bold text-xl tracking-wide text-white group-hover:text-cyan-400 transition-colors">Chameleon</span>
                 </Link>
 
                 {/* Desktop Nav Links */}

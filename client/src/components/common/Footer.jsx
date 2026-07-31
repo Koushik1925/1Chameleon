@@ -9,11 +9,18 @@ export default function Footer() {
                     
                     {/* Brand Column */}
                     <div className="col-span-2 space-y-4">
-                        <Link to="/" className="inline-flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-                                <Settings className="text-black" size={18} />
+                        <Link to="/" className="inline-flex items-center gap-3 group">
+                            <img 
+                                src="/logo.png" 
+                                alt="Chameleon Logo" 
+                                className="w-10 h-10 object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform" 
+                            />
+                            <div className="flex flex-col">
+                                <span className="font-extrabold text-xl tracking-tight text-white leading-none">chameleon</span>
+                                <span className="text-[9px] font-extrabold tracking-[1.4px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent uppercase mt-0.5">
+                                    SEE. CONNECT. CONTROL.
+                                </span>
                             </div>
-                            <span className="font-bold text-lg text-white tracking-wide">Chameleon</span>
                         </Link>
                         <p className="text-slate-400 text-sm max-w-sm leading-relaxed">
                             Ultra-low latency, zero-configuration remote desktop software built with modern WebRTC peer-to-peer end-to-end encryption.

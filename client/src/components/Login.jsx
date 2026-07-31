@@ -110,11 +110,19 @@ export default function Login({ onLoginSuccess }) {
 
       <div className="w-full max-w-md bg-slate-950/60 backdrop-blur-xl border border-slate-900 rounded-2xl shadow-2xl p-8 z-10">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/20">
-            <Shield className="text-white w-6 h-6" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-100 tracking-wide">Welcome Back</h2>
-          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">Sign in to your Chameleon account</p>
+          <Link to="/" className="flex flex-col items-center group mb-2">
+            <img 
+              src="/logo.png" 
+              alt="Chameleon Logo" 
+              className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform mb-2" 
+            />
+            <span className="font-extrabold text-2xl tracking-tight text-white leading-none">chameleon</span>
+            <span className="text-[10px] font-extrabold tracking-[1.6px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent uppercase mt-1">
+              SEE. CONNECT. CONTROL.
+            </span>
+          </Link>
+          <h2 className="text-xl font-bold text-slate-100 tracking-wide mt-3">Welcome Back</h2>
+          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">Sign in to your account</p>
         </div>
 
         {error && (
