@@ -35,19 +35,18 @@ function createTrayService({
          */
         createIcon(nativeImage, assetsDirectory, baseName) {
             try {
-                const extension = platform === 'darwin' ? 'png' : 'bmp';
                 let image = nativeImage.createFromPath(
-                    pathApi.join(assetsDirectory, `${baseName}.${extension}`)
+                    pathApi.join(assetsDirectory, `${baseName}.png`)
                 );
 
                 if (image.isEmpty()) {
                     image = nativeImage.createFromPath(
-                        pathApi.join(assetsDirectory, `${baseName}.png`)
+                        pathApi.join(__dirname, '..', '..', 'logo.png')
                     );
                 }
 
-                if (image.isEmpty()) {
-                    image = nativeImage.createEmpty();
+                if (!image.isEmpty()) {
+                    image = image.resize({ width: 16, height: 16 });
                 }
 
                 if (platform === 'darwin') {
