@@ -37,7 +37,7 @@ export default function Navbar() {
     }, [location.pathname]);
 
     return (
-        <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0b0f14]/90 backdrop-blur-md border-b border-slate-800/80 py-0 shadow-lg' : 'bg-transparent border-transparent py-2'}`}>
+        <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0B0F1A]/85 backdrop-blur-[20px] border-b border-[#1F2937] py-0 shadow-xl' : 'bg-transparent border-transparent py-2'}`}>
             <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                 
                 {/* Brand Logo */}
@@ -48,8 +48,8 @@ export default function Navbar() {
                         className="w-10 h-10 object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform" 
                     />
                     <div className="flex flex-col">
-                        <span className="font-extrabold text-xl tracking-tight text-white leading-none">chameleon</span>
-                        <span className="text-[9px] font-extrabold tracking-[1.4px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent uppercase mt-0.5">
+                        <span className="font-extrabold text-xl tracking-tight text-[#E5E7EB] leading-none">chameleon</span>
+                        <span className="text-[9px] font-extrabold tracking-[1.4px] bg-gradient-to-r from-[#22C55E] via-[#06B6D4] to-[#8B5CF6] bg-clip-text text-transparent uppercase mt-0.5">
                             SEE. CONNECT. CONTROL.
                         </span>
                     </div>
@@ -59,14 +59,14 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-1 text-sm font-medium">
                     <Link 
                         to="/features" 
-                        className={`px-3.5 py-2 rounded-lg transition-colors ${location.pathname === '/features' ? 'text-cyan-400 bg-cyan-950/30' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                        className={`px-3.5 py-2 rounded-lg transition-colors ${location.pathname === '/features' ? 'text-[#06B6D4] bg-[#111827] font-semibold' : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#111827]/60'}`}
                     >
                         Features
                     </Link>
 
                     <Link 
                         to="/downloads" 
-                        className={`px-3.5 py-2 rounded-lg transition-colors ${location.pathname === '/downloads' ? 'text-cyan-400 bg-cyan-950/30' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                        className={`px-3.5 py-2 rounded-lg transition-colors ${location.pathname === '/downloads' ? 'text-[#06B6D4] bg-[#111827] font-semibold' : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#111827]/60'}`}
                     >
                         Downloads
                     </Link>
@@ -77,23 +77,23 @@ export default function Navbar() {
                         onMouseEnter={() => setResourcesOpen(true)}
                         onMouseLeave={() => setResourcesOpen(false)}
                     >
-                        <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+                        <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#111827]/60 transition-colors">
                             <span>Resources</span>
-                            <ChevronDown size={14} className={`transition-transform duration-200 ${resourcesOpen ? 'rotate-180 text-cyan-400' : ''}`} />
+                            <ChevronDown size={14} className={`transition-transform duration-200 ${resourcesOpen ? 'rotate-180 text-[#06B6D4]' : ''}`} />
                         </button>
 
                         {resourcesOpen && (
-                            <div className="absolute top-full left-0 mt-1 w-52 p-2 bg-[#0F172A] border border-slate-800 rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                                <Link to="/help" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <BookOpen size={16} className="text-cyan-400" />
+                            <div className="absolute top-full left-0 mt-1 w-52 p-2 bg-[#111827] border border-[#1F2937] rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                                <Link to="/help" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <BookOpen size={16} className="text-[#06B6D4]" />
                                     <span>Help Center</span>
                                 </Link>
-                                <Link to="/faq" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <HelpCircle size={16} className="text-cyan-400" />
+                                <Link to="/faq" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <HelpCircle size={16} className="text-[#06B6D4]" />
                                     <span>FAQ</span>
                                 </Link>
-                                <Link to="/changelog" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <History size={16} className="text-cyan-400" />
+                                <Link to="/changelog" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <History size={16} className="text-[#06B6D4]" />
                                     <span>Changelog</span>
                                 </Link>
                             </div>
@@ -106,30 +106,30 @@ export default function Navbar() {
                         onMouseEnter={() => setLegalOpen(true)}
                         onMouseLeave={() => setLegalOpen(false)}
                     >
-                        <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+                        <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#111827]/60 transition-colors">
                             <span>Legal</span>
-                            <ChevronDown size={14} className={`transition-transform duration-200 ${legalOpen ? 'rotate-180 text-cyan-400' : ''}`} />
+                            <ChevronDown size={14} className={`transition-transform duration-200 ${legalOpen ? 'rotate-180 text-[#06B6D4]' : ''}`} />
                         </button>
 
                         {legalOpen && (
-                            <div className="absolute top-full left-0 mt-1 w-56 p-2 bg-[#0F172A] border border-slate-800 rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                                <Link to="/privacy" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <Shield size={16} className="text-cyan-400" />
+                            <div className="absolute top-full left-0 mt-1 w-56 p-2 bg-[#111827] border border-[#1F2937] rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                                <Link to="/privacy" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <Shield size={16} className="text-[#06B6D4]" />
                                     <span>Privacy Policy</span>
                                 </Link>
-                                <Link to="/terms" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <FileText size={16} className="text-cyan-400" />
+                                <Link to="/terms" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <FileText size={16} className="text-[#06B6D4]" />
                                     <span>Terms of Service</span>
                                 </Link>
-                                <Link to="/cookies" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <FileText size={16} className="text-cyan-400" />
+                                <Link to="/cookies" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <FileText size={16} className="text-[#06B6D4]" />
                                     <span>Cookie Policy</span>
                                 </Link>
-                                <Link to="/security" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors">
-                                    <Lock size={16} className="text-cyan-400" />
+                                <Link to="/security" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#1F2937]/60 transition-colors">
+                                    <Lock size={16} className="text-[#06B6D4]" />
                                     <span>Security</span>
                                 </Link>
-                                <div className="h-px bg-slate-800 my-1"></div>
+                                <div className="h-px bg-[#1F2937] my-1"></div>
                                 <Link to="/delete-account" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-red-950/30 transition-colors">
                                     <Trash2 size={16} className="text-red-400" />
                                     <span>Delete Account</span>
@@ -143,27 +143,27 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-3">
                     {user ? (
                         <>
-                            <Link to="/my-devices" className="flex items-center gap-2.5 text-sm font-medium text-slate-200 hover:text-white bg-slate-900/80 border border-slate-800 h-9 px-3.5 rounded-lg hover:border-slate-700 transition-all">
+                            <Link to="/my-devices" className="flex items-center gap-2.5 text-sm font-medium text-[#E5E7EB] hover:text-white bg-[#111827] border border-[#1F2937] h-9 px-3.5 rounded-xl hover:border-slate-700 transition-all">
                                 {user.profile?.avatar ? (
-                                    <img src={user.profile.avatar} alt="Avatar" className="w-5 h-5 rounded-full object-cover border border-cyan-400/40" />
+                                    <img src={user.profile.avatar} alt="Avatar" className="w-5 h-5 rounded-full object-cover border border-[#06B6D4]/40" />
                                 ) : (
-                                    <User size={16} className="text-cyan-400" />
+                                    <User size={16} className="text-[#06B6D4]" />
                                 )}
                                 <span>{user.profile?.name || user.email}</span>
                             </Link>
-                            <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                            <Link to="/connect" className="text-sm font-semibold text-white bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 active:scale-98 transition-all flex items-center h-9 px-4 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.25)]">
                                 Connect
                             </Link>
                         </>
                     ) : (
                         <>
-                            <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors h-9 px-4 rounded-lg hover:bg-white/5 flex items-center">
+                            <Link to="/login" className="text-sm font-medium text-[#9CA3AF] hover:text-white transition-colors h-9 px-4 rounded-xl hover:bg-[#111827] flex items-center">
                                 Sign In
                             </Link>
-                            <Link to="/signup" className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors h-9 px-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center">
+                            <Link to="/signup" className="text-sm font-medium text-[#06B6D4] hover:text-cyan-300 transition-colors h-9 px-4 rounded-xl border border-[#1F2937] bg-[#111827] flex items-center">
                                 Create Account
                             </Link>
-                            <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                            <Link to="/connect" className="text-sm font-semibold text-white bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 active:scale-98 transition-all flex items-center h-9 px-4 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.25)]">
                                 Connect
                             </Link>
                         </>

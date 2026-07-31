@@ -6,7 +6,7 @@ import Footer from '../components/common/Footer';
 
 export default function TermsPage() {
     return (
-        <div className="min-h-screen bg-[#0b0f14] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
                 title="Terms of Service" 
                 description="Review the legal Terms of Service for Chameleon Remote Desktop software, user licenses, acceptable use, and liability limits."
@@ -22,7 +22,7 @@ export default function TermsPage() {
                     subtitle="Last Updated: July 31, 2026. Please read these terms carefully before downloading or using Chameleon."
                 />
 
-                <div className="px-6 max-w-4xl mx-auto bg-slate-900/60 border border-slate-800 rounded-3xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
+                <div className="px-6 max-w-4xl mx-auto bg-[#111827] border border-[#1F2937] rounded-2xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
                     
                     <PolicySection title="1. Acceptance of Terms">
                         <p>By creating an account, downloading the Chameleon Desktop Agent, or accessing our web client, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the software.</p>

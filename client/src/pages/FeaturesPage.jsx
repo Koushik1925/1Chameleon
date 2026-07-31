@@ -9,7 +9,7 @@ import { ShieldCheck, ArrowRight } from 'lucide-react';
 
 export default function FeaturesPage() {
     return (
-        <div className="min-h-screen bg-[#0b0f14] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
                 title="Features & Capabilities" 
                 description="Explore Chameleon's ultra-low latency WebRTC streaming, end-to-end encryption, 60 FPS performance, and unattended device management."
@@ -32,10 +32,10 @@ export default function FeaturesPage() {
                 {/* Feature Cards Grid Section */}
                 <section className="py-16 px-6 max-w-7xl mx-auto">
                     <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                        <h2 className="text-3xl md:text-4xl font-bold text-[#E5E7EB] tracking-tight">
                             Engineered for Commercial Performance
                         </h2>
-                        <p className="text-slate-400 text-base">
+                        <p className="text-[#9CA3AF] text-base">
                             Built from the ground up for zero-latency screen sharing, cross-network NAT traversal, and high-fps remote control.
                         </p>
                     </div>
@@ -56,32 +56,31 @@ export default function FeaturesPage() {
 
                 {/* Bottom CTA Banner */}
                 <section className="py-20 px-6">
-                    <div className="max-w-5xl mx-auto bg-gradient-to-r from-cyan-950/40 via-slate-900 to-blue-950/40 border border-cyan-500/20 rounded-3xl p-10 md:p-16 text-center backdrop-blur-xl relative overflow-hidden shadow-2xl">
-                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="max-w-5xl mx-auto bg-[#111827] border border-[#1F2937] rounded-2xl p-10 md:p-16 text-center backdrop-blur-xl relative overflow-hidden shadow-2xl">
                         
-                        <div className="inline-flex items-center gap-2 text-cyan-400 text-xs font-mono font-semibold uppercase tracking-widest mb-4">
-                            <ShieldCheck size={14} />
+                        <div className="inline-flex items-center gap-2 text-[#06B6D4] text-xs font-mono font-semibold uppercase tracking-widest mb-4">
+                            <ShieldCheck size={14} className="text-[#22C55E]" />
                             Zero Complex Setup
                         </div>
 
-                        <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-6">
+                        <h2 className="text-3xl md:text-5xl font-bold text-[#E5E7EB] tracking-tight mb-6">
                             Ready to Experience Ultra-Low Latency?
                         </h2>
-                        <p className="text-slate-300 max-w-xl mx-auto mb-8 text-base md:text-lg">
+                        <p className="text-[#9CA3AF] max-w-xl mx-auto mb-8 text-base md:text-lg">
                             Get started in seconds with our Windows Desktop Agent or launch direct browser connections immediately.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link 
                                 to="/downloads" 
-                                className="h-12 px-8 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-bold flex items-center gap-2 shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all"
+                                className="h-12 px-8 rounded-xl bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 text-white font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] active:scale-98 transition-all"
                             >
                                 Download for Windows
                                 <ArrowRight size={18} />
                             </Link>
                             <Link 
                                 to="/connect" 
-                                className="h-12 px-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium border border-slate-700 flex items-center"
+                                className="h-12 px-8 rounded-xl bg-transparent hover:bg-[#0B0F1A] text-[#E5E7EB] font-semibold border border-[#1F2937] flex items-center"
                             >
                                 Open Web Client
                             </Link>

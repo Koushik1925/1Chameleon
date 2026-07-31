@@ -4,27 +4,27 @@ export default function Timeline({ releases = [] }) {
     return (
         <div className="space-y-12 max-w-4xl mx-auto">
             {releases.map((rel, idx) => (
-                <div key={idx} className="relative pl-8 md:pl-10 border-l border-slate-800 space-y-6">
-                    {/* Circle Node */}
-                    <div className="absolute -left-2.5 top-0 w-5 h-5 rounded-full bg-[#0b0f14] border-2 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
+                <div key={idx} className="relative pl-8 md:pl-10 border-l border-[#1F2937] space-y-6">
+                    {/* Gradient Dot Node */}
+                    <div className="absolute -left-2.5 top-1 w-5 h-5 rounded-full bg-gradient-to-tr from-[#22C55E] to-[#06B6D4] shadow-[0_0_12px_rgba(6,182,212,0.4)]"></div>
 
                     {/* Release Header */}
                     <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                        <h2 className="text-2xl md:text-3xl font-bold text-[#E5E7EB] tracking-tight">
                             {rel.version}
                         </h2>
-                        <span className="text-xs font-mono text-slate-500 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-full">
+                        <span className="text-xs font-mono text-[#9CA3AF] bg-[#111827] border border-[#1F2937] px-2.5 py-1 rounded-full">
                             {rel.date}
                         </span>
                         {rel.badge && (
-                            <span className="text-xs font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-3 py-1 rounded-full">
+                            <span className="text-xs font-mono text-[#06B6D4] bg-[#111827] border border-[#1F2937] px-3 py-1 rounded-full font-semibold">
                                 {rel.badge}
                             </span>
                         )}
                     </div>
 
                     {/* Content Card */}
-                    <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-xl space-y-6">
+                    <div className="bg-[#111827] border border-[#1F2937] rounded-2xl p-6 md:p-8 backdrop-blur-xl space-y-6">
                         
                         {/* Added Features */}
                         {rel.added && rel.added.length > 0 && (

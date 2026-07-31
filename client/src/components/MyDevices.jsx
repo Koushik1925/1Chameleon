@@ -87,35 +87,35 @@ export default function MyDevices() {
   };
 
   return (
-    <div className="min-h-screen bg-[#05060b] text-slate-100 p-6">
+    <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] p-6 selection:bg-[#06B6D4]/30 selection:text-cyan-200">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-950/60 backdrop-blur-xl border border-slate-900 rounded-2xl p-6 shadow-2xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#111827] border border-[#1F2937] rounded-2xl p-6 shadow-2xl">
           <div className="flex items-center space-x-4">
             {user?.profile?.avatar ? (
-              <img src={user.profile.avatar} alt="Avatar" className="w-12 h-12 rounded-xl object-cover border border-cyan-500/30 shadow-lg shadow-cyan-500/20" />
+              <img src={user.profile.avatar} alt="Avatar" className="w-12 h-12 rounded-xl object-cover border border-[#06B6D4]/30 shadow-lg shadow-[#06B6D4]/10" />
             ) : (
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#22C55E] to-[#06B6D4] flex items-center justify-center shadow-lg shadow-[#06B6D4]/10">
                 <Shield className="w-6 h-6 text-white" />
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Welcome, {user?.profile?.name || 'User'}</h1>
-              <p className="text-xs text-slate-400">Signed in as <span className="text-cyan-400 font-semibold">{user?.email}</span></p>
+              <h1 className="text-2xl font-bold tracking-tight text-[#E5E7EB]">Welcome, {user?.profile?.name || 'User'}</h1>
+              <p className="text-xs text-[#9CA3AF]">Signed in as <span className="text-[#06B6D4] font-semibold">{user?.email}</span></p>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
             <button
               onClick={fetchProfileAndDevices}
-              className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition-colors"
+              className="p-2.5 rounded-xl bg-[#0B0F1A] hover:bg-[#0B0F1A]/80 border border-[#1F2937] text-[#9CA3AF] transition-colors"
               title="Refresh Devices"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors"
+              className="flex items-center space-x-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span>Sign Out</span>
@@ -125,17 +125,17 @@ export default function MyDevices() {
 
         {/* Devices Grid */}
         <div>
-          <h2 className="text-lg font-semibold text-slate-200 mb-4">Claimed Host Machines</h2>
+          <h2 className="text-lg font-semibold text-[#E5E7EB] mb-4">Claimed Host Machines</h2>
 
           {loading ? (
-            <div className="p-12 text-center text-slate-500 text-sm">
+            <div className="p-12 text-center text-[#9CA3AF] text-sm">
               Loading your claimed devices...
             </div>
           ) : devices.length === 0 ? (
-            <div className="bg-slate-950/40 border border-slate-900 rounded-2xl p-12 text-center space-y-4">
-              <Monitor className="w-12 h-12 text-slate-600 mx-auto" />
-              <h3 className="text-slate-300 font-semibold text-lg">No Devices Claimed Yet</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <div className="bg-[#111827] border border-[#1F2937] rounded-2xl p-12 text-center space-y-4">
+              <Monitor className="w-12 h-12 text-[#9CA3AF]/60 mx-auto" />
+              <h3 className="text-[#E5E7EB] font-semibold text-lg">No Devices Claimed Yet</h3>
+              <p className="text-xs text-[#9CA3AF] max-w-md mx-auto">
                 Install the Chameleon Desktop Agent on your host machine and log in to automatically link it to your account for 1-click remote access.
               </p>
             </div>
@@ -145,37 +145,37 @@ export default function MyDevices() {
                 const isOnline = device.isOnline !== undefined ? device.isOnline : (new Date() - new Date(device.lastSeen) < 30000);
 
                 return (
-                  <div key={device.deviceId} className="bg-slate-950/60 backdrop-blur-xl border border-slate-900 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                  <div key={device.deviceId} className="bg-[#111827] border border-[#1F2937] rounded-2xl p-6 flex flex-col justify-between space-y-4 transition-all hover:border-[#06B6D4]/30">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <h3 className="font-bold text-slate-100 text-base">{device.hostname || 'Desktop Host'}</h3>
-                        <p className="text-xs font-mono text-slate-500">{device.deviceId}</p>
+                        <h3 className="font-bold text-[#E5E7EB] text-base">{device.hostname || 'Desktop Host'}</h3>
+                        <p className="text-xs font-mono text-[#9CA3AF]/60">{device.deviceId}</p>
                       </div>
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase flex items-center space-x-1.5 border ${
                         isOnline
-                          ? 'bg-green-500/10 text-green-400 border-green-500/20 animate-pulse'
-                          : 'bg-slate-900 text-slate-500 border-slate-800'
+                          ? 'bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/20 animate-pulse'
+                          : 'bg-[#0B0F1A] text-[#9CA3AF] border-[#1F2937]'
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-400' : 'bg-slate-600'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-[#22C55E]' : 'bg-[#9CA3AF]'}`}></span>
                         <span>{isOnline ? 'Online' : 'Offline'}</span>
                       </span>
                     </div>
 
-                    <div className="space-y-1 text-xs text-slate-400 border-t border-slate-900 pt-3">
+                    <div className="space-y-1 text-xs text-[#9CA3AF] border-t border-[#1F2937] pt-3">
                       <div className="flex justify-between">
                         <span>OS:</span>
-                        <span className="text-slate-200">{device.osName || 'Windows'}</span>
+                        <span className="text-[#E5E7EB]">{device.osName || 'Windows'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Agent Version:</span>
-                        <span className="text-slate-200">{device.agentVersion || 'v1.4.1'}</span>
+                        <span className="text-[#E5E7EB]">{device.agentVersion || 'v1.4.1'}</span>
                       </div>
                     </div>
 
                     <button
                       onClick={() => handleConnectDevice(device.deviceId)}
                       disabled={!isOnline}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/15 disabled:opacity-40 flex items-center justify-center space-x-2 text-sm"
+                      className="w-full bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 text-white font-bold py-3 rounded-xl transition-all shadow-md disabled:opacity-40 flex items-center justify-center space-x-2 text-sm active:scale-98"
                     >
                       <Play className="w-4 h-4 fill-current" />
                       <span>{isOnline ? '1-Click Connect' : 'Machine Offline'}</span>

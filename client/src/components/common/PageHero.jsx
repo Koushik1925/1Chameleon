@@ -13,27 +13,27 @@ export default function PageHero({
 }) {
     return (
         <section className="pt-32 pb-16 px-6 text-center relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-cyan-900/10 blur-[100px] rounded-full pointer-events-none"></div>
+            {/* Ambient Background Glow - Soft & Minimal */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] bg-[#06B6D4]/5 blur-[120px] rounded-full pointer-events-none"></div>
 
             <div className="max-w-4xl mx-auto relative z-10">
                 {badge && (
-                    <div className="inline-flex items-center gap-2 text-cyan-400 text-xs md:text-sm font-mono font-semibold uppercase tracking-widest mb-4">
-                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    <div className="inline-flex items-center gap-2 text-[#06B6D4] text-xs md:text-sm font-mono font-semibold uppercase tracking-widest mb-4">
+                        <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
                         {badge}
                     </div>
                 )}
 
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6 leading-tight">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[#E5E7EB] mb-6 leading-tight">
                     {title} {titleGradient && (
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 block sm:inline">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22C55E] via-[#06B6D4] to-[#8B5CF6] block sm:inline">
                             {titleGradient}
                         </span>
                     )}
                 </h1>
 
                 {subtitle && (
-                    <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-8">
+                    <p className="text-lg md:text-xl text-[#9CA3AF] max-w-2xl mx-auto leading-relaxed mb-8">
                         {subtitle}
                     </p>
                 )}
@@ -43,7 +43,7 @@ export default function PageHero({
                         {ctaText && (
                             <Link 
                                 to={ctaLink || '/connect'} 
-                                className="h-12 px-8 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-semibold flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:shadow-[0_0_35px_rgba(6,182,212,0.5)] transition-all"
+                                className="h-12 px-8 rounded-xl bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 text-white font-bold flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.25)] active:scale-98 transition-all"
                             >
                                 {ctaText}
                             </Link>
@@ -52,7 +52,7 @@ export default function PageHero({
                         {secondaryCtaText && (
                             <Link 
                                 to={secondaryCtaLink || '/downloads'} 
-                                className="h-12 px-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium flex items-center justify-center border border-slate-800 hover:border-slate-700 transition-all"
+                                className="h-12 px-8 rounded-xl bg-transparent hover:bg-[#111827] text-[#E5E7EB] font-semibold flex items-center justify-center border border-[#1F2937] hover:border-slate-700 transition-all"
                             >
                                 {secondaryCtaText}
                             </Link>

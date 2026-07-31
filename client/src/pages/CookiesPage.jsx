@@ -6,7 +6,7 @@ import Footer from '../components/common/Footer';
 
 export default function CookiesPage() {
     return (
-        <div className="min-h-screen bg-[#0b0f14] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
                 title="Cookie Policy" 
                 description="Understand how Chameleon uses essential cookies, authentication session tokens, and local browser storage to provide secure remote access."
@@ -22,7 +22,7 @@ export default function CookiesPage() {
                     subtitle="Last Updated: July 31, 2026. Explanation of essential cookies, session storage, and how to manage your privacy settings."
                 />
 
-                <div className="px-6 max-w-4xl mx-auto bg-slate-900/60 border border-slate-800 rounded-3xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
+                <div className="px-6 max-w-4xl mx-auto bg-[#111827] border border-[#1F2937] rounded-2xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
                     
                     <PolicySection title="1. What Are Cookies?">
                         <p>Cookies and local storage objects (localStorage) are small data files saved on your browser or device when you visit websites. They enable the application to remember your login session, last connected device ID, and user interface preferences.</p>
@@ -30,8 +30,8 @@ export default function CookiesPage() {
 
                     <PolicySection title="2. Essential Cookies">
                         <p>Essential cookies are strictly required for the website to function. They enable secure navigation, WebSockets signaling connection authentication, and session continuity.</p>
-                        <table className="w-full text-left text-xs md:text-sm text-slate-300 mt-3 border border-slate-800 rounded-xl overflow-hidden">
-                            <thead className="bg-slate-950 text-white font-mono uppercase">
+                        <table className="w-full text-left text-xs md:text-sm text-[#9CA3AF] mt-3 border border-[#1F2937] rounded-xl overflow-hidden">
+                            <thead className="bg-[#0B0F1A] text-[#E5E7EB] font-mono uppercase">
                                 <tr>
                                     <th className="p-3">Key / Cookie</th>
                                     <th className="p-3">Purpose</th>

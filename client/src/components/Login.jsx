@@ -104,25 +104,29 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#05060b] flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-cyan-600/10 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
+    <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#06B6D4]/5 blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#8B5CF6]/5 blur-[120px] pointer-events-none"></div>
 
-      <div className="w-full max-w-md bg-slate-950/60 backdrop-blur-xl border border-slate-900 rounded-2xl shadow-2xl p-8 z-10">
+      <div className="w-full max-w-md bg-[#111827] border border-[#1F2937] rounded-2xl shadow-2xl p-8 z-10">
         <div className="flex flex-col items-center mb-8">
           <Link to="/" className="flex flex-col items-center group mb-2">
             <img 
               src="/logo.png" 
               alt="Chameleon Logo" 
-              className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.6)] group-hover:scale-105 transition-transform mb-2" 
+              className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] group-hover:scale-105 transition-transform mb-2" 
+              onError={(e) => {
+                // If relative logo fails, try referencing root
+                e.target.src = '/logo.png';
+              }}
             />
-            <span className="font-extrabold text-2xl tracking-tight text-white leading-none">chameleon</span>
-            <span className="text-[10px] font-extrabold tracking-[1.6px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent uppercase mt-1">
+            <span className="font-extrabold text-2xl tracking-tight text-[#E5E7EB] leading-none">chameleon</span>
+            <span className="text-[10px] font-extrabold tracking-[1.6px] bg-gradient-to-r from-[#22C55E] via-[#06B6D4] to-[#8B5CF6] bg-clip-text text-transparent uppercase mt-1">
               SEE. CONNECT. CONTROL.
             </span>
           </Link>
-          <h2 className="text-xl font-bold text-slate-100 tracking-wide mt-3">Welcome Back</h2>
-          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">Sign in to your account</p>
+          <h2 className="text-xl font-bold text-[#E5E7EB] tracking-wide mt-3">Welcome Back</h2>
+          <p className="text-xs text-[#9CA3AF] mt-1 uppercase tracking-widest">Sign in to your account</p>
         </div>
 
         {error && (
@@ -133,30 +137,30 @@ export default function Login({ onLoginSuccess }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
+            <label className="block text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest mb-2">Email Address</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
+              <Mail className="w-4 h-4 text-[#9CA3AF] absolute left-4 top-3.5" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-[#0B0F1A] border border-[#1F2937] rounded-xl pl-11 pr-4 py-3 text-[#E5E7EB] text-sm focus:outline-none focus:border-[#06B6D4] transition-colors"
                 placeholder="name@domain.com"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Password</label>
+            <label className="block text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest mb-2">Password</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
+              <Lock className="w-4 h-4 text-[#9CA3AF] absolute left-4 top-3.5" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-slate-100 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-[#0B0F1A] border border-[#1F2937] rounded-xl pl-11 pr-4 py-3 text-[#E5E7EB] text-sm focus:outline-none focus:border-[#06B6D4] transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -165,7 +169,7 @@ export default function Login({ onLoginSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/15 disabled:opacity-50 flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 text-white font-bold py-3 rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/15 disabled:opacity-50 flex items-center justify-center space-x-2 active:scale-98"
           >
             <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -173,18 +177,18 @@ export default function Login({ onLoginSuccess }) {
         </form>
 
         <div className="my-6 flex items-center">
-          <div className="flex-1 border-t border-slate-900"></div>
-          <span className="px-3 text-xs text-slate-500 uppercase tracking-wider">or</span>
-          <div className="flex-1 border-t border-slate-900"></div>
+          <div className="flex-1 border-t border-[#1F2937]"></div>
+          <span className="px-3 text-xs text-[#9CA3AF] uppercase tracking-wider">or</span>
+          <div className="flex-1 border-t border-[#1F2937]"></div>
         </div>
 
         <div className="w-full flex justify-center min-h-[44px]">
           <div id="googleBtnContainer" className="w-full flex justify-center"></div>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-[#9CA3AF] mt-6">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-cyan-400 hover:text-cyan-300 font-semibold">
+          <Link to="/signup" className="text-[#06B6D4] hover:text-[#06B6D4]/80 font-semibold transition-colors">
             Create account
           </Link>
         </p>

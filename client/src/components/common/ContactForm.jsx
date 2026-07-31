@@ -34,21 +34,21 @@ export default function ContactForm() {
     };
 
     return (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl shadow-2xl">
-            <h3 className="text-2xl font-bold text-white mb-6">Send Us a Message</h3>
+        <div className="bg-[#111827] border border-[#1F2937] rounded-2xl p-8 backdrop-blur-xl shadow-2xl">
+            <h3 className="text-2xl font-bold text-[#E5E7EB] mb-6">Send Us a Message</h3>
 
             {status === 'success' ? (
-                <div className="p-6 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-center space-y-3 animate-in fade-in duration-300">
-                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <div className="p-6 bg-emerald-950/30 border border-emerald-500/20 rounded-xl text-center space-y-3 animate-in fade-in duration-300">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-[#22C55E] flex items-center justify-center mx-auto">
                         <CheckCircle2 size={24} />
                     </div>
-                    <h4 className="text-xl font-bold text-white">Message Received!</h4>
-                    <p className="text-slate-300 text-sm leading-relaxed">
+                    <h4 className="text-xl font-bold text-[#E5E7EB]">Message Received!</h4>
+                    <p className="text-[#9CA3AF] text-sm leading-relaxed">
                         Thank you for reaching out to Chameleon Support. Our engineering team will review your inquiry and respond within 24 hours.
                     </p>
                     <button 
                         onClick={() => setStatus('idle')}
-                        className="mt-4 px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-xl transition-colors"
+                        className="mt-4 px-6 py-2 bg-transparent border border-[#1F2937] hover:bg-[#1F2937] text-[#E5E7EB] text-xs font-semibold rounded-xl transition-colors"
                     >
                         Send Another Message
                     </button>
@@ -56,7 +56,7 @@ export default function ContactForm() {
             ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {status === 'error' && (
-                        <div className="p-4 bg-red-950/40 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center gap-3">
+                        <div className="p-4 bg-red-950/30 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-3">
                             <AlertCircle size={18} className="shrink-0" />
                             <span>{errorMsg}</span>
                         </div>
@@ -64,34 +64,34 @@ export default function ContactForm() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Your Name *</label>
+                            <label className="block text-xs font-mono uppercase tracking-wider text-[#9CA3AF] mb-2">Your Name *</label>
                             <input 
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="Jane Doe"
-                                className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-white text-sm outline-none transition-colors"
+                                className="w-full px-4 py-3 bg-[#0B0F1A] border border-[#1F2937] focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/30 rounded-xl text-[#E5E7EB] placeholder-[#9CA3AF] text-sm outline-none transition-all"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Email Address *</label>
+                            <label className="block text-xs font-mono uppercase tracking-wider text-[#9CA3AF] mb-2">Email Address *</label>
                             <input 
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 placeholder="jane@company.com"
-                                className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-white text-sm outline-none transition-colors"
+                                className="w-full px-4 py-3 bg-[#0B0F1A] border border-[#1F2937] focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/30 rounded-xl text-[#E5E7EB] placeholder-[#9CA3AF] text-sm outline-none transition-all"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Subject</label>
+                        <label className="block text-xs font-mono uppercase tracking-wider text-[#9CA3AF] mb-2">Subject</label>
                         <select 
                             value={formData.subject}
                             onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                            className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-white text-sm outline-none transition-colors"
+                            className="w-full px-4 py-3 bg-[#0B0F1A] border border-[#1F2937] focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/30 rounded-xl text-[#E5E7EB] text-sm outline-none transition-all"
                         >
                             <option value="General Support">General Support & Setup</option>
                             <option value="Bug Report">Bug Report or Issue</option>
@@ -102,20 +102,20 @@ export default function ContactForm() {
                     </div>
 
                     <div>
-                        <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Message *</label>
+                        <label className="block text-xs font-mono uppercase tracking-wider text-[#9CA3AF] mb-2">Message *</label>
                         <textarea 
                             rows={5}
                             value={formData.message}
                             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                             placeholder="Describe your question or issue in detail..."
-                            className="w-full px-4 py-3 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-white text-sm outline-none transition-colors resize-none"
+                            className="w-full px-4 py-3 bg-[#0B0F1A] border border-[#1F2937] focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/30 rounded-xl text-[#E5E7EB] placeholder-[#9CA3AF] text-sm outline-none transition-all resize-none"
                         ></textarea>
                     </div>
 
                     <button 
                         type="submit"
                         disabled={status === 'submitting'}
-                        className="w-full h-12 bg-cyan-400 hover:bg-cyan-300 text-black font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all"
+                        className="w-full h-12 bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:opacity-95 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] active:scale-98 transition-all"
                     >
                         {status === 'submitting' ? (
                             <>
