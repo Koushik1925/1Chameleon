@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, clipboard, powerSaveBlocker, globalShortcut, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, clipboard, powerSaveBlocker, globalShortcut, nativeImage, shell } = require('electron');
 const path = require('path');
 const { createNativeInputController } = require('./platform/input');
 const runtimeService = require('./platform/runtime');
@@ -291,6 +291,12 @@ app.whenReady().then(async () => {
             } catch (e) {}
         }
         return updated;
+    });
+
+    ipcMain.on('system:open_url', (_event, url) => {
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            shell.openExternal(url);
+        }
     });
 });
 

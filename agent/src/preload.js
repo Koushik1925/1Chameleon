@@ -18,5 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     minimizeWindow: () => ipcRenderer.send('window:minimize'),
     maximizeWindow: () => ipcRenderer.send('window:maximize'),
     getSettings: () => ipcRenderer.invoke('settings:get'),
-    updateSettings: (updates) => ipcRenderer.invoke('settings:update', updates)
+    updateSettings: (updates) => ipcRenderer.invoke('settings:update', updates),
+    openExternalLink: (url) => ipcRenderer.send('system:open_url', url)
 });
