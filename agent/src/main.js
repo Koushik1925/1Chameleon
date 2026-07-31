@@ -271,6 +271,27 @@ app.whenReady().then(async () => {
             qrWindow.close();
         }
     });
+
+    // Settings IPC Handlers
+    const { getSettings, updateSettings } = require('./storage/settings');
+    ipcMain.handle('settings:get', () => getSettings());
+    ipcMain.handle('settings:update', (_event, updates) => {
+        const updated = updateSettings(updates);
+        if (updates.autoStart !== undefined) {
+            try {
+                app.setLoginItemSettings({
+                    openAtLogin: updates.autoStart,
+                    path: app.getPath('exe')
+                });
+            } catch (e) {}
+        }
+        if (updates.targetFps !== undefined && backgroundWindow) {
+            try {
+                backgroundWindow.webContents.send('settings:fps_changed', updates.targetFps);
+            } catch (e) {}
+        }
+        return updated;
+    });
 });
 
 app.on('window-all-closed', () => {

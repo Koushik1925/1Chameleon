@@ -579,21 +579,21 @@
                                 <div class="info-card-title">Launch on System Startup</div>
                                 <div class="info-card-sub">Start Chameleon silently when Windows boots up</div>
                             </div>
-                            <input type="checkbox" checked style="accent-color: #3B82F6; width: 18px; height: 18px; cursor: pointer;">
+                            <input id="setting-autostart" type="checkbox" onchange="toggleAutoStart(this.checked)" style="accent-color: #3B82F6; width: 18px; height: 18px; cursor: pointer;">
                         </div>
                         <div class="info-card">
                             <div>
                                 <div class="info-card-title">Hardware Acceleration (NVENC)</div>
                                 <div class="info-card-sub">Enable GPU ultra-low latency WebRTC encoding</div>
                             </div>
-                            <input type="checkbox" checked style="accent-color: #3B82F6; width: 18px; height: 18px; cursor: pointer;">
+                            <input id="setting-gpu" type="checkbox" onchange="toggleGpuAccel(this.checked)" style="accent-color: #3B82F6; width: 18px; height: 18px; cursor: pointer;">
                         </div>
                         <div class="info-card">
                             <div>
                                 <div class="info-card-title">Frame Rate Target</div>
-                                <div class="info-card-sub">Target 60 FPS smooth remote desktop streaming</div>
+                                <div class="info-card-sub">Target smooth remote desktop streaming FPS</div>
                             </div>
-                            <button class="action-btn">60 FPS</button>
+                            <button id="setting-fps-btn" onclick="cycleFpsTarget()" class="action-btn">60 FPS</button>
                         </div>
                     </div>
                 </div>
@@ -690,7 +690,54 @@
             }
         }
 
+        let currentFps = 60;
+
+        async function loadSettings() {
+            if (window.electronAPI.getSettings) {
+                try {
+                    const settings = await window.electronAPI.getSettings();
+                    if (settings) {
+                        const autoEl = document.getElementById('setting-autostart');
+                        const gpuEl = document.getElementById('setting-gpu');
+                        const fpsBtn = document.getElementById('setting-fps-btn');
+
+                        if (autoEl) autoEl.checked = !!settings.autoStart;
+                        if (gpuEl) gpuEl.checked = !!settings.hardwareAccel;
+                        if (fpsBtn && settings.targetFps) {
+                            currentFps = settings.targetFps;
+                            fpsBtn.innerText = `${currentFps} FPS`;
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
+
+        async function toggleAutoStart(checked) {
+            if (window.electronAPI.updateSettings) {
+                await window.electronAPI.updateSettings({ autoStart: checked });
+            }
+        }
+
+        async function toggleGpuAccel(checked) {
+            if (window.electronAPI.updateSettings) {
+                await window.electronAPI.updateSettings({ hardwareAccel: checked });
+            }
+        }
+
+        async function cycleFpsTarget() {
+            const fpsOptions = [30, 60, 120];
+            const nextIdx = (fpsOptions.indexOf(currentFps) + 1) % fpsOptions.length;
+            currentFps = fpsOptions[nextIdx];
+            const fpsBtn = document.getElementById('setting-fps-btn');
+            if (fpsBtn) fpsBtn.innerText = `${currentFps} FPS`;
+
+            if (window.electronAPI.updateSettings) {
+                await window.electronAPI.updateSettings({ targetFps: currentFps });
+            }
+        }
+
         checkAuthState();
+        loadSettings();
     </script>
 </body>
 

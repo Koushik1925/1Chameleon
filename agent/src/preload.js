@@ -16,5 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getAuthState: () => ipcRenderer.invoke('auth:getAuthState'),
     logoutDevice: () => ipcRenderer.invoke('auth:logout'),
     minimizeWindow: () => ipcRenderer.send('window:minimize'),
-    maximizeWindow: () => ipcRenderer.send('window:maximize')
+    maximizeWindow: () => ipcRenderer.send('window:maximize'),
+    getSettings: () => ipcRenderer.invoke('settings:get'),
+    updateSettings: (updates) => ipcRenderer.invoke('settings:update', updates)
 });
