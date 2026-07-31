@@ -34,16 +34,30 @@ function createTrayService({
          * @returns {Electron.NativeImage}
          */
         createIcon(nativeImage, assetsDirectory, baseName) {
-            const extension = platform === 'darwin' ? 'png' : 'bmp';
-            const image = nativeImage.createFromPath(
-                pathApi.join(assetsDirectory, `${baseName}.${extension}`)
-            );
+            try {
+                const extension = platform === 'darwin' ? 'png' : 'bmp';
+                let image = nativeImage.createFromPath(
+                    pathApi.join(assetsDirectory, `${baseName}.${extension}`)
+                );
 
-            if (platform === 'darwin') {
-                image.setTemplateImage(true);
+                if (image.isEmpty()) {
+                    image = nativeImage.createFromPath(
+                        pathApi.join(assetsDirectory, `${baseName}.png`)
+                    );
+                }
+
+                if (image.isEmpty()) {
+                    image = nativeImage.createEmpty();
+                }
+
+                if (platform === 'darwin') {
+                    image.setTemplateImage(true);
+                }
+
+                return image;
+            } catch (e) {
+                return nativeImage.createEmpty();
             }
-
-            return image;
         }
     };
 }

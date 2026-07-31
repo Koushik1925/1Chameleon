@@ -34,27 +34,29 @@ function createStartupService({
          * macOS checks permissions before presenting the pairing window.
          */
         async runPostReady(openPairingWindow) {
-            if (platform !== 'darwin') return;
+            if (platform === 'darwin') {
+                try {
+                    await permissions.checkAndRequestAccessibility();
+                } catch (error) {
+                    logger.error(
+                        '[Platform] [Permissions] Accessibility startup check failed:',
+                        error.message
+                    );
+                }
 
-            try {
-                await permissions.checkAndRequestAccessibility();
-            } catch (error) {
-                logger.error(
-                    '[Platform] [Permissions] Accessibility startup check failed:',
-                    error.message
-                );
+                try {
+                    await permissions.checkScreenRecording();
+                } catch (error) {
+                    logger.error(
+                        '[Platform] [Permissions] Screen Recording startup check failed:',
+                        error.message
+                    );
+                }
             }
 
-            try {
-                await permissions.checkScreenRecording();
-            } catch (error) {
-                logger.error(
-                    '[Platform] [Permissions] Screen Recording startup check failed:',
-                    error.message
-                );
+            if (typeof openPairingWindow === 'function') {
+                openPairingWindow();
             }
-
-            openPairingWindow();
         },
 
         /**
