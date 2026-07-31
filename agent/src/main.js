@@ -227,20 +227,38 @@ function updateTrayIcon(status) {
 }
 
 app.whenReady().then(async () => {
-    startupService.configureAutoStart(app);
+    try {
+        startupService.configureAutoStart(app);
+    } catch (e) {
+        console.error('[Startup] AutoStart error:', e);
+    }
 
-    createTray();
-    createBackgroundWindow();
+    try {
+        createTray();
+    } catch (e) {
+        console.error('[Tray] Tray creation error:', e);
+    }
+
+    try {
+        createBackgroundWindow();
+    } catch (e) {
+        console.error('[Background] BackgroundWindow error:', e);
+    }
+
+    // Always create and present the UI pairing window immediately!
+    createQRWindow();
 
     // Register emergency pause global shortcut
-    globalShortcut.register('CommandOrControl+Alt+P', () => {
-        isControlPaused = !isControlPaused;
-        console.log(`[PAUSE] Control is now ${isControlPaused ? 'PAUSED' : 'RESUMED'}`);
-        updateTrayIcon(currentConnectionStatus);
-        if (backgroundWindow) {
-            backgroundWindow.webContents.send('session:pause_state', isControlPaused);
-        }
-    });
+    try {
+        globalShortcut.register('CommandOrControl+Alt+P', () => {
+            isControlPaused = !isControlPaused;
+            console.log(`[PAUSE] Control is now ${isControlPaused ? 'PAUSED' : 'RESUMED'}`);
+            updateTrayIcon(currentConnectionStatus);
+            if (backgroundWindow) {
+                backgroundWindow.webContents.send('session:pause_state', isControlPaused);
+            }
+        });
+    } catch (e) {}
 
     // Handle IPC for getting screen sources
     ipcMain.handle(
@@ -253,8 +271,6 @@ app.whenReady().then(async () => {
             qrWindow.close();
         }
     });
-
-    await startupService.runPostReady(createQRWindow);
 });
 
 app.on('window-all-closed', () => {
