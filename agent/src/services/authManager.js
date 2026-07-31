@@ -90,9 +90,25 @@ class AuthManager {
 
   setupIpcHandlers() {
     ipcMain.handle('auth:startDeviceLogin', () => this.startDeviceAuthFlow());
-    ipcMain.handle('auth:getAuthState', () => {
-      const user = getUserInfo();
-      const token = getRefreshToken();
+    ipcMain.handle('auth:getAuthState', async () => {
+      let user = getUserInfo();
+      let token = getRefreshToken();
+
+      // If local store is empty, sync with database using hardware device ID
+      if (!user && !token) {
+        try {
+          const deviceId = getPermanentDeviceId();
+          const response = await fetch(`${this.api.baseUrl}/api/auth/device-info?deviceId=${deviceId}`);
+          const data = await response.json();
+          if (response.ok && data.isClaimed && data.owner) {
+            user = data.owner;
+            saveTokens('LINKED_CLAIMED', 'DEV_CLAIMED', user);
+          }
+        } catch (e) {
+          console.error('[AuthManager] Error syncing device claim state:', e.message);
+        }
+      }
+
       const isLinked = !!(token || user);
       return {
         isLinked,

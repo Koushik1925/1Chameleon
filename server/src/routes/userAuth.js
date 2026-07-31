@@ -375,6 +375,29 @@ router.get('/device-poll', async (req, res) => {
   }
 });
 
+// D. Desktop Agent checks if device hardware ID is claimed in MongoDB
+router.get('/device-info', async (req, res) => {
+  const { deviceId } = req.query;
+  if (!deviceId) return res.status(400).json({ error: 'Device ID required' });
+
+  try {
+    const device = await Device.findOne({ deviceId }).populate('owner', 'email profile');
+    if (device && device.owner) {
+      return res.json({
+        isClaimed: true,
+        owner: {
+          email: device.owner.email,
+          name: device.owner.profile?.name || device.owner.email
+        },
+        hostname: device.hostname || ''
+      });
+    }
+    return res.json({ isClaimed: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 8. Claim Device
 router.post('/claim-device', authenticateUser, async (req, res) => {
   const { deviceId, hostname } = req.body;
