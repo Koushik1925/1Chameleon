@@ -117,12 +117,14 @@ function createQRWindow() {
     }
 
     qrWindow = new BrowserWindow({
-        width: 380,
-        height: 600,
+        width: 960,
+        height: 640,
+        minWidth: 840,
+        minHeight: 580,
         show: false,
         frame: false,
-        resizable: false,
-        alwaysOnTop: true,
+        resizable: true,
+        alwaysOnTop: false,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -144,6 +146,19 @@ function createQRWindow() {
         qrWindow = null;
     });
 }
+
+ipcMain.on('window:minimize', () => {
+    if (qrWindow) qrWindow.minimize();
+});
+ipcMain.on('window:maximize', () => {
+    if (qrWindow) {
+        if (qrWindow.isMaximized()) qrWindow.unmaximize();
+        else qrWindow.maximize();
+    }
+});
+ipcMain.on('window:close', () => {
+    if (qrWindow) qrWindow.close();
+});
 
 // Tray Management
 function createTray() {

@@ -1,189 +1,659 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>Service Host</title>
-    <!-- Use Tailwind via CDN for quick MVP UI styling here, or simple CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chameleon Remote Desktop</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 1rem;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #070C18;
+            color: #F8FAFC;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── TOP TITLEBAR ─────────────────────────────────────────────── */
+        .titlebar {
+            height: 38px;
+            background-color: #070C18;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 12px;
+            -webkit-app-region: drag;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            z-index: 100;
+        }
+
+        .titlebar-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .titlebar-btn {
+            background: transparent;
+            border: none;
+            color: #64748B;
+            width: 28px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .titlebar-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #F8FAFC;
+        }
+
+        .titlebar-btn.close-btn:hover {
+            background: #EF4444;
+            color: #FFFFFF;
+        }
+
+        /* ── MAIN APP CONTAINER ───────────────────────────────────────── */
+        .app-container {
+            flex: 1;
+            display: flex;
+            height: calc(100vh - 38px);
+            overflow: hidden;
+        }
+
+        /* ── LEFT SIDEBAR ─────────────────────────────────────────────── */
+        .sidebar {
+            width: 270px;
+            background-color: #070C18;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px 18px 20px 20px;
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding-left: 6px;
+        }
+
+        .brand-icon-wrapper {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: radial-gradient(circle at 30% 30%, #3B82F6, #1D4ED8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .brand-text-title {
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #FFFFFF;
+            line-height: 1.1;
+        }
+
+        .brand-text-sub {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            color: #38BDF8;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: #94A3B8;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: transparent;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            color: #F8FAFC;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .nav-item.active {
+            color: #FFFFFF;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.35) 0%, rgba(29, 78, 216, 0.15) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+            font-weight: 600;
+        }
+
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+            stroke-width: 2;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-item.active svg {
+            color: #38BDF8;
+        }
+
+        .nav-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 10px 0;
+        }
+
+        .sidebar-footer {
+            font-size: 11px;
+            color: #475569;
+            font-weight: 500;
+            padding-left: 6px;
+        }
+
+        /* ── MAIN CONTENT AREA ────────────────────────────────────────── */
+        .main-content {
+            flex: 1;
+            background-color: #0B1120;
+            padding: 16px 24px 24px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .glass-card {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            backdrop-filter: blur(16px);
+            padding: 32px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            box-sizing: border-box;
-            overflow-x: hidden;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
         }
 
-        .container {
-            text-align: center;
-            padding: 1.5rem;
-            background: #1e293b;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            border: 1px solid #334155;
-            width: 320px;
-            box-sizing: border-box;
+        /* ── DEVICE GRAPHIC ILLUSTRATION ──────────────────────────────── */
+        .device-illustration {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            position: relative;
         }
 
-        h2 {
-            margin-top: 0;
-            color: #38bdf8;
+        .monitor-svg {
+            width: 72px;
+            height: 56px;
+            filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
         }
 
-        #qr-img {
-            display: none;
-            margin: 1rem auto;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            width: 200px;
-            height: 200px;
+        .connecting-arc {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 110px;
+            height: 36px;
         }
 
-        .spinner {
-            width: 40px;
-            height: 40px;
-            margin: 2rem auto;
-            border: 4px solid #334155;
-            border-top: 4px solid #38bdf8;
+        .chameleon-node {
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            background: #1D4ED8;
+            border: 2px solid #3B82F6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 14px rgba(59, 130, 246, 0.6);
+            z-index: 2;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .arc-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            border-top: 2px dashed rgba(59, 130, 246, 0.4);
+            z-index: 1;
         }
 
-        p {
-            color: #94a3b8;
-            font-size: 0.9rem;
-            margin-bottom: 0;
+        /* ── TYPOGRAPHY ───────────────────────────────────────────────── */
+        .page-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+            text-align: center;
         }
 
-        .timer {
-            font-weight: bold;
-            color: #facc15;
+        .page-subtitle {
+            font-size: 13px;
+            color: #94A3B8;
+            text-align: center;
+            max-width: 420px;
+            margin-bottom: 24px;
+            line-height: 1.4;
         }
 
-        .success-text {
-            color: #4ade80;
-            display: none;
-            font-weight: bold;
-            margin-top: 1rem;
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #38BDF8;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        /* ── PAIR CODE ────────────────────────────────────────────────── */
+        .pair-code-display {
+            font-size: 72px;
+            font-weight: 800;
+            color: #F8FAFC;
+            letter-spacing: 10px;
+            line-height: 1;
+            margin-bottom: 18px;
+            text-shadow: 0 0 24px rgba(59, 130, 246, 0.35);
+            font-family: 'Inter', monospace;
+            text-align: center;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 240px;
+            margin: 16px 0 20px 0;
+        }
+
+        .or-line {
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .or-text {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            letter-spacing: 1px;
+        }
+
+        /* ── QR CODE CARD ─────────────────────────────────────────────── */
+        .qr-card {
+            background: #FFFFFF;
+            padding: 14px;
+            border-radius: 20px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 170px;
+            height: 170px;
+        }
+
+        .qr-card img {
+            width: 142px;
+            height: 142px;
+            display: block;
+            border-radius: 4px;
+        }
+
+        /* ── PERMANENT CODE BADGE ─────────────────────────────────────── */
+        .permanent-badge {
+            background: rgba(6, 78, 59, 0.4);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34D399;
+            padding: 8px 18px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(6, 78, 59, 0.2);
+        }
+
+        .permanent-badge svg {
+            width: 14px;
+            height: 14px;
+            stroke-width: 2.5;
+        }
+
+        /* ── OTHER PAGES (HIDDEN BY DEFAULT) ──────────────────────────── */
+        .tab-page {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tab-page.hidden {
+            display: none !important;
+        }
+
+        .page-content-wrapper {
+            width: 100%;
+            max-width: 580px;
+        }
+
+        /* Accounts / Settings / Help Card Grids */
+        .info-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .info-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #F8FAFC;
+        }
+
+        .info-card-sub {
+            font-size: 12px;
+            color: #64748B;
+            margin-top: 2px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #2563EB, #1D4ED8);
+            color: #FFFFFF;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .action-btn:hover {
+            opacity: 0.9;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h2>Pair Device</h2>
-        <p>Scan this QR to connect remotely</p>
-
-        <div id="otp-container" style="margin: 1.5rem 0;">
-            <p style="font-size: 0.8rem; text-transform: uppercase;">Or enter code</p>
-            <div id="otp-code"
-                style="font-size: 2.5rem; font-weight: bold; letter-spacing: 0.25em; color: #f8fafc; margin-top: 0.5rem; text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);">
-                ------</div>
-        </div>
-
-        <div id="qr-spinner" class="spinner"></div>
-        <img id="qr-img" alt="QR Code" />
-
-        <p id="timer-text">Expires in <span class="timer" id="timer">--</span></p>
-        <div id="success-msg" class="success-text">Connected Successfully!</div>
-
-        <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #334155;">
-            <!-- Unlinked State: Show Link PC Button -->
-            <div id="unlinked-view">
-                <button id="login-btn" onclick="handleDesktopLogin()" style="width: 100%; padding: 0.65rem 1rem; background: linear-gradient(135deg, #06b6d4, #2563eb); color: white; border: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                    <span>Link PC to Account</span>
-                </button>
-            </div>
-
-            <!-- Linked State: Show Connected Account, Device Name, and Disconnect Option -->
-            <div id="linked-view" style="display: none; background: #0f172a; border: 1px solid #1e293b; padding: 0.85rem; border-radius: 0.75rem; text-align: center;">
-                <div style="color: #4ade80; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-bottom: 0.25rem;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                    <span id="linked-account-name">Connected to Account</span>
-                </div>
-                <p style="color: #94a3b8; font-size: 0.75rem; margin: 0.25rem 0 0.75rem 0;">Device: <strong id="linked-device-name" style="color: #38bdf8;">Desktop Host</strong></p>
-                <button onclick="handleDisconnect()" style="width: 100%; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                    Disconnect PC from Account
-                </button>
-            </div>
-
-            <p id="auth-status-msg" style="font-size: 0.75rem; margin-top: 0.5rem; color: #38bdf8; display: none; text-align: center;"></p>
+    <!-- ── TITLEBAR CONTROLS ─────────────────────────────────────────── -->
+    <div class="titlebar">
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" onclick="window.electronAPI.minimizeWindow()" title="Minimize">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="titlebar-btn" onclick="window.electronAPI.maximizeWindow()" title="Maximize">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+            </button>
+            <button class="titlebar-btn close-btn" onclick="window.electronAPI.closeQRWindow()" title="Close">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
         </div>
     </div>
 
+    <!-- ── APP LAYOUT ────────────────────────────────────────────────── -->
+    <div class="app-container">
+        <!-- ── LEFT SIDEBAR ──────────────────────────────────────────── -->
+        <aside class="sidebar">
+            <div>
+                <!-- Brand Header -->
+                <div class="brand-section">
+                    <div class="brand-icon-wrapper">
+                        <!-- Chameleon Logo SVG -->
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+                            <path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 9a3 3 0 1 1 3-3 3 3 0 0 1-3 3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="brand-text-title">chameleon</div>
+                        <div class="brand-text-sub">REMOTE DESKTOP</div>
+                    </div>
+                </div>
+
+                <!-- Navigation Menu -->
+                <nav class="nav-menu">
+                    <button id="nav-pair" class="nav-item active" onclick="switchTab('pair')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span>Pair Device</span>
+                    </button>
+
+                    <button id="nav-settings" class="nav-item" onclick="switchTab('settings')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Settings</span>
+                    </button>
+
+                    <button id="nav-help" class="nav-item" onclick="switchTab('help')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span>Help & Support</span>
+                    </button>
+
+                    <div class="nav-divider"></div>
+
+                    <button id="nav-accounts" class="nav-item" onclick="switchTab('accounts')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span>Accounts</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Footer -->
+            <div class="sidebar-footer">
+                Chameleon v1.0.0
+            </div>
+        </aside>
+
+        <!-- ── MAIN CONTENT PAGE CONTAINER ───────────────────────────── -->
+        <main class="main-content">
+            <div class="glass-card">
+
+                <!-- ── TAB 1: PAIR DEVICE PAGE ───────────────────────── -->
+                <div id="page-pair" class="tab-page">
+                    <!-- Device Graphic Illustration -->
+                    <div class="device-illustration">
+                        <!-- Left Monitor SVG -->
+                        <svg class="monitor-svg" viewBox="0 0 80 60" fill="none">
+                            <rect x="4" y="6" width="72" height="42" rx="6" fill="#0F172A" stroke="#334155" stroke-width="2"/>
+                            <rect x="8" y="10" width="64" height="34" rx="3" fill="#1E293B"/>
+                            <path d="M28 48h24v6H28z" fill="#334155"/>
+                            <path d="M20 54h40v3H20z" fill="#475569" rx="1.5"/>
+                        </svg>
+
+                        <!-- Connecting Dotted Arc with Chameleon Node -->
+                        <div class="connecting-arc">
+                            <div class="arc-line"></div>
+                            <div class="chameleon-node">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5">
+                                    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Right Monitor SVG -->
+                        <svg class="monitor-svg" viewBox="0 0 80 60" fill="none">
+                            <rect x="4" y="6" width="72" height="42" rx="6" fill="#0F172A" stroke="#334155" stroke-width="2"/>
+                            <rect x="8" y="10" width="64" height="34" rx="3" fill="#1E293B"/>
+                            <path d="M28 48h24v6H28z" fill="#334155"/>
+                            <path d="M20 54h40v3H20z" fill="#475569" rx="1.5"/>
+                        </svg>
+                    </div>
+
+                    <!-- Title & Subtitle -->
+                    <h1 class="page-title">This Device</h1>
+                    <p class="page-subtitle">Share this code or QR to allow remote access to this device.</p>
+
+                    <!-- Pair Code Section -->
+                    <div class="section-label">PAIR CODE</div>
+                    <div id="otp-code" class="pair-code-display">4 4 5 9 6 8</div>
+
+                    <!-- OR Divider -->
+                    <div class="or-divider">
+                        <div class="or-line"></div>
+                        <div class="or-text">OR</div>
+                        <div class="or-line"></div>
+                    </div>
+
+                    <!-- Scan QR Section -->
+                    <div class="section-label">SCAN QR CODE</div>
+                    <div class="qr-card">
+                        <img id="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?data=https%3A%2F%2Fchameleon-jet.vercel.app%2F%3Fsess%3D445968&size=200x200" alt="QR Code" />
+                    </div>
+
+                    <!-- Permanent Code Badge -->
+                    <div class="permanent-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                        <span>Permanent Code (No Expiration)</span>
+                    </div>
+                </div>
+
+                <!-- ── TAB 2: SETTINGS PAGE ──────────────────────────── -->
+                <div id="page-settings" class="tab-page hidden">
+                    <div class="page-content-wrapper">
+                        <h2 class="page-title" style="margin-bottom: 20px;">Settings</h2>
+                        <div class="info-card">
+                            <div>
+                                <div class="info-card-title">Launch on System Startup</div>
+                                <div class="info-card-sub">Start Chameleon silently when Windows boots up</div>
+                            </div>
+                            <input type="checkbox" checked style="accent-color: #3B82F6; width: 18px; height: 18px; cursor: pointer;">
+                        </div>
+                        <div class="info-card">
+                            <div>
+                                <div class="info-card-title">Hardware Acceleration (NVENC)</div>
+                                <div class="info-card-sub">Enable GPU ultra-low latency WebRTC encoding</div>
+                            </div>
+                            <input type="checkbox" checked style="accent-color: #3B82F6; width: 18px; height: 18px; cursor: pointer;">
+                        </div>
+                        <div class="info-card">
+                            <div>
+                                <div class="info-card-title">Frame Rate Target</div>
+                                <div class="info-card-sub">Target 60 FPS smooth remote desktop streaming</div>
+                            </div>
+                            <button class="action-btn">60 FPS</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── TAB 3: HELP & SUPPORT PAGE ────────────────────── -->
+                <div id="page-help" class="tab-page hidden">
+                    <div class="page-content-wrapper">
+                        <h2 class="page-title" style="margin-bottom: 20px;">Help & Support</h2>
+                        <div class="info-card">
+                            <div>
+                                <div class="info-card-title">Documentation</div>
+                                <div class="info-card-sub">Read full guide on remote pairing and host access</div>
+                            </div>
+                            <button class="action-btn" onclick="window.electronAPI.startDeviceLogin()">Docs</button>
+                        </div>
+                        <div class="info-card">
+                            <div>
+                                <div class="info-card-title">GitHub Repository</div>
+                                <div class="info-card-sub">View open source code and release builds</div>
+                            </div>
+                            <button class="action-btn">GitHub</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── TAB 4: ACCOUNTS PAGE ──────────────────────────── -->
+                <div id="page-accounts" class="tab-page hidden">
+                    <div class="page-content-wrapper">
+                        <h2 class="page-title" style="margin-bottom: 20px;">Accounts</h2>
+                        <div class="info-card">
+                            <div>
+                                <div id="acc-name" class="info-card-title">Rithvik Krishna D K</div>
+                                <div id="acc-email" class="info-card-sub">rithvik.krishna.s70@kalvium.community</div>
+                            </div>
+                            <button class="action-btn" onclick="handleDisconnect()" style="background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4);">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ── EVENT HANDLERS & NAVIGATION LOGIC ────────────────────────────── -->
     <script>
-        let countdownInterval;
+        function switchTab(tabName) {
+            // Update active sidebar nav button
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            const activeNavBtn = document.getElementById(`nav-${tabName}`);
+            if (activeNavBtn) activeNavBtn.classList.add('active');
 
-        window.electronAPI.onQRCodeData(({ sessionId, dataUrl, expiresIn }) => {
-            const img = document.getElementById('qr-img');
-            const spinner = document.getElementById('qr-spinner');
+            // Hide all pages, show target page
+            document.querySelectorAll('.tab-page').forEach(page => page.classList.add('hidden'));
+            const activePage = document.getElementById(`page-${tabName}`);
+            if (activePage) activePage.classList.remove('hidden');
+        }
 
-            // Set OTP Code
-            document.getElementById('otp-code').innerText = sessionId;
+        // Handle incoming WebSocket QR & Pair Code updates
+        window.electronAPI.onQRCodeData(({ sessionId, dataUrl }) => {
+            const codeEl = document.getElementById('otp-code');
+            const qrImg = document.getElementById('qr-img');
 
-            // Set QR Image URL
-            img.src = dataUrl || `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent('https://chameleon-jet.vercel.app/?sess=' + sessionId)}&size=200x200`;
-            img.style.display = 'block';
-            if (spinner) spinner.style.display = 'none';
-
-            // Start countdown
-            const timerEl = document.getElementById('timer');
-            const timerText = document.getElementById('timer-text');
-            
-            if (expiresIn === 0) {
-                timerText.innerText = "Permanent Code (No Expiration)";
-                timerText.style.color = "#4ade80"; // green text
-                clearInterval(countdownInterval);
-            } else {
-                let timeLeft = expiresIn || 7200;
-
-                const formatTime = (seconds) => {
-                    const h = Math.floor(seconds / 3600);
-                    const m = Math.floor((seconds % 3600) / 60);
-                    const s = seconds % 60;
-                    if (h > 0) return `${h}h ${m}m ${s}s`;
-                    if (m > 0) return `${m}m ${s}s`;
-                    return `${s}s`;
-                };
-
-                timerEl.innerText = formatTime(timeLeft);
-
-                clearInterval(countdownInterval);
-                countdownInterval = setInterval(() => {
-                    timeLeft -= 1;
-                    timerEl.innerText = formatTime(timeLeft);
-                    if (timeLeft <= 0) {
-                        clearInterval(countdownInterval);
-                        timerEl.innerText = "0";
-                        window.electronAPI.closeQRWindow(); // Auto close when expired
-                    }
-                }, 1000);
+            if (sessionId) {
+                // Format code digits with clean letter spacing (e.g. 4 4 5 9 6 8)
+                const formatted = sessionId.toString().split('').join(' ');
+                codeEl.innerText = formatted;
             }
-        });
 
-        window.electronAPI.onConnectionStatus((status) => {
-            if (status === 'connected') {
-                document.getElementById('qr-img').style.opacity = '0.2';
-                document.getElementById('timer-text').style.display = 'none';
-                document.getElementById('success-msg').style.display = 'block';
-                clearInterval(countdownInterval);
-                setTimeout(() => window.electronAPI.closeQRWindow(), 2000);
-            } else if (status === 'disconnected') {
-                window.electronAPI.closeQRWindow();
+            if (dataUrl) {
+                qrImg.src = dataUrl;
+            } else if (sessionId) {
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent('https://chameleon-jet.vercel.app/?sess=' + sessionId)}&size=200x200`;
             }
         });
 
@@ -191,77 +661,21 @@
             if (window.electronAPI.getAuthState) {
                 try {
                     const state = await window.electronAPI.getAuthState();
-                    if (state && state.isLinked) {
-                        renderLinkedState(state.user, state.hostname);
-                    } else {
-                        renderUnlinkedState();
+                    if (state && state.user) {
+                        const accName = document.getElementById('acc-name');
+                        const accEmail = document.getElementById('acc-email');
+                        if (accName) accName.innerText = state.user.name || state.user.email || 'Connected User';
+                        if (accEmail) accEmail.innerText = state.user.email || 'Account Linked';
                     }
-                } catch (e) {
-                    renderUnlinkedState();
-                }
+                } catch (e) {}
             }
-        }
-
-        function renderLinkedState(user, hostname) {
-            document.getElementById('unlinked-view').style.display = 'none';
-            document.getElementById('linked-view').style.display = 'block';
-            document.getElementById('linked-account-name').innerText = `Connected to ${user?.name || user?.email || 'Account'}`;
-            document.getElementById('linked-device-name').innerText = hostname || 'Desktop Host';
-        }
-
-        function renderUnlinkedState() {
-            document.getElementById('unlinked-view').style.display = 'block';
-            document.getElementById('linked-view').style.display = 'none';
-            document.getElementById('auth-status-msg').style.display = 'none';
-            const btn = document.getElementById('login-btn');
-            btn.disabled = false;
-            btn.style.opacity = '1';
         }
 
         async function handleDisconnect() {
             if (window.electronAPI.logoutDevice) {
                 await window.electronAPI.logoutDevice();
-                renderUnlinkedState();
+                location.reload();
             }
-        }
-
-        async function handleDesktopLogin() {
-            const btn = document.getElementById('login-btn');
-            const msg = document.getElementById('auth-status-msg');
-            btn.disabled = true;
-            btn.style.opacity = '0.6';
-            msg.style.display = 'block';
-            msg.innerText = 'Opening browser to complete sign-in...';
-            try {
-                const res = await window.electronAPI.startDeviceLogin();
-                if (res && res.success) {
-                    msg.innerText = `Approve code ${res.userCode} in browser...`;
-                } else {
-                    msg.innerText = (res && res.error) || 'Failed to start device login';
-                    btn.disabled = false;
-                    btn.style.opacity = '1';
-                }
-            } catch (e) {
-                msg.innerText = 'Error launching authorization flow';
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            }
-        }
-
-        if (window.electronAPI.onAuthApproved) {
-            window.electronAPI.onAuthApproved(({ user, hostname }) => {
-                const msg = document.getElementById('auth-status-msg');
-                msg.style.display = 'block';
-                msg.style.color = '#4ade80';
-                msg.innerText = `✓ Approved! Connected to ${user?.email || 'account'}`;
-
-                renderLinkedState(user, hostname);
-
-                // Auto-disappear status text after 10 seconds as requested
-                setTimeout(() => {
-                    msg.style.display = 'none';
-                }, 10000);
-            });
         }
 
         checkAuthState();
