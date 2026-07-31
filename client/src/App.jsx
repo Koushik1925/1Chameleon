@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import QRScanner from './components/QRScanner';
@@ -11,6 +11,19 @@ import DeviceApprove from './components/DeviceApprove';
 import MyDevices from './components/MyDevices';
 import { Power, ShieldCheck, ArrowLeft, Shield } from 'lucide-react';
 import { AdaptiveController } from './lib/adaptiveController';
+
+// Lazy-loaded SaaS pages
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
+const DownloadsPage = lazy(() => import('./pages/DownloadsPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const CookiesPage = lazy(() => import('./pages/CookiesPage'));
+const SecurityPage = lazy(() => import('./pages/SecurityPage'));
+const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'));
+const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
@@ -661,13 +674,32 @@ function ClientApp() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/connect" element={<ClientApp />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/device" element={<DeviceApprove />} />
-      <Route path="/my-devices" element={<MyDevices />} />
-    </Routes>
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0b0f14] text-white flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/connect" element={<ClientApp />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/device" element={<DeviceApprove />} />
+        <Route path="/my-devices" element={<MyDevices />} />
+
+        {/* New SaaS Routes */}
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/downloads" element={<DownloadsPage />} />
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/cookies" element={<CookiesPage />} />
+        <Route path="/security" element={<SecurityPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
+        <Route path="/changelog" element={<ChangelogPage />} />
+      </Routes>
+    </Suspense>
   );
 }

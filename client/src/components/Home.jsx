@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePointer2, MonitorDown, Loader2, MonitorSmartphone, Apple, User } from 'lucide-react';
+import Navbar from './common/Navbar';
+import Footer from './common/Footer';
+import SEOHead from './common/SEOHead';
 
 export default function Home() {
     const [scrolled, setScrolled] = useState(false);
@@ -30,6 +33,12 @@ export default function Home() {
     };
     return (
         <div className="min-h-screen bg-[#0b0f14] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+            <SEOHead 
+                title="Secure Remote Access - Zero Setup" 
+                description="Connect to your desktop from anywhere using encrypted, QR-based pairing. Ultra-low latency remote control with no IP setup required."
+                canonical="https://chameleon-jet.vercel.app"
+            />
+            <Navbar />
 
             {/* Background Animated Grid & Glow - Matches App.jsx vibe */}
             <div className="fixed inset-0 pointer-events-none z-0">
@@ -38,45 +47,6 @@ export default function Home() {
             </div>
 
             <div className="relative z-10">
-
-                {/* Navigation Bar */}
-                <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#0b0f14]/80 backdrop-blur-md border-b border-white/5 py-0' : 'bg-transparent border-transparent py-2'}`}>
-                    <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Settings className="text-cyan-400" size={24} />
-                            <span className="font-bold text-xl tracking-wide">Chameleon Agent</span>
-                        </div>
-                        {user ? (
-                            <div className="flex items-center gap-3">
-                                <Link to="/my-devices" className="flex items-center gap-2.5 text-sm font-medium text-slate-200 hover:text-white bg-slate-900/80 border border-slate-800 h-9 px-3.5 rounded-lg hover:border-slate-700 transition-all">
-                                    {user.profile?.avatar ? (
-                                        <img src={user.profile.avatar} alt="Avatar" className="w-5 h-5 rounded-full object-cover border border-cyan-400/40" />
-                                    ) : (
-                                        <User size={16} className="text-cyan-400" />
-                                    )}
-                                    <span>{user.profile?.name || user.email}</span>
-                                </Link>
-                                <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-                                    Connect
-                                </Link>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors h-9 px-4 rounded-lg hover:bg-white/5 flex items-center">
-                                    Sign In
-                                </Link>
-                                <Link to="/signup" className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors h-9 px-4 rounded-lg border border-cyan-500/30 bg-cyan-500/10 flex items-center">
-                                    Create Account
-                                </Link>
-                                <Link to="/connect" className="text-sm font-medium text-black bg-cyan-400 hover:bg-cyan-300 transition-colors flex items-center h-9 px-4 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-                                    Connect
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                </nav>
-
-                {/* SECTION 1: Hero */}
                 <section className="pt-40 pb-20 px-6 min-h-[90vh] flex flex-col items-center justify-center text-center">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-8 animate-pulse-slow">
                         <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
@@ -256,22 +226,8 @@ export default function Home() {
                     </div>
                 </section>
 
-                {/* SECTION 6 & 7: Security & Footer */}
-                <footer className="border-t border-white/5 bg-black pt-16 pb-8 px-6 text-center">
-                    <div className="max-w-2xl mx-auto mb-16">
-                        <Lock className="mx-auto text-cyan-500 hover:text-cyan-400 transition-colors mb-4 opacity-50" size={32} />
-                        <h3 className="text-xl font-semibold mb-3">Your screen is yours.</h3>
-                        <p className="text-sm text-slate-500 leading-relaxed">
-                            All connections are end-to-end encrypted via WebRTC. No screen data, keystrokes, or clipboard contents are ever routed through our signaling servers. The connection is direct, private, and expires automatically.
-                        </p>
-                    </div>
-
-                    <div className="max-w-7xl mx-auto border-t border-white/5 pt-12 mt-8 flex flex-col items-center justify-center text-xs text-slate-500 font-medium tracking-wide">
-                        <div className="mb-2 text-slate-400">Chameleon Agent © {new Date().getFullYear()}</div>
-                    </div>
-                </footer>
-
             </div>
+            <Footer />
         </div>
     );
 }
