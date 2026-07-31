@@ -125,6 +125,7 @@ function createQRWindow() {
         frame: false,
         resizable: true,
         alwaysOnTop: false,
+        icon: path.join(__dirname, 'logo.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,

@@ -442,6 +442,10 @@
 <body>
     <!-- ── TITLEBAR CONTROLS ─────────────────────────────────────────── -->
     <div class="titlebar">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #94A3B8; padding-left: 8px; pointer-events: none;">
+            <img src="logo.png" style="width: 16px; height: 16px; object-fit: contain;" />
+            <span>Chameleon Desktop Agent</span>
+        </div>
         <div class="titlebar-controls">
             <button class="titlebar-btn" onclick="window.electronAPI.minimizeWindow()" title="Minimize">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -462,13 +466,7 @@
             <div>
                 <!-- Brand Header -->
                 <div class="brand-section">
-                    <div class="brand-icon-wrapper">
-                        <!-- Chameleon Logo SVG -->
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
-                            <path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 9a3 3 0 1 1 3-3 3 3 0 0 1-3 3z"/>
-                        </svg>
-                    </div>
+                    <img src="logo.png" alt="Chameleon Logo" style="width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.6));" />
                     <div>
                         <div class="brand-text-title">chameleon</div>
                         <div class="brand-text-sub">REMOTE DESKTOP</div>
