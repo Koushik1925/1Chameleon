@@ -25,24 +25,25 @@ export default function FAQPage() {
                     subtitle="Everything you need to know about Chameleon security, WebRTC architecture, performance, and host management."
                 />
 
-                {/* FAQ Accordion List */}
+                {/* FAQ Accordion */}
                 <section className="px-6 max-w-4xl mx-auto mb-20 border-t border-white/5 pt-12">
                     <Accordion items={FAQS_DATA} />
                 </section>
 
                 {/* Support CTA */}
                 <section className="px-6 max-w-3xl mx-auto">
-                    <div className="text-center bg-[#111827]/72 border border-white/6 rounded-[18px] p-10 backdrop-blur-[12px] shadow-[0_15px_40px_rgba(0,0,0,0.45)]">
-                        <div className="text-[#06B6D4] flex items-center justify-center mx-auto mb-4">
-                            <MessageSquare size={28} />
+                    <div className="liquid-glass-card rounded-3xl p-10 text-center">
+                        {/* Ambient glow */}
+                        <div className="w-14 h-14 rounded-2xl liquid-glass-badge flex items-center justify-center text-[#06B6D4] mx-auto mb-5">
+                            <MessageSquare size={26} />
                         </div>
                         <h3 className="text-2xl font-bold text-[#F3F4F6] mb-2">Still have questions?</h3>
-                        <p className="text-[#9CA3AF] text-sm mb-8 max-w-md mx-auto">
+                        <p className="text-[#9CA3AF] text-sm mb-8 max-w-md mx-auto leading-relaxed">
                             Can't find the answer you're looking for? Reach out to our technical support engineering team directly.
                         </p>
                         <Link
                             to="/contact"
-                            className="inline-flex items-center justify-center px-8 py-3 rounded-xl bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(6,182,212,0.3)] text-white font-bold text-sm active:scale-98 transition-all duration-150 ease-out shadow-md"
+                            className="inline-flex items-center justify-center px-8 py-3 rounded-2xl liquid-glass-btn-primary text-white font-bold text-sm"
                         >
                             Contact Technical Support
                         </Link>

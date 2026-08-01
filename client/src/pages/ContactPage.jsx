@@ -31,44 +31,54 @@ export default function ContactPage() {
                             <ContactForm />
                         </div>
 
-                        {/* Right Info Column */}
+                        {/* Info Column */}
                         <div className="lg:col-span-5 space-y-4">
 
-                            {/* Support Email Card */}
-                            <div className="bg-[#111827]/72 border border-white/6 rounded-[18px] p-6 backdrop-blur-[12px] flex items-start gap-4 hover:border-[#06B6D4]/35 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(0,0,0,0.45)] transition-all duration-150 ease-out">
-                                <div className="w-12 h-12 rounded-xl bg-[#090D17] border border-white/5 text-[#06B6D4] flex items-center justify-center shrink-0">
-                                    <Mail size={22} />
+                            {/* Technical Support */}
+                            <div className="liquid-glass-card rounded-3xl p-6 flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl liquid-glass-badge text-[#06B6D4] flex items-center justify-center shrink-0">
+                                    <Mail size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-mono text-[#9CA3AF] uppercase tracking-[0.15em] mb-1">Technical Support</h4>
-                                    <a href="mailto:chameleonagent.contact@gmail.com" className="text-base md:text-lg font-bold text-[#F3F4F6] hover:text-[#06B6D4] transition-colors break-all">
+                                    <h4 className="text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.15em] mb-1">Technical Support</h4>
+                                    <a
+                                        href="mailto:chameleonagent.contact@gmail.com"
+                                        className="text-base font-bold text-[#F3F4F6] hover:text-[#06B6D4] transition-colors break-all"
+                                    >
                                         chameleonagent.contact@gmail.com
                                     </a>
-                                    <p className="text-xs text-[#9CA3AF] mt-1">Assistance with desktop agent pairing, WebRTC networks, and bug reports.</p>
+                                    <p className="text-xs text-[#9CA3AF] mt-1 leading-relaxed">
+                                        Assistance with desktop agent pairing, WebRTC networks, and bug reports.
+                                    </p>
                                 </div>
                             </div>
 
-                            {/* Business Email Card */}
-                            <div className="bg-[#111827]/72 border border-white/6 rounded-[18px] p-6 backdrop-blur-[12px] flex items-start gap-4 hover:border-[#06B6D4]/35 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(0,0,0,0.45)] transition-all duration-150 ease-out">
-                                <div className="w-12 h-12 rounded-xl bg-[#090D17] border border-white/5 text-[#06B6D4] flex items-center justify-center shrink-0">
-                                    <Briefcase size={22} />
+                            {/* Business */}
+                            <div className="liquid-glass-card rounded-3xl p-6 flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl liquid-glass-badge text-[#06B6D4] flex items-center justify-center shrink-0">
+                                    <Briefcase size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-mono text-[#9CA3AF] uppercase tracking-[0.15em] mb-1">Business &amp; Licensing</h4>
-                                    <a href="mailto:chameleonagent.contact@gmail.com" className="text-base md:text-lg font-bold text-[#F3F4F6] hover:text-[#06B6D4] transition-colors break-all">
+                                    <h4 className="text-[10px] font-mono text-[#9CA3AF] uppercase tracking-[0.15em] mb-1">Business &amp; Licensing</h4>
+                                    <a
+                                        href="mailto:chameleonagent.contact@gmail.com"
+                                        className="text-base font-bold text-[#F3F4F6] hover:text-[#06B6D4] transition-colors break-all"
+                                    >
                                         chameleonagent.contact@gmail.com
                                     </a>
-                                    <p className="text-xs text-[#9CA3AF] mt-1">Custom enterprise hosting, SLA support, and white-label inquiries.</p>
+                                    <p className="text-xs text-[#9CA3AF] mt-1 leading-relaxed">
+                                        Custom enterprise hosting, SLA support, and white-label inquiries.
+                                    </p>
                                 </div>
                             </div>
 
-
-                            {/* Response Time Badge */}
-                            <div className="bg-[#111827]/72 border border-white/6 rounded-[18px] p-5 backdrop-blur-[12px] flex items-center gap-3">
+                            {/* Response Time */}
+                            <div className="liquid-glass-card rounded-3xl p-5 flex items-center gap-3">
                                 <Clock size={20} className="text-[#22C55E] shrink-0" />
                                 <div className="text-xs text-[#9CA3AF]">
-                                    <span className="font-semibold text-[#F3F4F6] block">Response Time SLA</span>
-                                    Average response time is less than <strong className="text-[#06B6D4] font-mono">24 hours</strong> on business days.
+                                    <span className="font-semibold text-[#F3F4F6] block mb-0.5">Response Time SLA</span>
+                                    Average response time is less than{' '}
+                                    <strong className="text-[#06B6D4] font-mono">24 hours</strong> on business days.
                                 </div>
                             </div>
 

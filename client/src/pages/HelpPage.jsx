@@ -40,14 +40,14 @@ export default function HelpPage() {
                 />
 
                 <div className="px-6 max-w-5xl mx-auto">
-                    {/* Top Search Bar */}
+                    {/* Search Bar */}
                     <SearchBar
                         value={searchTerm}
                         onChange={setSearchTerm}
                         placeholder="Search pairing codes, NAT firewalls, 60 FPS setup, device claiming..."
                     />
 
-                    {/* Category Selection Cards Grid */}
+                    {/* Category Cards */}
                     {!searchTerm && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-16">
                             {HELP_CATEGORIES.map(cat => {
@@ -58,14 +58,18 @@ export default function HelpPage() {
                                     <button
                                         key={cat.id}
                                         onClick={() => setActiveCategory(isSelected ? null : cat.id)}
-                                        className={`p-5 rounded-[18px] border transition-all duration-150 ease-out text-left flex flex-col justify-between h-32 ${
+                                        className={`p-5 rounded-3xl border transition-all duration-250 text-left flex flex-col justify-between h-32 ${
                                             isSelected
-                                                ? 'bg-[#111827]/72 backdrop-blur-[12px] border-[#06B6D4]/35 text-[#F3F4F6] shadow-[0_15px_40px_rgba(0,0,0,0.45)]'
-                                                : 'bg-[#111827]/72 backdrop-blur-[12px] border-white/6 text-[#9CA3AF] hover:border-[#06B6D4]/35 hover:-translate-y-1 hover:text-[#F3F4F6]'
+                                                ? 'liquid-glass-card border-cyan-400/30 text-[#F3F4F6] shadow-[0_0_25px_rgba(6,182,212,0.1)]'
+                                                : 'liquid-glass-card border-white/6 text-[#9CA3AF] hover:text-[#F3F4F6]'
                                         }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? 'bg-gradient-to-tr from-[#22C55E] to-[#06B6D4] text-white' : 'bg-[#090D17] border border-white/5 text-[#06B6D4]'}`}>
-                                            <IconComp size={20} />
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                                            isSelected
+                                                ? 'bg-gradient-to-tr from-[#22C55E] to-[#06B6D4] text-white'
+                                                : 'liquid-glass-badge text-[#06B6D4]'
+                                        }`}>
+                                            <IconComp size={18} />
                                         </div>
                                         <span className="font-bold text-sm leading-snug">
                                             {cat.title}
@@ -76,7 +80,7 @@ export default function HelpPage() {
                         </div>
                     )}
 
-                    {/* Accordion Categories List */}
+                    {/* Accordion Categories */}
                     <div className="space-y-12">
                         {filteredCategories
                             .filter(cat => !activeCategory || cat.id === activeCategory || searchTerm)
@@ -84,9 +88,9 @@ export default function HelpPage() {
                                 const HeaderIcon = Icons[cat.icon] || Icons.HelpCircle;
                                 return (
                                     <div key={cat.id} className="space-y-4">
-                                        <div className="flex items-center gap-3 border-b border-white/5 pb-3">
-                                            <div className="w-8 h-8 rounded-xl bg-[#111827]/72 border border-white/6 text-[#06B6D4] flex items-center justify-center">
-                                                <HeaderIcon size={18} />
+                                        <div className="flex items-center gap-3 border-b border-white/6 pb-3">
+                                            <div className="w-9 h-9 rounded-xl liquid-glass-badge text-[#06B6D4] flex items-center justify-center">
+                                                <HeaderIcon size={16} />
                                             </div>
                                             <h2 className="text-2xl font-bold text-[#F3F4F6] tracking-tight">
                                                 {cat.title}
