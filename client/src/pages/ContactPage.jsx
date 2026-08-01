@@ -3,7 +3,7 @@ import PageHero from '../components/common/PageHero';
 import ContactForm from '../components/common/ContactForm';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
-import { Mail, Briefcase, Github, Clock } from 'lucide-react';
+import { Mail, Briefcase, Clock } from 'lucide-react';
 
 export default function ContactPage() {
     return (
@@ -62,19 +62,6 @@ export default function ContactPage() {
                                 </div>
                             </div>
 
-                            {/* GitHub Repository Card */}
-                            <div className="bg-[#111827]/72 border border-white/6 rounded-[18px] p-6 backdrop-blur-[12px] flex items-start gap-4 hover:border-[#06B6D4]/35 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(0,0,0,0.45)] transition-all duration-150 ease-out">
-                                <div className="w-12 h-12 rounded-xl bg-[#090D17] border border-white/5 text-[#06B6D4] flex items-center justify-center shrink-0">
-                                    <Github size={22} />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-mono text-[#9CA3AF] uppercase tracking-[0.15em] mb-1">GitHub Repository</h4>
-                                    <a href="https://github.com/Rithvik-krishna/Chameleon" target="_blank" rel="noopener noreferrer" className="text-lg font-bold text-[#F3F4F6] hover:text-[#06B6D4] transition-colors">
-                                        Rithvik-krishna/Chameleon
-                                    </a>
-                                    <p className="text-xs text-[#9CA3AF] mt-1">Submit issues, inspect open source code, or contribute pull requests.</p>
-                                </div>
-                            </div>
 
                             {/* Response Time Badge */}
                             <div className="bg-[#111827]/72 border border-white/6 rounded-[18px] p-5 backdrop-blur-[12px] flex items-center gap-3">

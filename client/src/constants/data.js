@@ -124,7 +124,7 @@ export const FAQS_DATA = [
     },
     {
         question: 'How do I report bugs or security vulnerabilities?',
-        answer: 'You can report bugs, request features, or submit security disclosures directly via our Contact page or open an issue on our official GitHub repository.'
+        answer: 'You can report bugs, request features, or submit security disclosures directly via our Contact page or by emailing our engineering support team.'
     },
     {
         question: 'How can I delete my account and associated data?',

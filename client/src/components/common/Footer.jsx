@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Settings, Shield, Github, Heart } from 'lucide-react';
+import { Settings, Shield, Heart } from 'lucide-react';
 
 export default function Footer() {
     return (
@@ -26,14 +26,6 @@ export default function Footer() {
                             Ultra-low latency, zero-configuration remote desktop software built with modern WebRTC peer-to-peer end-to-end encryption.
                         </p>
                         <div className="flex items-center gap-3 pt-2">
-                            <a 
-                                href="https://github.com/Rithvik-krishna/Chameleon" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="w-9 h-9 rounded-xl bg-[#090D17] border border-white/5 flex items-center justify-center text-[#9CA3AF] hover:text-[#06B6D4] hover:border-[#06B6D4]/50 transition-all duration-150 ease-out"
-                            >
-                                <Github size={18} />
-                            </a>
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#090D17] border border-white/5 text-[#06B6D4] text-xs font-mono">
                                 <Shield size={12} />
                                 DTLS-SRTP 256-bit

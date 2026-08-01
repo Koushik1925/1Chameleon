@@ -61,7 +61,8 @@ export default function DownloadsPage() {
                             </div>
 
                             <a 
-                                href="https://github.com/Rithvik-krishna/Chameleon/raw/main/agent/dist/Chameleon-Desktop-Agent-Setup-1.5.0.exe" 
+                                href="/Chameleon-Desktop-Agent-Setup-1.5.0.exe" 
+                                download
                                 className="w-full h-12 bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(6,182,212,0.3)] text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-98 transition-all duration-150 ease-out shadow-md"
                             >
                                 <Download size={20} />
