@@ -6,7 +6,7 @@ import Footer from '../components/common/Footer';
 
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
+        <div className="min-h-screen bg-[#090D17] text-[#9CA3AF] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
                 title="Privacy Policy" 
                 description="Read Chameleon's SaaS Privacy Policy detailing account data collection, WebRTC stream isolation, cookie usage, and data retention standards."
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
             />
             <Navbar />
 
-            <div className="relative z-10 pb-20">
+            <div className="relative z-10 pb-24">
                 <PageHero 
                     badge="Legal & Privacy"
                     title="Privacy"
@@ -22,21 +22,21 @@ export default function PrivacyPage() {
                     subtitle="Last Updated: July 31, 2026. Learn how Chameleon protects your personal data, device identifiers, and WebRTC streaming security."
                 />
 
-                <div className="px-6 max-w-4xl mx-auto bg-[#111827] border border-[#1F2937] rounded-2xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
+                <div className="px-6 max-w-4xl mx-auto bg-[#111827]/72 border border-white/6 rounded-[18px] p-8 md:p-12 backdrop-blur-[12px] shadow-[0_15px_40px_rgba(0,0,0,0.45)] space-y-8">
                     
                     <PolicySection title="1. Information We Collect">
                         <p>Chameleon collects minimal telemetry necessary to authenticate users, pair desktop agents, and establish encrypted WebRTC peer connections. We collect:</p>
                         <ul className="list-disc pl-6 space-y-2 text-[#9CA3AF]">
-                            <li><strong className="text-[#E5E7EB]">Account Information:</strong> Name, email address, and profile picture provided during Google OAuth authentication or direct account signup.</li>
-                            <li><strong className="text-[#E5E7EB]">Device Information:</strong> Host hardware identifiers (hostname, OS platform, system architecture) used to populate claimed devices in your dashboard.</li>
-                            <li><strong className="text-[#E5E7EB]">Usage Analytics:</strong> Session connection timestamps and signaling ping statistics. <em className="text-[#06B6D4] font-semibold">We never capture, log, or record screen audio or video.</em></li>
-                            <li><strong className="text-[#E5E7EB]">Cookies:</strong> Session identification cookies required to persist login tokens across visits.</li>
+                            <li><strong className="text-[#F3F4F6]">Account Information:</strong> Name, email address, and profile picture provided during Google OAuth authentication or direct account signup.</li>
+                            <li><strong className="text-[#F3F4F6]">Device Information:</strong> Host hardware identifiers (hostname, OS platform, system architecture) used to populate claimed devices in your dashboard.</li>
+                            <li><strong className="text-[#F3F4F6]">Usage Analytics:</strong> Session connection timestamps and signaling ping statistics. <em className="text-[#06B6D4] font-semibold">We never capture, log, or record screen audio or video.</em></li>
+                            <li><strong className="text-[#F3F4F6]">Cookies:</strong> Session identification cookies required to persist login tokens across visits.</li>
                         </ul>
                     </PolicySection>
 
                     <PolicySection title="2. How We Use Your Data">
                         <p>We process collected information to:</p>
-                        <ul className="list-disc pl-6 space-y-2 text-slate-300">
+                        <ul className="list-disc pl-6 space-y-2 text-[#9CA3AF]">
                             <li>Authenticate your account and maintain active host device claims.</li>
                             <li>Facilitate WebRTC signaling handshake negotiation (ICE candidates, SDP offers/answers).</li>
                             <li>Prevent unauthorized device access or malicious pairing attempts.</li>
@@ -54,10 +54,10 @@ export default function PrivacyPage() {
 
                     <PolicySection title="5. Third-Party Services">
                         <p>Chameleon utilizes trusted infrastructure partners:</p>
-                        <ul className="list-disc pl-6 space-y-2 text-slate-300">
-                            <li><strong className="text-white">Google OAuth 2.0:</strong> Single sign-on authentication service.</li>
-                            <li><strong className="text-white">Render & Vercel:</strong> Encrypted cloud hosting and WebRTC signaling relay infrastructure.</li>
-                            <li><strong className="text-white">MongoDB Atlas:</strong> Encrypted document database storage.</li>
+                        <ul className="list-disc pl-6 space-y-2 text-[#9CA3AF]">
+                            <li><strong className="text-[#F3F4F6]">Google OAuth 2.0:</strong> Single sign-on authentication service.</li>
+                            <li><strong className="text-[#F3F4F6]">Render & Vercel:</strong> Encrypted cloud hosting and WebRTC signaling relay infrastructure.</li>
+                            <li><strong className="text-[#F3F4F6]">MongoDB Atlas:</strong> Encrypted document database storage.</li>
                         </ul>
                     </PolicySection>
 
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
                     </PolicySection>
 
                     <PolicySection title="11. Contact Privacy Officer">
-                        <p>If you have questions regarding this Privacy Policy, please email <a href="mailto:chameleonagent.contact@gmail.com" className="text-cyan-400 underline font-semibold">chameleonagent.contact@gmail.com</a>.</p>
+                        <p>If you have questions regarding this Privacy Policy, please email <a href="mailto:chameleonagent.contact@gmail.com" className="text-[#06B6D4] underline font-semibold">chameleonagent.contact@gmail.com</a>.</p>
                     </PolicySection>
 
                 </div>

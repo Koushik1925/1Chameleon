@@ -11,12 +11,12 @@ export default function SearchBar({ value, onChange, placeholder = 'Search artic
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className="w-full pl-11 pr-10 py-4 bg-[#111827] border border-[#1F2937] focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/30 rounded-2xl text-[#E5E7EB] placeholder-[#9CA3AF] text-sm md:text-base outline-none shadow-xl transition-all"
+                className="w-full pl-11 pr-10 py-4 bg-[#111827]/72 border border-white/6 focus:border-[#06B6D4]/50 focus:ring-1 focus:ring-[#06B6D4]/20 rounded-[18px] text-[#F3F4F6] placeholder-[#9CA3AF] text-sm md:text-base outline-none shadow-xl transition-all duration-150 ease-out"
             />
             {value && (
                 <button 
                     onClick={() => onChange('')}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#9CA3AF] hover:text-[#E5E7EB]"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#9CA3AF] hover:text-[#F3F4F6] transition-colors duration-150"
                 >
                     <X size={18} />
                 </button>

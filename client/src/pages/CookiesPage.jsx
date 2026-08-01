@@ -6,7 +6,7 @@ import Footer from '../components/common/Footer';
 
 export default function CookiesPage() {
     return (
-        <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
+        <div className="min-h-screen bg-[#090D17] text-[#9CA3AF] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
                 title="Cookie Policy" 
                 description="Understand how Chameleon uses essential cookies, authentication session tokens, and local browser storage to provide secure remote access."
@@ -14,7 +14,7 @@ export default function CookiesPage() {
             />
             <Navbar />
 
-            <div className="relative z-10 pb-20">
+            <div className="relative z-10 pb-24">
                 <PageHero 
                     badge="Browser Storage"
                     title="Cookie"
@@ -22,7 +22,7 @@ export default function CookiesPage() {
                     subtitle="Last Updated: July 31, 2026. Explanation of essential cookies, session storage, and how to manage your privacy settings."
                 />
 
-                <div className="px-6 max-w-4xl mx-auto bg-[#111827] border border-[#1F2937] rounded-2xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
+                <div className="px-6 max-w-4xl mx-auto bg-[#111827]/72 border border-white/6 rounded-[18px] p-8 md:p-12 backdrop-blur-[12px] shadow-[0_15px_40px_rgba(0,0,0,0.45)] space-y-8">
                     
                     <PolicySection title="1. What Are Cookies?">
                         <p>Cookies and local storage objects (localStorage) are small data files saved on your browser or device when you visit websites. They enable the application to remember your login session, last connected device ID, and user interface preferences.</p>
@@ -30,22 +30,22 @@ export default function CookiesPage() {
 
                     <PolicySection title="2. Essential Cookies">
                         <p>Essential cookies are strictly required for the website to function. They enable secure navigation, WebSockets signaling connection authentication, and session continuity.</p>
-                        <table className="w-full text-left text-xs md:text-sm text-[#9CA3AF] mt-3 border border-[#1F2937] rounded-xl overflow-hidden">
-                            <thead className="bg-[#0B0F1A] text-[#E5E7EB] font-mono uppercase">
+                        <table className="w-full text-left text-xs md:text-sm text-[#9CA3AF] mt-3 border border-white/5 rounded-xl overflow-hidden">
+                            <thead className="bg-[#090D17] text-[#F3F4F6] font-mono uppercase">
                                 <tr>
                                     <th className="p-3">Key / Cookie</th>
                                     <th className="p-3">Purpose</th>
                                     <th className="p-3">Expiry</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-white/5">
                                 <tr>
-                                    <td className="p-3 font-mono text-cyan-400">chameleon_token</td>
+                                    <td className="p-3 font-mono text-[#06B6D4]">chameleon_token</td>
                                     <td className="p-3">Stores encrypted JWT access token for account authentication.</td>
                                     <td className="p-3">7 Days</td>
                                 </tr>
                                 <tr>
-                                    <td className="p-3 font-mono text-cyan-400">chameleon_last_session</td>
+                                    <td className="p-3 font-mono text-[#06B6D4]">chameleon_last_session</td>
                                     <td className="p-3">Remembers last connected remote session key for quick reconnect.</td>
                                     <td className="p-3">2 Hours</td>
                                 </tr>
@@ -66,7 +66,7 @@ export default function CookiesPage() {
                     </PolicySection>
 
                     <PolicySection title="6. Third-Party Cookies">
-                        <p>If you choose to log in using Google OAuth 2.0, Google may set cookies on its authentication domain (<code className="text-cyan-400">accounts.google.com</code>) to verify your account identity.</p>
+                        <p>If you choose to log in using Google OAuth 2.0, Google may set cookies on its authentication domain (<code className="text-[#06B6D4]">accounts.google.com</code>) to verify your account identity.</p>
                     </PolicySection>
 
                     <PolicySection title="7. How to Disable Cookies">

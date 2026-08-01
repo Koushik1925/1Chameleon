@@ -15,23 +15,23 @@ export default function Accordion({ items = [] }) {
                 return (
                     <div 
                         key={idx}
-                        className={`bg-[#111827] border rounded-2xl overflow-hidden backdrop-blur-xl transition-all duration-200 ${isOpen ? 'border-[#06B6D4]/60 shadow-[0_0_20px_rgba(6,182,212,0.15)]' : 'border-[#1F2937] hover:border-[#06B6D4]/40'}`}
+                        className={`bg-[#111827]/72 border rounded-[18px] overflow-hidden backdrop-blur-[12px] transition-all duration-150 ease-out ${isOpen ? 'border-[#06B6D4]/35 shadow-[0_8px_30px_rgba(0,0,0,0.35)]' : 'border-white/6 hover:border-[#06B6D4]/35'}`}
                     >
                         <button
                             onClick={() => toggle(idx)}
                             className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none"
                         >
-                            <span className="font-bold text-[#E5E7EB] text-base md:text-lg pr-4">
+                            <span className="font-bold text-[#F3F4F6] text-base md:text-lg pr-4">
                                 {item.question || item.title}
                             </span>
                             <ChevronDown 
                                 size={20} 
-                                className={`text-[#06B6D4] shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#22C55E]' : ''}`}
+                                className={`text-[#06B6D4] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#22C55E]' : ''}`}
                             />
                         </button>
 
                         {isOpen && (
-                            <div className="px-6 pb-6 text-[#9CA3AF] text-sm md:text-base leading-relaxed border-t border-[#1F2937] pt-4 animate-in fade-in duration-200">
+                            <div className="px-6 pb-6 text-[#9CA3AF] text-sm md:text-base leading-relaxed border-t border-white/5 pt-4 animate-in fade-in duration-150">
                                 {item.answer || item.content}
                             </div>
                         )}

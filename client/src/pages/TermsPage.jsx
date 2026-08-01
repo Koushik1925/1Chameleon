@@ -6,7 +6,7 @@ import Footer from '../components/common/Footer';
 
 export default function TermsPage() {
     return (
-        <div className="min-h-screen bg-[#0B0F1A] text-[#E5E7EB] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
+        <div className="min-h-screen bg-[#090D17] text-[#9CA3AF] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
                 title="Terms of Service" 
                 description="Review the legal Terms of Service for Chameleon Remote Desktop software, user licenses, acceptable use, and liability limits."
@@ -14,7 +14,7 @@ export default function TermsPage() {
             />
             <Navbar />
 
-            <div className="relative z-10 pb-20">
+            <div className="relative z-10 pb-24">
                 <PageHero 
                     badge="Legal Agreement"
                     title="Terms of"
@@ -22,7 +22,7 @@ export default function TermsPage() {
                     subtitle="Last Updated: July 31, 2026. Please read these terms carefully before downloading or using Chameleon."
                 />
 
-                <div className="px-6 max-w-4xl mx-auto bg-[#111827] border border-[#1F2937] rounded-2xl p-8 md:p-12 backdrop-blur-xl shadow-2xl">
+                <div className="px-6 max-w-4xl mx-auto bg-[#111827]/72 border border-white/6 rounded-[18px] p-8 md:p-12 backdrop-blur-[12px] shadow-[0_15px_40px_rgba(0,0,0,0.45)] space-y-8">
                     
                     <PolicySection title="1. Acceptance of Terms">
                         <p>By creating an account, downloading the Chameleon Desktop Agent, or accessing our web client, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the software.</p>
@@ -38,7 +38,7 @@ export default function TermsPage() {
 
                     <PolicySection title="4. Acceptable Use Policy">
                         <p>You agree not to use Chameleon to:</p>
-                        <ul className="list-disc pl-6 space-y-2 text-slate-300">
+                        <ul className="list-disc pl-6 space-y-2 text-[#9CA3AF]">
                             <li>Gain unauthorized access to computers or networks without explicit owner permission.</li>
                             <li>Distribute malware, spyware, ransomware, or unauthorized remote access trojans (RATs).</li>
                             <li>Interfere with signaling infrastructure or perform denial-of-service (DoS) attacks.</li>
@@ -71,7 +71,7 @@ export default function TermsPage() {
                     </PolicySection>
 
                     <PolicySection title="11. Legal Contact">
-                        <p>Questions concerning these terms should be addressed to <a href="mailto:chameleonagent.contact@gmail.com" className="text-cyan-400 underline font-semibold">chameleonagent.contact@gmail.com</a>.</p>
+                        <p>Questions concerning these terms should be addressed to <a href="mailto:chameleonagent.contact@gmail.com" className="text-[#06B6D4] underline font-semibold">chameleonagent.contact@gmail.com</a>.</p>
                     </PolicySection>
 
                 </div>
