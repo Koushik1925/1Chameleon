@@ -22,7 +22,11 @@ export default function SEOManager({
     
   const metaDescription = description || SITE_CONFIG.defaultDescription;
   const canonicalUrl = `${SITE_CONFIG.domain}${canonicalPath}`;
-  const imageUrl = ogImage.startsWith('http') ? ogImage : `${SITE_CONFIG.domain}${ogImage}`;
+  const safeOgImage = ogImage || SITE_CONFIG.defaultOgImage;
+  const imageUrl = safeOgImage.startsWith('http') ? safeOgImage : `${SITE_CONFIG.domain}${safeOgImage}`;
+
+  const schemasKey = JSON.stringify(schemas || []);
+  const keywordsKey = Array.isArray(keywords) ? keywords.join(',') : (keywords || '');
 
   useEffect(() => {
     // Update Title
@@ -30,6 +34,7 @@ export default function SEOManager({
 
     // Helper to set or update meta tag
     const setMetaTag = (selector, nameAttr, nameValue, contentValue) => {
+      if (!contentValue) return;
       let element = document.querySelector(selector);
       if (!element) {
         element = document.createElement('meta');
@@ -52,8 +57,8 @@ export default function SEOManager({
 
     // Standard Meta Tags
     setMetaTag('meta[name="description"]', 'name', 'description', metaDescription);
-    if (keywords) {
-      setMetaTag('meta[name="keywords"]', 'name', 'keywords', Array.isArray(keywords) ? keywords.join(', ') : keywords);
+    if (keywordsKey) {
+      setMetaTag('meta[name="keywords"]', 'name', 'keywords', keywordsKey);
     }
     setMetaTag('meta[name="robots"]', 'name', 'robots', noIndex ? 'noindex, follow' : 'index, follow');
     setMetaTag('meta[name="theme-color"]', 'name', 'theme-color', SITE_CONFIG.themeColor);
@@ -80,28 +85,25 @@ export default function SEOManager({
     setLinkCanonical(canonicalUrl);
 
     // Inject JSON-LD Schemas
-    // First remove old injected JSON-LD scripts
     const existingScripts = document.querySelectorAll('script[type="application/ld+json"][data-seo="true"]');
     existingScripts.forEach(script => script.remove());
 
-    // Filter out null/undefined schemas
-    const activeSchemas = schemas.filter(Boolean);
+    const activeSchemas = (schemas || []).filter(Boolean);
 
     activeSchemas.forEach((schemaObj, index) => {
       const script = document.createElement('script');
       script.type = 'application/ld+json';
       script.setAttribute('data-seo', 'true');
       script.setAttribute('id', `jsonld-schema-${index}`);
-      script.textContent = JSON.stringify(schemaObj, null, 2);
+      script.textContent = JSON.stringify(schemaObj);
       document.head.appendChild(script);
     });
 
-    // Cleanup when component unmounts
     return () => {
       const scripts = document.querySelectorAll('script[type="application/ld+json"][data-seo="true"]');
       scripts.forEach(script => script.remove());
     };
-  }, [fullTitle, metaDescription, canonicalUrl, imageUrl, ogType, noIndex, keywords, schemas]);
+  }, [fullTitle, metaDescription, canonicalUrl, imageUrl, ogType, noIndex, keywordsKey, schemasKey]);
 
   return null;
 }

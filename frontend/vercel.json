@@ -5,7 +5,7 @@
       "destination": "https://chameleon-1.onrender.com/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|favicon.svg|robots.txt|sitemap.xml|manifest.json).*)" ,
       "destination": "/index.html"
     }
   ]

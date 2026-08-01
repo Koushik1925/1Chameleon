@@ -8,9 +8,13 @@ export default function PublicLayout() {
   const location = useLocation();
 
   useEffect(() => {
-    // Scroll to top on route change
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    // Initialize search console / GA4 / clarity scripts if env provided
+    // Scroll to top on route change (using browser-safe scrollTo)
+    try {
+      window.scrollTo(0, 0);
+    } catch (e) {
+      // Fallback
+    }
+    // Initialize analytics if environment variables exist
     initAnalytics();
   }, [location.pathname]);
 
