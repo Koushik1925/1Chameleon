@@ -67,7 +67,7 @@ void main() {
   col += (grain - 0.5) * u_grain * 0.5;
 
   float dist = length(uv - 0.5);
-  col *= smoothstep(1.2, 0.2, dist);
+  col *= smoothstep(1.8, 0.4, dist);
 
   gl_FragColor = vec4(col, 1.0);
 }

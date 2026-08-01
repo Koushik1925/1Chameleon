@@ -60,7 +60,7 @@ export default function Home() {
                 {/* SECTION 1: Apple Liquid Glass Hero Section */}
                 <section className="pt-44 pb-24 px-6 min-h-[92vh] flex flex-col justify-center items-center">
                     {/* Floating Version Badge */}
-                    <div className="inline-flex items-center gap-2 text-[#06B6D4] text-[10px] sm:text-xs font-mono font-semibold uppercase tracking-[0.12em] mb-4 liquid-glass-badge px-3.5 py-1.2 rounded-full">
+                    <div className="inline-flex items-center gap-2 text-[#06B6D4] text-[10px] sm:text-xs font-mono font-semibold uppercase tracking-[0.12em] mb-4">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse"></span>
                         Version 1.5.0 Live
                     </div>
@@ -117,7 +117,7 @@ export default function Home() {
                 </section>
 
                 {/* SECTION 2: How It Works - Apple Floating Glass Panes */}
-                <section className="py-28 px-6 border-t border-white/6 bg-[#090D17]/40">
+                <section className="py-28 px-6">
                     <div className="max-w-7xl mx-auto">
                         <div className="text-center mb-20">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium text-cyan-400 liquid-glass-badge mb-3">
@@ -150,7 +150,7 @@ export default function Home() {
                 </section>
 
                 {/* SECTION 3: Enterprise Architecture - Apple Glass Cards */}
-                <section className="py-28 px-6 border-t border-white/6 bg-[#090D17]/80">
+                <section className="py-28 px-6">
                     <div className="max-w-7xl mx-auto">
                         <div className="text-center mb-20 space-y-3">
                             <h2 className="text-3xl md:text-5xl font-bold text-[#F3F4F6] tracking-tight">Enterprise-Grade Architecture</h2>
@@ -178,7 +178,7 @@ export default function Home() {
                 </section>
 
                 {/* SECTION 4: Performance Focus - Liquid Glass Hero Display */}
-                <section className="py-24 px-6 border-y border-white/6 max-w-6xl mx-auto my-16 rounded-[40px] liquid-glass-hero">
+                <section className="py-24 px-6 max-w-6xl mx-auto my-16 rounded-[40px] liquid-glass-hero">
                     <div className="max-w-4xl mx-auto text-center space-y-8">
                         <h2 className="text-3xl md:text-5xl font-bold text-[#F3F4F6] tracking-tight">Built for Speed.</h2>
                         <p className="text-base sm:text-lg text-[#9CA3AF] leading-relaxed max-w-3xl mx-auto">
