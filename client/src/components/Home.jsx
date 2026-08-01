@@ -60,8 +60,8 @@ export default function Home() {
                     height="auto"
                     className="pt-48 pb-24 px-6 min-h-[95vh] border-b border-white/5 shadow-2xl"
                 >
-                    <div className="inline-flex items-center gap-2 text-[#06B6D4] text-xs md:text-sm font-mono font-semibold uppercase tracking-[0.15em] mb-8 bg-[#090D17]/80 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
-                        <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
+                    <div className="inline-flex items-center gap-1.5 text-[#06B6D4] text-[10px] sm:text-xs font-mono font-semibold uppercase tracking-[0.12em] mb-3 bg-[#090D17]/80 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse"></span>
                         Version 1.5.0 Live
                     </div>
                     

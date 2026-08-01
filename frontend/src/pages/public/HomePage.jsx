@@ -43,7 +43,7 @@ export default function HomePage() {
           className="py-16 sm:py-24 md:py-28 border-b border-slate-800/80 shadow-2xl rounded-b-3xl"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8 relative z-20">
-            <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-emerald-500/30 text-emerald-400 text-xs font-semibold backdrop-blur-xl shadow-lg">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-emerald-500/30 text-emerald-400 text-[10px] sm:text-xs font-semibold backdrop-blur-xl shadow-lg">
               <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
               <span>Next-Gen WebRTC P2P Architecture</span>
             </div>
