@@ -10,7 +10,7 @@ export default function DeleteAccountPage() {
             <SEOHead 
                 title="Delete Your Account" 
                 description="Information and step-by-step instructions on purging your Chameleon account, unlinking host devices, and permanent data removal."
-                canonical="https://chameleon-jet.vercel.app/delete-account"
+                canonical="https://www.chameleon-agent.online/delete-account"
             />
             <Navbar />
 

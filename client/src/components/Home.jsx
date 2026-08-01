@@ -36,7 +36,7 @@ export default function Home() {
             <SEOHead 
                 title="Secure Remote Access - Zero Setup" 
                 description="Connect to your desktop from anywhere using encrypted, QR-based pairing. Ultra-low latency remote control with no IP setup required."
-                canonical="https://chameleon-jet.vercel.app"
+                canonical="https://www.chameleon-agent.online"
             />
             <Navbar />
 

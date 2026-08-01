@@ -12,7 +12,7 @@ export default function ChangelogPage() {
             <SEOHead
                 title="Product Changelog & Release Notes"
                 description="Stay updated with Chameleon software releases, Desktop Agent updates, WebRTC performance enhancements, and future feature roadmaps."
-                canonical="https://chameleon-jet.vercel.app/changelog"
+                canonical="https://www.chameleon-agent.online/changelog"
             />
             <Navbar />
 

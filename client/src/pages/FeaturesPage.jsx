@@ -13,7 +13,7 @@ export default function FeaturesPage() {
             <SEOHead 
                 title="Features & Capabilities" 
                 description="Explore Chameleon's ultra-low latency WebRTC streaming, end-to-end encryption, 60 FPS performance, and unattended device management."
-                canonical="https://chameleon-jet.vercel.app/features"
+                canonical="https://www.chameleon-agent.online/features"
             />
             <Navbar />
 

@@ -10,7 +10,7 @@ export default function CookiesPage() {
             <SEOHead 
                 title="Cookie Policy" 
                 description="Understand how Chameleon uses essential cookies, authentication session tokens, and local browser storage to provide secure remote access."
-                canonical="https://chameleon-jet.vercel.app/cookies"
+                canonical="https://www.chameleon-agent.online/cookies"
             />
             <Navbar />
 

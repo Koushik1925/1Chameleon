@@ -10,7 +10,7 @@ export default function PrivacyPage() {
             <SEOHead 
                 title="Privacy Policy" 
                 description="Read Chameleon's SaaS Privacy Policy detailing account data collection, WebRTC stream isolation, cookie usage, and data retention standards."
-                canonical="https://chameleon-jet.vercel.app/privacy"
+                canonical="https://www.chameleon-agent.online/privacy"
             />
             <Navbar />
 

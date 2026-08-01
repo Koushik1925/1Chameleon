@@ -1,8 +1,8 @@
 export const SITE_METADATA = {
     title: 'Chameleon - Ultra-Low Latency Secure Remote Desktop',
     description: 'Connect to any PC remotely with zero configuration, end-to-end WebRTC encryption, 60 FPS performance, and seamless QR device pairing.',
-    siteUrl: 'https://chameleon-jet.vercel.app',
-    ogImage: 'https://chameleon-jet.vercel.app/og-image.png',
+    siteUrl: 'https://www.chameleon-agent.online',
+    ogImage: 'https://www.chameleon-agent.online/logo.png',
     twitterHandle: '@chameleon_app'
 };
 

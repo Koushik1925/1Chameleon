@@ -11,7 +11,7 @@ export default function ContactPage() {
             <SEOHead
                 title="Contact Support & Business Inquiries"
                 description="Get in touch with Chameleon technical support, report bugs, or submit business and enterprise inquiries."
-                canonical="https://chameleon-jet.vercel.app/contact"
+                canonical="https://www.chameleon-agent.online/contact"
             />
             <Navbar />
 

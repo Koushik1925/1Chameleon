@@ -26,7 +26,7 @@ export default function SecurityPage() {
             <SEOHead
                 title="Security Architecture & Encryption"
                 description="Explore Chameleon's end-to-end DTLS-SRTP encryption, WebRTC security standards, device identity verification, and vulnerability disclosure policies."
-                canonical="https://chameleon-jet.vercel.app/security"
+                canonical="https://www.chameleon-agent.online/security"
             />
             <Navbar />
 

@@ -12,7 +12,7 @@ export default function DownloadsPage() {
             <SEOHead 
                 title="Download Desktop Agent" 
                 description="Download Chameleon Desktop Agent for Windows 10 & 11. Ultra-low latency remote desktop host software with automatic pair code generation."
-                canonical="https://chameleon-jet.vercel.app/downloads"
+                canonical="https://www.chameleon-agent.online/downloads"
             />
             <Navbar />
 

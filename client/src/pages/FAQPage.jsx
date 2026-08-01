@@ -13,7 +13,7 @@ export default function FAQPage() {
             <SEOHead
                 title="Frequently Asked Questions (FAQ)"
                 description="Find answers to common questions about Chameleon Remote Desktop security, device pairing, free usage, firewall compatibility, and privacy."
-                canonical="https://chameleon-jet.vercel.app/faq"
+                canonical="https://www.chameleon-agent.online/faq"
             />
             <Navbar />
 

@@ -27,7 +27,7 @@ export default function HelpPage() {
             <SEOHead
                 title="Help Center & Documentation"
                 description="Find help articles, pairing guides, network firewall troubleshooting, and performance setup instructions for Chameleon Remote Desktop."
-                canonical="https://chameleon-jet.vercel.app/help"
+                canonical="https://www.chameleon-agent.online/help"
             />
             <Navbar />
 

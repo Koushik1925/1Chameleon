@@ -10,7 +10,7 @@ export default function TermsPage() {
             <SEOHead 
                 title="Terms of Service" 
                 description="Review the legal Terms of Service for Chameleon Remote Desktop software, user licenses, acceptable use, and liability limits."
-                canonical="https://chameleon-jet.vercel.app/terms"
+                canonical="https://www.chameleon-agent.online/terms"
             />
             <Navbar />
 
