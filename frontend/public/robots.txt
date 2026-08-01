@@ -1,5 +1,5 @@
 # Chameleon Remote Desktop — robots.txt
-# https://chameleon.app
+# https://www.chameleon-agent.online
 
 User-agent: *
 Allow: /
@@ -27,4 +27,4 @@ Disallow: /api/
 Disallow: /login
 
 # Sitemap location
-Sitemap: https://chameleon.app/sitemap.xml
+Sitemap: https://www.chameleon-agent.online/sitemap.xml

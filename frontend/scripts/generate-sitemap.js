@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DOMAIN = process.env.VITE_SITE_URL || 'https://chameleon.app';
+const DOMAIN = process.env.VITE_SITE_URL || 'https://www.chameleon-agent.online';
 const currentDate = new Date().toISOString().split('T')[0];
 
 const routes = [

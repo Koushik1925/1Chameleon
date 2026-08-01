@@ -6,7 +6,7 @@
 export const SITE_CONFIG = {
   name: 'Chameleon',
   legalName: 'Chameleon Remote Systems Inc.',
-  domain: import.meta.env.VITE_SITE_URL || 'https://chameleon.app',
+  domain: import.meta.env.VITE_SITE_URL || 'https://www.chameleon-agent.online',
   titleTemplate: '%s | Chameleon Remote Desktop Software',
   defaultTitle: 'Chameleon — Secure Ultra-Low Latency Remote Desktop Software',
   defaultDescription: 'Fast, secure cross-platform remote desktop software. Low latency WebRTC screen sharing, remote PC control, file transfer, and unattended access for Windows, Mac, Linux, Android, and iOS.',
@@ -14,8 +14,8 @@ export const SITE_CONFIG = {
   locale: 'en_US',
   twitterHandle: '@ChameleonRemote',
   githubUrl: 'https://github.com/Rithvik-krishna/Chameleon',
-  supportEmail: 'support@chameleon.app',
-  securityEmail: 'security@chameleon.app',
+  supportEmail: 'support@chameleon-agent.online',
+  securityEmail: 'security@chameleon-agent.online',
   defaultOgImage: '/og-image.png',
 };
 
