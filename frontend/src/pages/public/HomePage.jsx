@@ -25,7 +25,7 @@ export default function HomePage() {
   const brandColors = ["#22C55E", "#06B6D4", "#8B5CF6"];
 
   return (
-    <div className="space-y-24 pb-16">
+    <div className="space-y-24 pb-16 relative z-0">
       <SEOManager
         title="Chameleon — Secure Ultra-Low Latency Remote Desktop Software"
         description="Fast, secure cross-platform remote desktop software. Sub-100ms latency WebRTC screen sharing, remote PC control, file transfer, and unattended access for Windows, macOS, Linux, Android, and iOS."
