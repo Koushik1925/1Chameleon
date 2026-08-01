@@ -2,11 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    
+    <!-- Theme & App Metadata -->
+    <meta name="theme-color" content="#06b6d4" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Icons & Manifest -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Preconnect & Performance Hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://chameleon-1.onrender.com" />
+
+    <title>Chameleon — Secure Ultra-Low Latency Remote Desktop Software</title>
+    <meta name="description" content="Fast, secure cross-platform remote desktop software. Sub-100ms latency WebRTC screen sharing, remote PC control, file transfer, and unattended access." />
   </head>
-  <body>
+  <body class="bg-[#05060b] text-slate-100 font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

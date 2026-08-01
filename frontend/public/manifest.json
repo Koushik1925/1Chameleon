@@ -1,0 +1,19 @@
+{
+  "short_name": "Chameleon",
+  "name": "Chameleon Remote Desktop Software",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#05060b",
+  "theme_color": "#06b6d4",
+  "display": "standalone",
+  "orientation": "any",
+  "description": "Secure, ultra-low-latency peer-to-peer remote desktop software for Windows, macOS, Linux, Android, and iOS.",
+  "categories": ["utilities", "productivity", "developer tools"]
+}

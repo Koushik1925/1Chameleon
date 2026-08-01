@@ -1,0 +1,30 @@
+# Chameleon Remote Desktop — robots.txt
+# https://chameleon.app
+
+User-agent: *
+Allow: /
+Allow: /features
+Allow: /download
+Allow: /help
+Allow: /faq
+Allow: /blog
+Allow: /security
+Allow: /privacy
+Allow: /terms
+Allow: /cookie-policy
+Allow: /contact
+Allow: /delete-account
+Allow: /changelog
+
+# Disallow private and administrative routes
+Disallow: /dashboard
+Disallow: /devices
+Disallow: /sessions
+Disallow: /logs
+Disallow: /settings
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+
+# Sitemap location
+Sitemap: https://chameleon.app/sitemap.xml
