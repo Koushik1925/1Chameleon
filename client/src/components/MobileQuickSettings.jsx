@@ -113,7 +113,7 @@ export default function MobileQuickSettings({
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-6 max-h-[70vh] overflow-y-auto overscroll-contain">
+        <div className="p-5 flex flex-col gap-6 max-h-[70vh] overflow-y-auto no-scrollbar overscroll-contain">
           
           {/* Quality Presets */}
           <div className="flex flex-col gap-3">

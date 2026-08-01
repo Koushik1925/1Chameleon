@@ -190,7 +190,7 @@ export default function Sessions() {
           ) : pastSessions.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-sm">No historical sessions recorded.</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-900 text-xs font-semibold uppercase tracking-wider text-slate-500 bg-slate-950/60">
