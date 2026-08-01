@@ -45,21 +45,20 @@ export default function Home() {
             />
             <Navbar />
 
-            {/* Apple Liquid Glass Ambient Light Grid */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute inset-0 bg-grid-pattern opacity-70"></div>
-                <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[1000px] h-[650px] bg-gradient-to-tr from-[#22C55E]/4 via-[#06B6D4]/5 to-[#8B5CF6]/4 blur-[160px] rounded-full"></div>
-            </div>
-
-            <div className="relative z-10">
-                {/* SECTION 1: Apple Liquid Glass Hero Section */}
+            {/* Full-screen Fixed WebGL Ambient Background Auralis */}
+            <div className="fixed inset-0 pointer-events-none -z-10 w-full h-full">
                 <Auralis
                     colors={brandColors}
                     speed={0.35}
                     grain={0.45}
-                    height="auto"
-                    className="pt-44 pb-24 px-6 min-h-[92vh] border-b border-white/8 shadow-2xl"
-                >
+                    className="w-full h-full"
+                />
+                <div className="absolute inset-0 bg-grid-pattern opacity-70"></div>
+            </div>
+
+            <div className="relative z-10">
+                {/* SECTION 1: Apple Liquid Glass Hero Section */}
+                <section className="pt-44 pb-24 px-6 min-h-[92vh] flex flex-col justify-center items-center">
                     {/* Floating Version Badge */}
                     <div className="inline-flex items-center gap-2 text-[#06B6D4] text-[10px] sm:text-xs font-mono font-semibold uppercase tracking-[0.12em] mb-4 liquid-glass-badge px-3.5 py-1.2 rounded-full">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse"></span>
@@ -115,7 +114,7 @@ export default function Home() {
                             <span>Zero Data Stored</span>
                         </div>
                     </div>
-                </Auralis>
+                </section>
 
                 {/* SECTION 2: How It Works - Apple Floating Glass Panes */}
                 <section className="py-28 px-6 border-t border-white/6 bg-[#090D17]/40">

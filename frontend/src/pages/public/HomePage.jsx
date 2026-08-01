@@ -34,14 +34,17 @@ export default function HomePage() {
         schemas={schemas}
       />
 
-      {/* Hero Section with WebGL Ambient Background Auralis */}
+      {/* WebGL Ambient Background Auralis - Full Screen Fixed */}
+      <Auralis
+        colors={brandColors}
+        speed={0.35}
+        grain={0.45}
+        className="fixed inset-0 -z-10 w-full h-full pointer-events-none"
+      />
+
+      {/* Hero Section */}
       <section className="relative w-full">
-        <Auralis
-          colors={brandColors}
-          speed={0.35}
-          grain={0.45}
-          className="py-16 sm:py-24 md:py-28 border-b border-white/8 shadow-2xl rounded-b-[40px]"
-        >
+        <div className="py-16 sm:py-24 md:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-7 relative z-20">
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full liquid-glass-badge text-emerald-400 text-[10px] sm:text-xs font-semibold backdrop-blur-xl shadow-lg">
               <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
@@ -88,7 +91,7 @@ export default function HomePage() {
               <span className="flex items-center space-x-1.5"><Smartphone className="w-4 h-4 text-purple-400" /> <span>Android & iOS</span></span>
             </div>
           </div>
-        </Auralis>
+        </div>
       </section>
 
       {/* Product Interactive Demo Card - Apple Liquid Glass Sheet */}
