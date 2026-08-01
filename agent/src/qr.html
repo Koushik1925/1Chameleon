@@ -487,19 +487,19 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         <span>Help & Support</span>
                     </button>
-
-                    <div class="nav-divider"></div>
-
-                    <button id="nav-accounts" class="nav-item" onclick="switchTab('accounts')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        <span>Accounts</span>
-                    </button>
                 </nav>
             </div>
 
-            <!-- Footer -->
-            <div class="sidebar-footer">
-                Chameleon v1.0.0
+            <!-- Bottom Area: Accounts + Footer -->
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button id="nav-accounts" class="nav-item" onclick="switchTab('accounts')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Accounts</span>
+                </button>
+                
+                <div class="sidebar-footer">
+                    chameleon agent 1.5.0
+                </div>
             </div>
         </aside>
 
@@ -603,14 +603,14 @@
                                 <div class="info-card-title">Documentation</div>
                                 <div class="info-card-sub">Read full guide on remote pairing and host access</div>
                             </div>
-                            <button class="action-btn" onclick="openLink('https://chameleon-jet.vercel.app/help')">Docs</button>
+                            <button class="action-btn" onclick="openLink('https://www.chameleon-agent.online/help')">Docs</button>
                         </div>
                         <div class="info-card">
                             <div>
-                                <div class="info-card-title">GitHub Repository</div>
-                                <div class="info-card-sub">View open source code and release builds</div>
+                                <div class="info-card-title">Technical Support</div>
+                                <div class="info-card-sub">Submit bug reports or get help with setup</div>
                             </div>
-                            <button class="action-btn" onclick="openLink('https://github.com/Rithvik-krishna/Chameleon')">GitHub</button>
+                            <button class="action-btn" onclick="openLink('https://www.chameleon-agent.online/contact')">Support</button>
                         </div>
                     </div>
                 </div>
