@@ -220,7 +220,7 @@ export default function Home() {
                                 <p className="text-[#9CA3AF] text-sm mb-8">Windows 10 / 11 (64-bit)</p>
                                 
                                 <a 
-                                    href="/Network-Provider-Access-Setup-1.4.1.exe" 
+                                    href="/Chameleon-Desktop-Agent-Setup-1.5.1.exe" 
                                     download 
                                     className="w-full py-3.5 rounded-2xl liquid-glass-btn-primary text-white font-bold transition-all z-10 relative"
                                 >
@@ -230,7 +230,7 @@ export default function Home() {
                                     </div>
                                 </a>
 
-                                <span className="text-xs text-[#9CA3AF]/70 mt-4 font-mono">v1.4.1 • ~77 MB</span>
+                                <span className="text-xs text-[#9CA3AF]/70 mt-4 font-mono">v1.5.1 • ~82 MB</span>
                                 <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-emerald-400 uppercase tracking-[0.15em] font-bold">
                                     <ShieldCheck size={13} /> Verified & Signed
                                 </div>

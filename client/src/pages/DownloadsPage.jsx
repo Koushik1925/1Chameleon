@@ -18,7 +18,7 @@ export default function DownloadsPage() {
 
             <div className="relative z-10">
                 <PageHero
-                    badge="Desktop Agent v1.5.0"
+                    badge="Desktop Agent v1.5.1"
                     title="Download"
                     titleGradient="Chameleon"
                     subtitle="Install the host agent on your computer to allow secure, encrypted remote access from any web browser or mobile phone."
@@ -55,12 +55,12 @@ export default function DownloadsPage() {
                             </div>
 
                             <a
-                                href="/Chameleon-Desktop-Agent-Setup-1.5.0.exe"
+                                href="/Chameleon-Desktop-Agent-Setup-1.5.1.exe"
                                 download
                                 className="w-full h-12 liquid-glass-btn-primary text-white font-bold rounded-2xl flex items-center justify-center gap-2 text-sm"
                             >
                                 <Download size={18} />
-                                Download for Windows (v1.5.0)
+                                Download for Windows (v1.5.1)
                             </a>
                         </div>
 

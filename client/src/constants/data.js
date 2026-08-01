@@ -147,7 +147,7 @@ export const HELP_CATEGORIES = [
         title: 'Installing Agent',
         icon: 'Download',
         articles: [
-            { title: 'Installing Desktop Agent on Windows', content: 'Download Chameleon-Desktop-Agent-Setup-1.5.0.exe, double-click the setup wizard, select your installation folder, and click Finish to launch.' },
+            { title: 'Installing Desktop Agent on Windows', content: 'Download Chameleon-Desktop-Agent-Setup-1.5.1.exe, double-click the setup wizard, select your installation folder, and click Finish to launch.' },
             { title: 'Configuring Windows Startup & Auto-Boot', content: 'Navigate to Settings inside the Desktop Agent and enable "Launch on System Startup" to automatically start the host service when Windows boots.' }
         ]
     },
@@ -209,9 +209,25 @@ export const HELP_CATEGORIES = [
 
 export const CHANGELOG_RELEASES = [
     {
+        version: 'v1.5.1',
+        date: 'August 2, 2026',
+        badge: 'Latest Release',
+        added: [
+            'Repositioned Accounts button to the bottom of the sidebar',
+            'Removed permanent code badge background card layout for cleaner style',
+            'Updated documentation and Technical Support redirect flows',
+            'Removed nested double backdrop blurs on navbar links and buttons'
+        ],
+        changed: [],
+        fixed: [
+            'Fixed full-screen WebGL Auralis animation height coverage on main pages',
+            'Resolved hidden dynamic background layout stacking context'
+        ]
+    },
+    {
         version: 'v1.5.0',
         date: 'July 31, 2026',
-        badge: 'Current Release',
+        badge: 'Stable Release',
         added: [
             'Commercial Dark Glassmorphism Desktop Agent UI redesign',
             'Interactive Windows NSIS Setup Wizard installer',
