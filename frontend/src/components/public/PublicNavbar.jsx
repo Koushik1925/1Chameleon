@@ -31,33 +31,33 @@ export default function PublicNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#05060b]/80 backdrop-blur-xl border-b border-slate-800/60">
-      <nav aria-label="Main Navigation" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-3 z-50 max-w-7xl mx-auto px-4">
+      <nav aria-label="Main Navigation" className="liquid-glass-nav rounded-full h-15 px-5 flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center space-x-2.5 group" aria-label="Chameleon Remote Desktop Home">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-            <Monitor className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 via-cyan-500 to-purple-600 flex items-center justify-center shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform">
+            <Monitor className="w-4 h-4 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-lg text-slate-100 tracking-tight leading-none group-hover:text-cyan-400 transition-colors">
+            <span className="font-extrabold text-base text-slate-100 tracking-tight leading-none group-hover:text-cyan-400 transition-colors">
               Chameleon
             </span>
-            <span className="text-[10px] text-cyan-400 font-mono tracking-wider font-semibold uppercase">
+            <span className="text-[9px] text-cyan-400 font-mono tracking-wider font-semibold uppercase mt-0.5">
               Remote Desktop
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center space-x-1">
+        <div className="hidden lg:flex items-center space-x-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                 isActive(link.path)
-                  ? 'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 font-semibold'
-                  : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/40'
+                  ? 'text-white bg-white/12 border border-white/15 shadow-sm font-semibold'
+                  : 'text-slate-300 hover:text-white hover:bg-white/6'
               }`}
             >
               {link.name}
@@ -66,27 +66,27 @@ export default function PublicNavbar() {
         </div>
 
         {/* Actions CTA */}
-        <div className="hidden md:flex items-center space-x-3">
+        <div className="hidden md:flex items-center space-x-2.5">
           <a
             href="https://github.com/Rithvik-krishna/Chameleon"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="View Chameleon source code on GitHub"
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-colors border border-transparent hover:border-slate-700"
+            className="p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
           >
             <GithubIcon className="w-4 h-4" />
           </a>
           
           <Link
             to="/login"
-            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition-all"
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-200 liquid-glass-btn-secondary"
           >
             Admin Panel
           </Link>
 
           <Link
             to="/download"
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 flex items-center space-x-1.5 transition-all transform hover:-translate-y-0.5"
+            className="px-4 py-1.5 rounded-full text-xs font-bold text-white liquid-glass-btn-primary flex items-center space-x-1.5"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download</span>
@@ -98,7 +98,7 @@ export default function PublicNavbar() {
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-expanded={mobileMenuOpen}
           aria-label="Toggle navigation menu"
-          className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border border-slate-800"
+          className="lg:hidden p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -106,17 +106,17 @@ export default function PublicNavbar() {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#05060b]/95 border-b border-slate-800 px-4 pt-3 pb-6 space-y-2 backdrop-blur-2xl">
+        <div className="lg:hidden liquid-glass-dialog rounded-3xl p-5 space-y-3 mt-2 animate-in slide-in-from-top-4 duration-200">
           <div className="grid grid-cols-2 gap-1.5">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                   isActive(link.path)
-                    ? 'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 font-semibold'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                    ? 'text-cyan-400 bg-white/10 font-semibold'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
               >
                 {link.name}
@@ -124,11 +124,11 @@ export default function PublicNavbar() {
             ))}
           </div>
 
-          <div className="pt-3 border-t border-slate-900 flex flex-col space-y-2">
+          <div className="pt-3 border-t border-white/8 flex flex-col space-y-2">
             <Link
               to="/download"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-center flex items-center justify-center space-x-2"
+              className="w-full py-2.5 rounded-2xl text-xs font-bold liquid-glass-btn-primary text-white text-center flex items-center justify-center space-x-2"
             >
               <Download className="w-4 h-4" />
               <span>Download Chameleon</span>

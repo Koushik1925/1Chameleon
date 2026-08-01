@@ -21,7 +21,7 @@ export default function HomePage() {
   ];
 
   // Brand colors from Chameleon brand design system:
-  // Primary Green (#22C55E), Primary Teal (#06B6D4), Primary Blue (#3B82F6), Accent Purple (#8B5CF6)
+  // Primary Green (#22C55E), Primary Teal (#06B6D4), Accent Purple (#8B5CF6)
   const brandColors = ["#22C55E", "#06B6D4", "#8B5CF6"];
 
   return (
@@ -40,10 +40,10 @@ export default function HomePage() {
           colors={brandColors}
           speed={0.35}
           grain={0.45}
-          className="py-16 sm:py-24 md:py-28 border-b border-slate-800/80 shadow-2xl rounded-b-3xl"
+          className="py-16 sm:py-24 md:py-28 border-b border-white/8 shadow-2xl rounded-b-[40px]"
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8 relative z-20">
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-emerald-500/30 text-emerald-400 text-[10px] sm:text-xs font-semibold backdrop-blur-xl shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-7 relative z-20">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full liquid-glass-badge text-emerald-400 text-[10px] sm:text-xs font-semibold backdrop-blur-xl shadow-lg">
               <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
               <span>Next-Gen WebRTC P2P Architecture</span>
             </div>
@@ -63,14 +63,14 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link
                 to="/download"
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-600 hover:from-emerald-400 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-cyan-500/25 flex items-center justify-center space-x-2 transition-all transform hover:-translate-y-0.5"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl liquid-glass-btn-primary text-white font-bold text-sm flex items-center justify-center space-x-2"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Chameleon Free</span>
               </Link>
               <Link
                 to="/features"
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-200 font-semibold text-sm flex items-center justify-center space-x-2 transition-all backdrop-blur-md"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl liquid-glass-btn-secondary text-slate-200 font-semibold text-sm flex items-center justify-center space-x-2"
               >
                 <span>Explore Features</span>
                 <ArrowRight className="w-4 h-4 text-cyan-400" />
@@ -78,7 +78,7 @@ export default function HomePage() {
             </div>
 
             {/* Quick Platform Badges */}
-            <div className="pt-8 flex flex-wrap justify-center items-center gap-6 text-xs font-medium text-slate-300">
+            <div className="pt-6 flex flex-wrap justify-center items-center gap-6 text-xs font-medium text-slate-300">
               <span className="flex items-center space-x-1.5"><Monitor className="w-4 h-4 text-emerald-400" /> <span>Windows</span></span>
               <span>•</span>
               <span className="flex items-center space-x-1.5"><Monitor className="w-4 h-4 text-cyan-400" /> <span>macOS</span></span>
@@ -91,14 +91,14 @@ export default function HomePage() {
         </Auralis>
       </section>
 
-      {/* Product Interactive Demo Card */}
+      {/* Product Interactive Demo Card - Apple Liquid Glass Sheet */}
       <section className="max-w-6xl mx-auto px-4">
-        <div className="bg-slate-950/80 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-2xl relative overflow-hidden">
+        <div className="liquid-glass-hero rounded-[36px] p-6 sm:p-10 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 blur-3xl rounded-full pointer-events-none"></div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center relative z-10">
             <div className="lg:col-span-1 space-y-4 text-left">
-              <span className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-widest">Instant P2P Pairing</span>
+              <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-widest liquid-glass-badge px-2.5 py-1 rounded-full">Instant P2P Pairing</span>
               <h2 className="text-2xl font-bold text-slate-100">No Installation Needed for Viewers</h2>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Connect in seconds using 6-digit numeric hardware codes or instant QR pairing. Stream ultra-smooth 60 FPS remote sessions right inside your browser.
@@ -110,18 +110,18 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <div className="lg:col-span-2 bg-slate-900/90 rounded-2xl border border-slate-800 p-6 space-y-4 shadow-inner">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="lg:col-span-2 liquid-glass-card rounded-3xl p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/8 pb-3">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 rounded-full bg-rose-500"></div>
                   <div className="w-3 h-3 rounded-full bg-amber-500"></div>
                   <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
                   <span className="text-xs font-mono text-slate-400 ml-2">chameleon://session/connect</span>
                 </div>
-                <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">CONNECTED 60 FPS</span>
+                <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-bold">CONNECTED 60 FPS</span>
               </div>
-              <div className="h-56 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col items-center justify-center space-y-3 p-4 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+              <div className="h-56 rounded-2xl liquid-glass-input flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                <div className="w-12 h-12 rounded-2xl liquid-glass-badge flex items-center justify-center">
                   <Lock className="w-6 h-6 text-cyan-400" />
                 </div>
                 <div className="space-y-1">
@@ -144,8 +144,8 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 space-y-4 hover:border-emerald-500/40 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+          <div className="liquid-glass-card rounded-3xl p-6 space-y-4">
+            <div className="w-10 h-10 rounded-2xl liquid-glass-badge flex items-center justify-center">
               <Zap className="w-5 h-5 text-emerald-400" />
             </div>
             <h3 className="text-lg font-semibold text-slate-100">Ultra-Low Latency Streaming</h3>
@@ -154,8 +154,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 space-y-4 hover:border-cyan-500/40 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+          <div className="liquid-glass-card rounded-3xl p-6 space-y-4">
+            <div className="w-10 h-10 rounded-2xl liquid-glass-badge flex items-center justify-center">
               <Shield className="w-5 h-5 text-cyan-400" />
             </div>
             <h3 className="text-lg font-semibold text-slate-100">Enterprise End-to-End Encryption</h3>
@@ -164,8 +164,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 space-y-4 hover:border-purple-500/40 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+          <div className="liquid-glass-card rounded-3xl p-6 space-y-4">
+            <div className="w-10 h-10 rounded-2xl liquid-glass-badge flex items-center justify-center">
               <Globe className="w-5 h-5 text-purple-400" />
             </div>
             <h3 className="text-lg font-semibold text-slate-100">Cross-Platform Control</h3>
@@ -179,15 +179,15 @@ export default function HomePage() {
       {/* Competitor Comparison Matrix (TeamViewer / AnyDesk / RustDesk) */}
       <section className="max-w-6xl mx-auto px-4 space-y-8">
         <div className="text-center space-y-2">
-          <span className="text-xs font-mono text-cyan-400 uppercase font-bold tracking-widest">Why Choose Chameleon</span>
+          <span className="text-[10px] font-mono text-cyan-400 uppercase font-bold tracking-widest liquid-glass-badge px-3 py-1 rounded-full">Why Choose Chameleon</span>
           <h2 className="text-3xl font-bold text-slate-100">Chameleon vs. Other Remote Desktop Tools</h2>
           <p className="text-xs text-slate-400">See how Chameleon compares against TeamViewer, AnyDesk, and RustDesk.</p>
         </div>
 
-        <div className="overflow-x-auto bg-slate-950/70 border border-slate-800 rounded-2xl shadow-xl">
+        <div className="overflow-x-auto liquid-glass-card rounded-3xl shadow-xl">
           <table className="w-full text-left text-xs text-slate-300">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/60 text-slate-400 uppercase text-[10px] font-semibold">
+              <tr className="border-b border-white/8 bg-black/20 text-slate-400 uppercase text-[10px] font-semibold">
                 <th className="p-4">Feature / Protocol</th>
                 <th className="p-4 text-cyan-400 font-bold text-xs">Chameleon</th>
                 <th className="p-4">TeamViewer</th>
@@ -195,7 +195,7 @@ export default function HomePage() {
                 <th className="p-4">RustDesk</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-white/5">
               <tr>
                 <td className="p-4 font-semibold text-slate-200">Glass-to-Glass Latency</td>
                 <td className="p-4 font-bold text-emerald-400">&lt; 100ms (WebRTC P2P)</td>
@@ -238,14 +238,14 @@ export default function HomePage() {
 
       {/* CTA Footer Banner */}
       <section className="max-w-5xl mx-auto px-4 text-center">
-        <div className="bg-gradient-to-r from-emerald-950/40 via-cyan-950/40 to-purple-950/40 border border-cyan-500/30 rounded-3xl p-8 sm:p-12 space-y-6">
+        <div className="liquid-glass-hero rounded-[36px] p-8 sm:p-12 space-y-6">
           <h2 className="text-3xl font-bold text-slate-100">Ready for Fast, Secure Remote Desktop Access?</h2>
           <p className="text-xs text-slate-300 max-w-xl mx-auto">
             Download the desktop host agent for Windows, Mac, or Linux, or connect directly through your browser.
           </p>
           <Link
             to="/download"
-            className="inline-flex items-center space-x-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20"
+            className="inline-flex items-center space-x-2 px-8 py-3.5 rounded-2xl liquid-glass-btn-primary text-white font-bold text-xs uppercase tracking-wider"
           >
             <Download className="w-4 h-4" />
             <span>Download Chameleon Now</span>

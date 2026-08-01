@@ -37,40 +37,48 @@ export default function Navbar() {
     }, [location.pathname]);
 
     return (
-        <nav className={`fixed left-1/2 -translate-x-1/2 z-50 transition-all duration-200 ease-out ${
+        <nav className={`fixed left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-out liquid-glass-nav rounded-full ${
             scrolled 
-                ? 'top-2 w-[92%] bg-[#090D17]/72 backdrop-blur-[24px] border border-white/5 rounded-[18px] shadow-[0_12px_40px_rgba(0,0,0,0.45)] h-14' 
-                : 'top-4 w-[95%] bg-[#090D17]/72 backdrop-blur-[24px] border border-white/5 rounded-[18px] shadow-[0_8px_30px_rgba(0,0,0,0.35)] h-16'
+                ? 'top-3 w-[90%] max-w-6xl h-14 px-5' 
+                : 'top-5 w-[94%] max-w-7xl h-16 px-6'
         }`}>
-            <div className="w-full h-full px-6 flex items-center justify-between">
+            <div className="w-full h-full flex items-center justify-between">
                 
                 {/* Brand Logo */}
                 <Link to="/" className="flex items-center gap-3 group">
                     <img 
                         src="/logo.png" 
                         alt="Chameleon Logo" 
-                        className="w-10 h-10 object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.3)] group-hover:scale-105 transition-transform" 
+                        className="w-9 h-9 object-contain drop-shadow-[0_0_14px_rgba(6,182,212,0.45)] group-hover:scale-105 transition-transform duration-300" 
                     />
                     <div className="flex flex-col">
-                        <span className="font-extrabold text-xl tracking-tight text-[#F3F4F6] leading-none">chameleon</span>
-                        <span className="text-[9px] font-extrabold tracking-[1.4px] bg-gradient-to-r from-[#22C55E] via-[#06B6D4] to-[#8B5CF6] bg-clip-text text-transparent uppercase mt-0.5">
+                        <span className="font-extrabold text-lg tracking-tight text-[#F3F4F6] leading-none">chameleon</span>
+                        <span className="text-[8.5px] font-extrabold tracking-[1.6px] bg-gradient-to-r from-[#22C55E] via-[#06B6D4] to-[#8B5CF6] bg-clip-text text-transparent uppercase mt-0.5">
                             SEE. CONNECT. CONTROL.
                         </span>
                     </div>
                 </Link>
 
-                {/* Desktop Nav Links */}
-                <div className="hidden md:flex items-center gap-1 text-sm font-medium">
+                {/* Desktop Nav Links - Apple Pill Capsules */}
+                <div className="hidden md:flex items-center gap-1.5 text-xs font-medium bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
                     <Link 
                         to="/features" 
-                        className={`px-3.5 py-2 rounded-lg transition-all duration-150 ease-out ${location.pathname === '/features' ? 'text-[#06B6D4] bg-white/5 font-semibold' : 'text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5'}`}
+                        className={`px-4 py-1.5 rounded-full transition-all duration-200 ${
+                            location.pathname === '/features' 
+                                ? 'text-white bg-white/12 border border-white/15 shadow-sm font-semibold' 
+                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/6'
+                        }`}
                     >
                         Features
                     </Link>
 
                     <Link 
                         to="/downloads" 
-                        className={`px-3.5 py-2 rounded-lg transition-all duration-150 ease-out ${location.pathname === '/downloads' ? 'text-[#06B6D4] bg-white/5 font-semibold' : 'text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5'}`}
+                        className={`px-4 py-1.5 rounded-full transition-all duration-200 ${
+                            location.pathname === '/downloads' 
+                                ? 'text-white bg-white/12 border border-white/15 shadow-sm font-semibold' 
+                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/6'
+                        }`}
                     >
                         Downloads
                     </Link>
@@ -81,23 +89,23 @@ export default function Navbar() {
                         onMouseEnter={() => setResourcesOpen(true)}
                         onMouseLeave={() => setResourcesOpen(false)}
                     >
-                        <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
+                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[#9CA3AF] hover:text-white hover:bg-white/6 transition-all duration-200">
                             <span>Resources</span>
-                            <ChevronDown size={14} className={`transition-transform duration-200 ${resourcesOpen ? 'rotate-180 text-[#06B6D4]' : ''}`} />
+                            <ChevronDown size={13} className={`transition-transform duration-200 ${resourcesOpen ? 'rotate-180 text-cyan-400' : ''}`} />
                         </button>
 
                         {resourcesOpen && (
-                            <div className="absolute top-full left-0 mt-1 w-52 p-2 bg-[#090D17]/95 border border-white/5 rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                                <Link to="/help" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <BookOpen size={16} className="text-[#06B6D4]" />
+                            <div className="absolute top-full left-0 mt-2 w-52 p-2 liquid-glass-dropdown rounded-2xl animate-in fade-in zoom-in-95 duration-200">
+                                <Link to="/help" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <BookOpen size={15} className="text-cyan-400" />
                                     <span>Help Center</span>
                                 </Link>
-                                <Link to="/faq" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <HelpCircle size={16} className="text-[#06B6D4]" />
+                                <Link to="/faq" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <HelpCircle size={15} className="text-cyan-400" />
                                     <span>FAQ</span>
                                 </Link>
-                                <Link to="/changelog" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <History size={16} className="text-[#06B6D4]" />
+                                <Link to="/changelog" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <History size={15} className="text-cyan-400" />
                                     <span>Changelog</span>
                                 </Link>
                             </div>
@@ -110,32 +118,32 @@ export default function Navbar() {
                         onMouseEnter={() => setLegalOpen(true)}
                         onMouseLeave={() => setLegalOpen(false)}
                     >
-                        <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
+                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[#9CA3AF] hover:text-white hover:bg-white/6 transition-all duration-200">
                             <span>Legal</span>
-                            <ChevronDown size={14} className={`transition-transform duration-200 ${legalOpen ? 'rotate-180 text-[#06B6D4]' : ''}`} />
+                            <ChevronDown size={13} className={`transition-transform duration-200 ${legalOpen ? 'rotate-180 text-cyan-400' : ''}`} />
                         </button>
 
                         {legalOpen && (
-                            <div className="absolute top-full left-0 mt-1 w-56 p-2 bg-[#090D17]/95 border border-white/5 rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                                <Link to="/privacy" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <Shield size={16} className="text-[#06B6D4]" />
+                            <div className="absolute top-full left-0 mt-2 w-56 p-2 liquid-glass-dropdown rounded-2xl animate-in fade-in zoom-in-95 duration-200">
+                                <Link to="/privacy" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <Shield size={15} className="text-emerald-400" />
                                     <span>Privacy Policy</span>
                                 </Link>
-                                <Link to="/terms" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <FileText size={16} className="text-[#06B6D4]" />
+                                <Link to="/terms" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <FileText size={15} className="text-cyan-400" />
                                     <span>Terms of Service</span>
                                 </Link>
-                                <Link to="/cookies" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <FileText size={16} className="text-[#06B6D4]" />
+                                <Link to="/cookies" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <FileText size={15} className="text-blue-400" />
                                     <span>Cookie Policy</span>
                                 </Link>
-                                <Link to="/security" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#9CA3AF] hover:text-[#F3F4F6] hover:bg-white/5 transition-all duration-150 ease-out">
-                                    <Lock size={16} className="text-[#06B6D4]" />
+                                <Link to="/security" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-all">
+                                    <Lock size={15} className="text-purple-400" />
                                     <span>Security</span>
                                 </Link>
-                                <div className="h-px bg-white/5 my-1"></div>
-                                <Link to="/delete-account" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-red-950/20 transition-all duration-150 ease-out">
-                                    <Trash2 size={16} className="text-red-400" />
+                                <div className="h-px bg-white/8 my-1"></div>
+                                <Link to="/delete-account" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 transition-all">
+                                    <Trash2 size={15} className="text-rose-400" />
                                     <span>Delete Account</span>
                                 </Link>
                             </div>
@@ -143,31 +151,31 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Right Action Buttons */}
+                {/* Right Action Buttons - Apple Liquid Glass Style */}
                 <div className="hidden md:flex items-center gap-3">
                     {user ? (
                         <>
-                            <Link to="/my-devices" className="flex items-center gap-2.5 text-sm font-medium text-[#F3F4F6] hover:text-white bg-transparent border border-white/8 h-9 px-3.5 rounded-xl hover:bg-white/5 transition-all duration-150 ease-out">
+                            <Link to="/my-devices" className="flex items-center gap-2 text-xs font-medium text-[#F3F4F6] liquid-glass-btn-secondary h-8 px-3.5 rounded-full">
                                 {user.profile?.avatar ? (
-                                    <img src={user.profile.avatar} alt="Avatar" className="w-5 h-5 rounded-full object-cover border border-[#06B6D4]/40" />
+                                    <img src={user.profile.avatar} alt="Avatar" className="w-4 h-4 rounded-full object-cover border border-[#06B6D4]/50" />
                                 ) : (
-                                    <User size={16} className="text-[#06B6D4]" />
+                                    <User size={14} className="text-cyan-400" />
                                 )}
                                 <span>{user.profile?.name || user.email}</span>
                             </Link>
-                            <Link to="/connect" className="text-sm font-semibold text-white bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:scale-[1.02] hover:opacity-95 active:scale-98 transition-all duration-150 ease-out flex items-center h-9 px-4 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                            <Link to="/connect" className="text-xs font-bold text-white liquid-glass-btn-primary h-8 px-4 rounded-full flex items-center">
                                 Connect
                             </Link>
                         </>
                     ) : (
                         <>
-                            <Link to="/login" className="text-sm font-medium text-[#9CA3AF] hover:text-white transition-all duration-150 ease-out h-9 px-4 rounded-xl hover:bg-white/5 flex items-center">
+                            <Link to="/login" className="text-xs font-medium text-[#9CA3AF] hover:text-white transition-all h-8 px-3.5 rounded-full flex items-center hover:bg-white/6">
                                 Sign In
                             </Link>
-                            <Link to="/signup" className="text-sm font-medium text-[#06B6D4] hover:text-cyan-300 transition-all duration-150 ease-out h-9 px-4 rounded-xl border border-white/8 bg-transparent hover:bg-white/5 flex items-center">
+                            <Link to="/signup" className="text-xs font-medium text-cyan-300 liquid-glass-btn-secondary h-8 px-3.5 rounded-full flex items-center">
                                 Create Account
                             </Link>
-                            <Link to="/connect" className="text-sm font-semibold text-white bg-gradient-to-r from-[#22C55E] to-[#06B6D4] hover:scale-[1.02] hover:opacity-95 active:scale-98 transition-all duration-150 ease-out flex items-center h-9 px-4 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                            <Link to="/connect" className="text-xs font-bold text-white liquid-glass-btn-primary h-8 px-4 rounded-full flex items-center">
                                 Connect
                             </Link>
                         </>
@@ -177,44 +185,43 @@ export default function Navbar() {
                 {/* Mobile Menu Toggle Button */}
                 <button 
                     onClick={() => setMobileOpen(!mobileOpen)}
-                    className="md:hidden p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                    className="md:hidden p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
                 >
-                    {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+                    {mobileOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
             </div>
 
-            {/* Mobile Drawer */}
+            {/* Mobile Drawer - Apple Glass Sheet */}
             {mobileOpen && (
-                <div className="md:hidden bg-[#090D17]/95 border border-white/5 backdrop-blur-2xl px-6 py-6 space-y-4 rounded-2xl shadow-2xl mt-2 animate-in slide-in-from-top-4 duration-200 mx-auto w-[98%]">
+                <div className="md:hidden liquid-glass-dialog p-5 space-y-4 rounded-3xl mt-3 animate-in slide-in-from-top-4 duration-200 mx-auto w-[98%]">
                     <div className="space-y-1">
-                        <Link to="/features" className="block px-3 py-2.5 rounded-lg text-[#F3F4F6] font-medium hover:bg-white/5">Features</Link>
-                        <Link to="/downloads" className="block px-3 py-2.5 rounded-lg text-[#F3F4F6] font-medium hover:bg-white/5">Downloads</Link>
-                        <Link to="/help" className="block px-3 py-2.5 rounded-lg text-[#F3F4F6] font-medium hover:bg-white/5">Help Center</Link>
-                        <Link to="/faq" className="block px-3 py-2.5 rounded-lg text-[#F3F4F6] font-medium hover:bg-white/5">FAQ</Link>
-                        <Link to="/contact" className="block px-3 py-2.5 rounded-lg text-[#F3F4F6] font-medium hover:bg-white/5">Contact Support</Link>
-                        <Link to="/changelog" className="block px-3 py-2.5 rounded-lg text-[#F3F4F6] font-medium hover:bg-white/5">Changelog</Link>
+                        <Link to="/features" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Features</Link>
+                        <Link to="/downloads" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Downloads</Link>
+                        <Link to="/help" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Help Center</Link>
+                        <Link to="/faq" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">FAQ</Link>
+                        <Link to="/contact" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Contact Support</Link>
+                        <Link to="/changelog" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Changelog</Link>
                     </div>
 
-                    <div className="h-px bg-white/5 my-2"></div>
+                    <div className="h-px bg-white/8 my-2"></div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs text-[#9CA3AF] px-3">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-[#9CA3AF] px-2">
                         <Link to="/privacy" className="hover:text-cyan-400">Privacy Policy</Link>
                         <Link to="/terms" className="hover:text-cyan-400">Terms of Service</Link>
                         <Link to="/cookies" className="hover:text-cyan-400">Cookie Policy</Link>
                         <Link to="/security" className="hover:text-cyan-400">Security Overview</Link>
-                        <Link to="/delete-account" className="hover:text-red-400 text-red-400/90 col-span-2 mt-1">Delete Account</Link>
                     </div>
 
                     <div className="pt-2 flex flex-col gap-2">
                         {user ? (
                             <>
-                                <Link to="/my-devices" className="w-full text-center py-2.5 bg-[#111827] text-white rounded-xl font-medium border border-white/5">My Devices</Link>
-                                <Link to="/connect" className="w-full text-center py-2.5 bg-gradient-to-r from-[#22C55E] to-[#06B6D4] text-white rounded-xl font-bold shadow-md">Connect Now</Link>
+                                <Link to="/my-devices" className="w-full text-center py-2.5 liquid-glass-btn-secondary text-white rounded-2xl text-xs font-semibold">My Devices</Link>
+                                <Link to="/connect" className="w-full text-center py-2.5 liquid-glass-btn-primary text-white rounded-2xl text-xs font-bold">Connect Now</Link>
                             </>
                         ) : (
                             <>
-                                <Link to="/login" className="w-full text-center py-2.5 bg-[#111827] text-white rounded-xl font-medium border border-white/5">Sign In</Link>
-                                <Link to="/connect" className="w-full text-center py-2.5 bg-gradient-to-r from-[#22C55E] to-[#06B6D4] text-white rounded-xl font-bold shadow-md">Connect Now</Link>
+                                <Link to="/login" className="w-full text-center py-2.5 liquid-glass-btn-secondary text-white rounded-2xl text-xs font-semibold">Sign In</Link>
+                                <Link to="/connect" className="w-full text-center py-2.5 liquid-glass-btn-primary text-white rounded-2xl text-xs font-bold">Connect Now</Link>
                             </>
                         )}
                     </div>
