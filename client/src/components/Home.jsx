@@ -4,6 +4,7 @@ import { ShieldCheck, Zap, Lock, MonitorPlay, ChevronRight, Settings, MousePoint
 import Navbar from './common/Navbar';
 import Footer from './common/Footer';
 import SEOHead from './common/SEOHead';
+import Auralis from './ui/auralis';
 
 export default function Home() {
     const [scrolled, setScrolled] = useState(false);
@@ -31,6 +32,10 @@ export default function Home() {
             navigate('/connect');
         }, 600); // 600ms fake loading for perceived trust/speed
     };
+
+    // Chameleon Brand Colors: Primary Green (#22C55E), Primary Teal (#06B6D4), Accent Purple (#8B5CF6)
+    const brandColors = ["#22C55E", "#06B6D4", "#8B5CF6"];
+
     return (
         <div className="min-h-screen bg-[#090D17] text-[#9CA3AF] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200">
             <SEOHead 
@@ -40,21 +45,27 @@ export default function Home() {
             />
             <Navbar />
 
-            {/* Background Animated Grid & Glow - Matches App.jsx vibe */}
+            {/* Background Animated Grid & Glow */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute inset-0 bg-grid-pattern opacity-100"></div>
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-gradient-to-tr from-[#22C55E]/3 to-[#06B6D4]/3 blur-[140px] rounded-full"></div>
             </div>
 
             <div className="relative z-10">
-                {/* SECTION 1: Hero */}
-                <section className="pt-48 pb-24 px-6 min-h-[95vh] flex flex-col items-center justify-center text-center relative">
-                    <div className="inline-flex items-center gap-2 text-[#06B6D4] text-xs md:text-sm font-mono font-semibold uppercase tracking-[0.15em] mb-8">
+                {/* SECTION 1: Hero with WebGL Auralis Background */}
+                <Auralis
+                    colors={brandColors}
+                    speed={0.35}
+                    grain={0.45}
+                    height="auto"
+                    className="pt-48 pb-24 px-6 min-h-[95vh] border-b border-white/5 shadow-2xl"
+                >
+                    <div className="inline-flex items-center gap-2 text-[#06B6D4] text-xs md:text-sm font-mono font-semibold uppercase tracking-[0.15em] mb-8 bg-[#090D17]/80 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
                         <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
                         Version 1.5.0 Live
                     </div>
                     
-                    <div className="max-w-[900px] mx-auto space-y-8">
+                    <div className="max-w-[900px] mx-auto space-y-8 text-center">
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-[#F3F4F6] leading-tight">
                             Secure Remote Access. <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#22C55E] via-[#06B6D4] to-[#8B5CF6]">No IPs. No Complexity.</span>
@@ -83,19 +94,19 @@ export default function Home() {
                                     </>
                                 )}
                             </button>
-                            <a href="#download" className="h-12 px-8 rounded-xl bg-transparent hover:bg-white/5 border border-white/8 text-[#F3F4F6] font-semibold flex items-center justify-center gap-2 transition-all duration-150 ease-out active:scale-98">
+                            <a href="#download" className="h-12 px-8 rounded-xl bg-slate-900/80 hover:bg-white/10 border border-white/10 text-[#F3F4F6] font-semibold flex items-center justify-center gap-2 transition-all duration-150 ease-out active:scale-98 backdrop-blur-md">
                                 Download Desktop App
                             </a>
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] text-[#9CA3AF]/60 font-mono uppercase tracking-[0.15em]">
+                        <div className="flex items-center gap-3 text-[10px] text-[#9CA3AF]/80 font-mono uppercase tracking-[0.15em] bg-[#090D17]/60 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
                             <span>End-to-End Encrypted</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/5"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/20"></span>
                             <span>Peer-to-Peer</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/5"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/20"></span>
                             <span>No Data Stored</span>
                         </div>
                     </div>
-                </section>
+                </Auralis>
 
                 {/* SECTION 2: How It Works - Alternating Background (#0D1320) */}
                 <section className="py-28 px-6 border-t border-white/5 bg-[#0D1320]">
