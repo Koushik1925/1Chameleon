@@ -60,13 +60,13 @@ export default function Navbar() {
                 </Link>
 
                 {/* Desktop Nav Links - Apple Pill Capsules */}
-                <div className="hidden md:flex items-center gap-1.5 text-xs font-medium bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
+                <div className="hidden md:flex items-center gap-1.5 text-xs font-medium bg-white/5 p-1 rounded-full border border-white/8">
                     <Link 
                         to="/features" 
                         className={`px-4 py-1.5 rounded-full transition-all duration-200 ${
                             location.pathname === '/features' 
-                                ? 'text-white bg-white/12 border border-white/15 shadow-sm font-semibold' 
-                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/6'
+                                ? 'text-white bg-white/10 border border-white/12 shadow-sm font-semibold' 
+                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/5'
                         }`}
                     >
                         Features
@@ -76,8 +76,8 @@ export default function Navbar() {
                         to="/downloads" 
                         className={`px-4 py-1.5 rounded-full transition-all duration-200 ${
                             location.pathname === '/downloads' 
-                                ? 'text-white bg-white/12 border border-white/15 shadow-sm font-semibold' 
-                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/6'
+                                ? 'text-white bg-white/10 border border-white/12 shadow-sm font-semibold' 
+                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/5'
                         }`}
                     >
                         Downloads
@@ -89,7 +89,7 @@ export default function Navbar() {
                         onMouseEnter={() => setResourcesOpen(true)}
                         onMouseLeave={() => setResourcesOpen(false)}
                     >
-                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[#9CA3AF] hover:text-white hover:bg-white/6 transition-all duration-200">
+                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-all duration-200">
                             <span>Resources</span>
                             <ChevronDown size={13} className={`transition-transform duration-200 ${resourcesOpen ? 'rotate-180 text-cyan-400' : ''}`} />
                         </button>
@@ -118,7 +118,7 @@ export default function Navbar() {
                         onMouseEnter={() => setLegalOpen(true)}
                         onMouseLeave={() => setLegalOpen(false)}
                     >
-                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[#9CA3AF] hover:text-white hover:bg-white/6 transition-all duration-200">
+                        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[#9CA3AF] hover:text-white hover:bg-white/5 transition-all duration-200">
                             <span>Legal</span>
                             <ChevronDown size={13} className={`transition-transform duration-200 ${legalOpen ? 'rotate-180 text-cyan-400' : ''}`} />
                         </button>
@@ -155,7 +155,7 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-3">
                     {user ? (
                         <>
-                            <Link to="/my-devices" className="flex items-center gap-2 text-xs font-medium text-[#F3F4F6] liquid-glass-btn-secondary h-8 px-3.5 rounded-full">
+                            <Link to="/my-devices" className="flex items-center gap-2 text-xs font-medium text-[#F3F4F6] bg-white/5 border border-white/8 hover:bg-white/10 transition-all h-8 px-3.5 rounded-full">
                                 {user.profile?.avatar ? (
                                     <img src={user.profile.avatar} alt="Avatar" className="w-4 h-4 rounded-full object-cover border border-[#06B6D4]/50" />
                                 ) : (
@@ -169,10 +169,10 @@ export default function Navbar() {
                         </>
                     ) : (
                         <>
-                            <Link to="/login" className="text-xs font-medium text-[#9CA3AF] hover:text-white transition-all h-8 px-3.5 rounded-full flex items-center hover:bg-white/6">
+                            <Link to="/login" className="text-xs font-medium text-[#9CA3AF] hover:text-white transition-all h-8 px-3.5 rounded-full flex items-center hover:bg-white/5">
                                 Sign In
                             </Link>
-                            <Link to="/signup" className="text-xs font-medium text-cyan-300 liquid-glass-btn-secondary h-8 px-3.5 rounded-full flex items-center">
+                            <Link to="/signup" className="text-xs font-medium text-cyan-300 bg-white/5 border border-white/8 hover:bg-white/10 transition-all h-8 px-3.5 rounded-full flex items-center">
                                 Create Account
                             </Link>
                             <Link to="/connect" className="text-xs font-bold text-white liquid-glass-btn-primary h-8 px-4 rounded-full flex items-center">

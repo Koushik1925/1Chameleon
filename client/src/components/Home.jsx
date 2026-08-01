@@ -120,7 +120,7 @@ export default function Home() {
                 <section className="py-28 px-6">
                     <div className="max-w-7xl mx-auto">
                         <div className="text-center mb-20">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium text-cyan-400 liquid-glass-badge mb-3">
+                            <div className="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-cyan-400 mb-3">
                                 <Sparkles size={13} />
                                 <span>Seamless Workflow</span>
                             </div>

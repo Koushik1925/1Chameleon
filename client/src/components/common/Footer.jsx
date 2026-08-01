@@ -69,11 +69,6 @@ export default function Footer() {
 
                 <div className="border-t border-white/8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#9CA3AF]">
                     <div>Chameleon Agent © {new Date().getFullYear()}</div>
-                    <div className="flex items-center gap-1.5 text-[#9CA3AF]">
-                        <span>Engineered with</span>
-                        <Heart size={12} className="text-rose-500 fill-rose-500" />
-                        <span>for high-performance remote control</span>
-                    </div>
                 </div>
             </div>
         </footer>

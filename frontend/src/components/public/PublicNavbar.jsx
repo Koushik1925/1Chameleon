@@ -49,15 +49,15 @@ export default function PublicNavbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center space-x-1 bg-black/20 p-1 rounded-full border border-white/5 backdrop-blur-md">
+        <div className="hidden lg:flex items-center space-x-1 bg-white/5 p-1 rounded-full border border-white/8">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                 isActive(link.path)
-                  ? 'text-white bg-white/12 border border-white/15 shadow-sm font-semibold'
-                  : 'text-slate-300 hover:text-white hover:bg-white/6'
+                  ? 'text-white bg-white/10 border border-white/12 shadow-sm font-semibold'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
               {link.name}
@@ -79,7 +79,7 @@ export default function PublicNavbar() {
           
           <Link
             to="/login"
-            className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-200 liquid-glass-btn-secondary"
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-200 bg-white/5 border border-white/8 hover:bg-white/10 transition-all"
           >
             Admin Panel
           </Link>
