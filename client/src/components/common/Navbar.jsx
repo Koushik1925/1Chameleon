@@ -83,6 +83,17 @@ export default function Navbar() {
                         Downloads
                     </Link>
 
+                    <Link 
+                        to="/billing" 
+                        className={`px-4 py-1.5 rounded-full transition-all duration-200 ${
+                            location.pathname === '/billing' 
+                                ? 'text-white bg-white/10 border border-white/12 shadow-sm font-semibold' 
+                                : 'text-[#9CA3AF] hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        Billing
+                    </Link>
+
                     {/* Resources Dropdown */}
                     <div 
                         className="relative"
@@ -197,6 +208,7 @@ export default function Navbar() {
                     <div className="space-y-1">
                         <Link to="/features" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Features</Link>
                         <Link to="/downloads" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Downloads</Link>
+                        <Link to="/billing" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Billing</Link>
                         <Link to="/help" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Help Center</Link>
                         <Link to="/faq" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">FAQ</Link>
                         <Link to="/contact" className="block px-3 py-2 rounded-xl text-[#F3F4F6] text-sm font-medium hover:bg-white/10">Contact Support</Link>

@@ -110,9 +110,11 @@ class AuthManager {
       }
 
       const isLinked = !!(token || user);
+      const { getOrGenerateDeviceId } = require('../storage/identity');
       return {
         isLinked,
         user: user || (isLinked ? { email: 'Account User' } : null),
+        deviceId: getOrGenerateDeviceId(),
         hostname: require('os').hostname()
       };
     });

@@ -187,6 +187,16 @@
                 cleanupSession();
             });
 
+            socket.on('subscription_updated', (data) => {
+                console.log('[WS] Subscription updated:', data);
+                ipcRenderer.send('subscription:updated', data);
+            });
+
+            socket.on('subscription_expired', (data) => {
+                console.log('[WS] Subscription expired:', data);
+                ipcRenderer.send('subscription:expired', data);
+            });
+
             // ── SDP Signaling ──
             socket.on('signal:sdp', async (data) => {
                 try {

@@ -16,6 +16,7 @@ export default function PublicNavbar() {
     { name: 'Home', path: '/' },
     { name: 'Features', path: '/features' },
     { name: 'Download', path: '/download' },
+    { name: 'Pricing', path: '/pricing' },
     { name: 'Help Center', path: '/help' },
     { name: 'FAQ', path: '/faq' },
     { name: 'Blog', path: '/blog' },

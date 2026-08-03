@@ -335,6 +335,23 @@ app.whenReady().then(async () => {
             shell.openExternal(url);
         }
     });
+
+    ipcMain.on('system:open_billing', () => {
+        const billingUrl = process.env.BILLING_PORTAL_URL || 'http://localhost:5173/billing';
+        shell.openExternal(billingUrl);
+    });
+
+    ipcMain.on('subscription:updated', (_event, data) => {
+        if (qrWindow && !qrWindow.isDestroyed()) {
+            qrWindow.webContents.send('subscription:updated', data);
+        }
+    });
+
+    ipcMain.on('subscription:expired', (_event, data) => {
+        if (qrWindow && !qrWindow.isDestroyed()) {
+            qrWindow.webContents.send('subscription:expired', data);
+        }
+    });
 });
 
 app.on('window-all-closed', () => {

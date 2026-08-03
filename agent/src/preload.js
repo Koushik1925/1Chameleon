@@ -19,5 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     maximizeWindow: () => ipcRenderer.send('window:maximize'),
     getSettings: () => ipcRenderer.invoke('settings:get'),
     updateSettings: (updates) => ipcRenderer.invoke('settings:update', updates),
-    openExternalLink: (url) => ipcRenderer.send('system:open_url', url)
+    openExternalLink: (url) => ipcRenderer.send('system:open_url', url),
+    openBillingPortal: () => ipcRenderer.send('system:open_billing'),
+    onSubscriptionUpdated: (callback) => ipcRenderer.on('subscription:updated', (_event, value) => callback(value)),
+    onSubscriptionExpired: (callback) => ipcRenderer.on('subscription:expired', (_event, value) => callback(value))
 });

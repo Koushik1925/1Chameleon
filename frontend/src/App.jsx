@@ -7,6 +7,7 @@ import PublicLayout from './components/public/PublicLayout';
 import HomePage from './pages/public/HomePage';
 import FeaturesPage from './pages/public/FeaturesPage';
 import DownloadPage from './pages/public/DownloadPage';
+import PricingPage from './pages/public/PricingPage';
 import HelpPage from './pages/public/HelpPage';
 import FAQPage from './pages/public/FAQPage';
 import BlogPage from './pages/public/BlogPage';
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/download" element={<DownloadPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/help" element={<HelpPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/blog" element={<BlogPage />} />

@@ -24,6 +24,9 @@ const CookiesPage = lazy(() => import('./pages/CookiesPage'));
 const SecurityPage = lazy(() => import('./pages/SecurityPage'));
 const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'));
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
+const BillingPortalPage = lazy(() => import('./pages/BillingPortalPage'));
+const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
+const BillingFailedPage = lazy(() => import('./pages/BillingFailedPage'));
 
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'http://localhost:3000';
@@ -699,6 +702,9 @@ export default function App() {
         <Route path="/security" element={<SecurityPage />} />
         <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/billing" element={<BillingPortalPage />} />
+        <Route path="/billing/success" element={<BillingSuccessPage />} />
+        <Route path="/billing/failed" element={<BillingFailedPage />} />
       </Routes>
     </Suspense>
   );

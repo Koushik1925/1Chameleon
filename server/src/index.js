@@ -26,7 +26,11 @@ app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 // Set up in-memory command buffer
 const activeCommands = {};
@@ -57,10 +61,12 @@ mongoose.connect(MONGODB_URI)
   });
 
 const userAuthRoutes = require('./routes/userAuth');
+const billingRoutes = require('./routes/billing');
 const { authLimiter, apiLimiter, helmetMiddleware } = require('./middleware/securityMiddleware');
 
 app.use(helmetMiddleware);
 app.use('/api/auth', authLimiter, userAuthRoutes);
+app.use('/api/billing', billingRoutes);
 app.use('/api/agent', apiLimiter, agentRoutes);
 app.use('/api/admin/auth', authRoutes);
 app.use('/api/admin/devices', deviceRoutes);
@@ -118,6 +124,25 @@ io.on('connection', (socket) => {
   socket.on('join:device', (deviceId) => {
     socket.join(`device:${deviceId}`);
     console.log(`[Socket] Device ${deviceId} joined room device:${deviceId}`);
+  });
+
+  socket.on('join:user', (userId) => {
+    socket.join(`user:${userId}`);
+    console.log(`[Socket] User ${userId} joined room user:${userId}`);
+  });
+
+  socket.on('agent:authenticate', async ({ device_id, refresh_token }) => {
+    try {
+      const Device = require('./models/Device');
+      const device = await Device.findOne({ deviceId: device_id });
+      if (device && device.owner) {
+        socket.join(`user:${device.owner}`);
+        console.log(`[Socket] Authenticated Agent ${device_id} joined room user:${device.owner}`);
+        socket.emit('agent:authenticated');
+      }
+    } catch (e) {
+      console.error('[Socket] agent:authenticate error:', e);
+    }
   });
 
   socket.on('join:session', (sessionId) => {
@@ -202,8 +227,13 @@ io.on('connection', (socket) => {
       Device.findOneAndUpdate(
         { deviceId },
         { $set: deviceUpdate },
-        { upsert: true }
-      ).catch(err => {});
+        { upsert: true, new: true }
+      ).then(device => {
+        if (device && device.owner) {
+          socket.join(`user:${device.owner}`);
+          console.log(`[Socket] Agent ${deviceId} joined user room user:${device.owner}`);
+        }
+      }).catch(err => {});
     }
   });
 
@@ -212,8 +242,12 @@ io.on('connection', (socket) => {
       Device.findOneAndUpdate(
         { deviceId },
         { lastSeen: new Date() },
-        { upsert: false }
-      ).catch(err => {});
+        { upsert: false, new: true }
+      ).then(device => {
+        if (device && device.owner) {
+          socket.join(`user:${device.owner}`);
+        }
+      }).catch(err => {});
     }
   });
 
@@ -367,4 +401,21 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`[Server] Listening on port ${PORT}`);
+  
+  // Initialize Background Billing Schedulers
+  const checkSubscriptionExpiry = require('./jobs/subscriptionExpiry.job');
+  const checkRenewalReminders = require('./jobs/renewalReminder.job');
+
+  // Check once every 24 hours
+  setInterval(() => {
+    checkSubscriptionExpiry(io);
+    checkRenewalReminders(io);
+  }, 24 * 60 * 60 * 1000);
+
+  // Run initial check 10 seconds after server starts up
+  setTimeout(() => {
+    console.log('[Scheduler] Running initial startup billing check...');
+    checkSubscriptionExpiry(io);
+    checkRenewalReminders(io);
+  }, 10000);
 });

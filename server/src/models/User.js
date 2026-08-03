@@ -32,6 +32,18 @@ const userSchema = new mongoose.Schema({
   failedLoginAttempts: { type: Number, default: 0 },
   lockUntil: { type: Date },
   lastLogin: { type: Date },
+  subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription' },
+  subscriptionStatus: { 
+    type: String, 
+    enum: ['free', 'active', 'expired', 'cancelled'], 
+    default: 'free',
+    index: true
+  },
+  currentPlan: { 
+    type: String, 
+    enum: ['free', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'], 
+    default: 'free' 
+  },
   loginHistory: [{
     ip: String,
     userAgent: String,
