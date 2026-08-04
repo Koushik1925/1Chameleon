@@ -27,8 +27,8 @@ export default function HomePage() {
   return (
     <div className="space-y-24 pb-16 relative z-0">
       <SEOManager
-        title="Chameleon — Secure Ultra-Low Latency Remote Desktop Software"
-        description="Fast, secure cross-platform remote desktop software. Sub-100ms latency WebRTC screen sharing, remote PC control, file transfer, and unattended access for Windows, macOS, Linux, Android, and iOS."
+        title="Chameleon — Secure Remote Desktop & Desktop Agent"
+        description="Secure remote desktop software with QR pairing, desktop agent, unattended access, file transfer and end-to-end encryption. Download Chameleon for Windows."
         keywords={[...KEYWORDS.primary, ...KEYWORDS.secondary, ...KEYWORDS.longTail]}
         canonicalPath="/"
         schemas={schemas}

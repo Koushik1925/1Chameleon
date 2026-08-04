@@ -42,6 +42,7 @@ export default function PublicFooter() {
             <ul className="space-y-2">
               <li><Link to="/features" className="hover:text-cyan-400 transition-colors">Features & Tech</Link></li>
               <li><Link to="/download" className="hover:text-cyan-400 transition-colors">Download Apps</Link></li>
+              <li><Link to="/desktop-agent" className="hover:text-cyan-400 transition-colors">Desktop Agent</Link></li>
               <li><Link to="/security" className="hover:text-cyan-400 transition-colors">Security Whitepaper</Link></li>
               <li><Link to="/changelog" className="hover:text-cyan-400 transition-colors">Release Notes</Link></li>
               <li><a href="https://github.com/Rithvik-krishna/Chameleon" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors flex items-center space-x-1"><span>GitHub Source</span> <ExternalLink className="w-2.5 h-2.5" /></a></li>

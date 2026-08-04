@@ -19,6 +19,7 @@ import CookiePage from './pages/public/CookiePage';
 import ContactPage from './pages/public/ContactPage';
 import DeleteAccountPage from './pages/public/DeleteAccountPage';
 import ChangelogPage from './pages/public/ChangelogPage';
+import DesktopAgentPage from './pages/public/DesktopAgentPage';
 import NotFoundPage from './pages/public/NotFoundPage';
 
 // Admin Panel Components
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/cookie-policy" element={<CookiePage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/delete-account" element={<DeleteAccountPage />} />
+        <Route path="/desktop-agent" element={<DesktopAgentPage />} />
         <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

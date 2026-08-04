@@ -39,8 +39,8 @@ export default function Home() {
     return (
         <div className="min-h-screen bg-[#090D17] text-[#9CA3AF] font-sans selection:bg-[#06B6D4]/30 selection:text-cyan-200 relative z-0">
             <SEOHead 
-                title="Secure Remote Access - Zero Setup" 
-                description="Connect to your desktop from anywhere using encrypted, QR-based pairing. Ultra-low latency remote control with no IP setup required."
+                title="Chameleon | Secure Remote Desktop & Remote Access Software" 
+                description="Secure remote desktop software with QR pairing, desktop agent, unattended access, file transfer and end-to-end encryption. Download Chameleon for Windows."
                 canonical="https://www.chameleon-agent.online"
             />
             <Navbar />
