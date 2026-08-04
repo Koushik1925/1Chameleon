@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 
 const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com').replace(/\/$/, '');
@@ -11,6 +11,7 @@ export default function Login({ onLoginSuccess }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -52,7 +53,8 @@ export default function Login({ onLoginSuccess }) {
       localStorage.setItem('chameleon_refresh_token', data.refreshToken);
       localStorage.setItem('chameleon_user', JSON.stringify(data.user));
       if (onLoginSuccess) onLoginSuccess(data.user);
-      navigate('/my-devices');
+      const redirectUrl = searchParams.get('redirect') || '/my-devices';
+      navigate(redirectUrl);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -76,7 +78,8 @@ export default function Login({ onLoginSuccess }) {
       localStorage.setItem('chameleon_refresh_token', data.refreshToken);
       localStorage.setItem('chameleon_user', JSON.stringify(data.user));
       if (onLoginSuccess) onLoginSuccess(data.user);
-      navigate('/my-devices');
+      const redirectUrl = searchParams.get('redirect') || '/my-devices';
+      navigate(redirectUrl);
     } catch (err) {
       setError(err.message);
     } finally {

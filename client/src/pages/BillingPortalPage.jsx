@@ -59,7 +59,7 @@ export default function BillingPortalPage() {
   const fetchProfileAndBilling = async () => {
     const token = localStorage.getItem('chameleon_access_token');
     if (!token) {
-      navigate('/login');
+      navigate('/login?redirect=/billing');
       return;
     }
 
