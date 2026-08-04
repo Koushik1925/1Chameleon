@@ -544,7 +544,7 @@
 
                     <!-- Pair Code Section -->
                     <div class="section-label">PAIR CODE</div>
-                    <div id="otp-code" class="pair-code-display">4 4 5 9 6 8</div>
+                    <div id="otp-code" class="pair-code-display">------</div>
 
                     <!-- OR Divider -->
                     <div class="or-divider">
@@ -556,7 +556,7 @@
                     <!-- Scan QR Section -->
                     <div class="section-label">SCAN QR CODE</div>
                     <div class="qr-card">
-                        <img id="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?data=https%3A%2F%2Fchameleon-jet.vercel.app%2F%3Fsess%3D445968&size=200x200" alt="QR Code" />
+                        <img id="qr-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><rect width='200' height='200' fill='rgba(255,255,255,0.02)'/><text x='50%' y='55%' font-family='sans-serif' font-size='12' fill='rgba(255,255,255,0.3)' text-anchor='middle'>Generating QR...</text></svg>" alt="QR Code" />
                     </div>
 
                     <!-- Permanent Code Badge -->
@@ -621,8 +621,8 @@
                         <h2 class="page-title" style="margin-bottom: 20px;">Account Settings</h2>
                         <div class="info-card">
                             <div>
-                                <div id="acc-name" class="info-card-title">Rithvik Krishna D K</div>
-                                <div id="acc-email" class="info-card-sub">rithvik.krishna.s70@kalvium.community</div>
+                                <div id="acc-name" class="info-card-title">Unlinked Device</div>
+                                <div id="acc-email" class="info-card-sub">Scan the QR code to pair this device</div>
                             </div>
                             <button class="action-btn" onclick="handleDisconnect()" style="background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4);">Sign Out</button>
                         </div>
@@ -770,6 +770,11 @@
                         const accEmail = document.getElementById('acc-email');
                         if (accName) accName.innerText = state.user.name || state.user.email || 'Connected User';
                         if (accEmail) accEmail.innerText = state.user.email || 'Account Linked';
+                    } else {
+                        const accName = document.getElementById('acc-name');
+                        const accEmail = document.getElementById('acc-email');
+                        if (accName) accName.innerText = 'Unlinked Device';
+                        if (accEmail) accEmail.innerText = 'Scan the QR code to pair this device';
                     }
                 } catch (e) {}
             }
