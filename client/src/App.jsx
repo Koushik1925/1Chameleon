@@ -29,7 +29,7 @@ const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'));
 const BillingFailedPage = lazy(() => import('./pages/BillingFailedPage'));
 
 // Use environment variable for production, fallback to local
-const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com';
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com').replace(/\/$/, '');
 
 function ClientApp() {
   const navigate = useNavigate();

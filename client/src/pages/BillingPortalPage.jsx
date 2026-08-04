@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar';
 
-const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com';
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com').replace(/\/$/, '');
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {

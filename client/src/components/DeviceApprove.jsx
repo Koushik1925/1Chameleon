@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Laptop, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
 
-const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com';
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com').replace(/\/$/, '');
 
 export default function DeviceApprove() {
   const [searchParams] = useSearchParams();
