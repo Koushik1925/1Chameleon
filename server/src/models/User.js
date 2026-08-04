@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema({
   },
   currentPlan: { 
     type: String, 
-    enum: ['free', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'], 
+    enum: ['free', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'], 
     default: 'free' 
   },
   loginHistory: [{

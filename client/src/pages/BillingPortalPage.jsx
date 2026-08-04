@@ -33,10 +33,9 @@ export default function BillingPortalPage() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const [plans, setPlans] = useState({
-    MONTHLY: { id: "MONTHLY", name: "Monthly Plan", duration: 30, amount: 99900 },
-    QUARTERLY: { id: "QUARTERLY", name: "Quarterly Plan", duration: 90, amount: 249900 },
-    HALF_YEARLY: { id: "HALF_YEARLY", name: "Half-Yearly Plan", duration: 180, amount: 449900 },
-    YEARLY: { id: "YEARLY", name: "Yearly Plan", duration: 365, amount: 799900 }
+    DAILY: { id: "DAILY", name: "Daily Pass", duration: "24 Hours", amount: 34900, icon: "⚡", dailyCost: "₹349/day", buttonText: "Get Started", popular: false, badge: "" },
+    WEEKLY: { id: "WEEKLY", name: "Weekly Pass", duration: "7 Days", amount: 79900, icon: "⭐", dailyCost: "₹114/day", buttonText: "Choose Weekly", popular: true, badge: "Most Popular" },
+    MONTHLY: { id: "MONTHLY", name: "Monthly Pass", duration: "30 Days", amount: 119900, icon: "👑", dailyCost: "₹40/day", buttonText: "Go Monthly", popular: false, badge: "Best Value" }
   });
 
   const features = [
@@ -280,68 +279,69 @@ export default function BillingPortalPage() {
 
         {/* Upgrade / Pricing Cards Block */}
         {showPlans && (
-          <div className="space-y-6">
-            <div className="space-y-2 text-center md:text-left">
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                {subStatus?.status === 'ACTIVE' ? 'Upgrade or Renew Subscription' : 'Unlock Chameleon Pro'}
+          <div className="space-y-12">
+            {/* Centered Header */}
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-extrabold text-white tracking-tight">
+                Choose Your Plan
               </h2>
-              <p className="text-xs text-slate-400">
-                Choose the billing interval that best suits your remote access workflow. Prices are all-inclusive.
+              <p className="text-sm text-slate-400">
+                Select the duration that works best for you.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Pricing Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center items-center max-w-5xl mx-auto">
               {Object.keys(plans).map((key) => {
                 const plan = plans[key];
-                const isYearly = key === 'YEARLY';
                 const formattedPrice = plan.amount / 100;
                 
                 return (
                   <div
                     key={key}
-                    className={`relative rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 ${
-                      isYearly
-                        ? 'bg-gradient-to-b from-[#0F172A]/80 to-[#070B14]/90 border-2 border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.15)]'
-                        : 'bg-white/5 border border-white/8 hover:bg-white/10'
+                    className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 ${
+                      plan.popular
+                        ? 'bg-gradient-to-b from-[#0F172A]/90 to-[#070B14]/95 border-2 border-cyan-500/50 shadow-[0_15px_45px_rgba(6,182,212,0.18)] min-h-[360px] md:scale-[1.04]'
+                        : 'bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/20 shadow-lg min-h-[340px]'
                     }`}
                   >
-                    {isYearly && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-cyan-500 text-slate-950 text-[9px] font-bold uppercase tracking-wider rounded-full shadow-lg">
-                        Best Value
+                    {plan.badge && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-cyan-500 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full shadow-lg">
+                        {plan.badge}
                       </div>
                     )}
 
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-100 mb-1">{plan.name}</h3>
-                      <p className="text-[10px] text-slate-400 font-mono mb-4">Duration: {plan.duration} Days</p>
-                      
-                      <div className="flex items-baseline gap-1.5 mb-4">
-                        <span className="text-3xl font-extrabold text-white tracking-tight">₹{formattedPrice.toLocaleString()}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">/ term</span>
-                      </div>
-                      
-                      <div className="h-px bg-white/8 mb-4" />
+                    <div className="flex flex-col items-center text-center space-y-5">
+                      {/* Icon */}
+                      <span className="text-4xl filter drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] select-none">
+                        {plan.icon}
+                      </span>
 
-                      <ul className="space-y-2 mb-6">
-                        {features.slice(0, 5).map((feat, i) => (
-                          <li key={i} className="flex items-center gap-2 text-[10px] text-slate-300">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {/* Title */}
+                      <h3 className="text-lg font-bold text-slate-100 tracking-wide">{plan.name}</h3>
+                      
+                      {/* Price */}
+                      <div className="text-4xl font-extrabold text-white tracking-tight">
+                        ₹{formattedPrice.toLocaleString()}
+                      </div>
+
+                      {/* Duration & Daily Cost */}
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-400 font-medium tracking-wide">{plan.duration}</p>
+                        <p className="text-[11px] text-cyan-400 font-mono font-bold tracking-wide">{plan.dailyCost}</p>
+                      </div>
                     </div>
 
                     <button
                       onClick={() => handleSubscribe(key)}
                       disabled={checkoutLoading}
-                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-center transition-all ${
-                        isYearly
-                          ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
-                          : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white'
+                      className={`w-full mt-8 py-3.5 px-4 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
+                        plan.popular
+                          ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_4px_20px_rgba(6,182,212,0.35)]'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white'
                       }`}
                     >
-                      {checkoutLoading ? 'Processing...' : 'Upgrade'}
+                      {checkoutLoading ? 'Processing...' : plan.buttonText}
                     </button>
                   </div>
                 );
@@ -349,25 +349,6 @@ export default function BillingPortalPage() {
             </div>
           </div>
         )}
-
-        {/* Feature Comparison List */}
-        {subStatus?.status === 'FREE' || subStatus?.status === 'EXPIRED' ? (
-          <div className="bg-[#111827]/40 border border-white/6 rounded-3xl p-6 md:p-8 backdrop-blur-md">
-            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Sparkles className="text-cyan-400 w-5 h-5" />
-              Pro License Features Included
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {features.map((feat, i) => (
-                <div key={i} className="flex items-center gap-3 text-slate-300">
-                  <CheckCircle2 className="w-5 h-5 text-cyan-400 shrink-0" />
-                  <span className="text-sm">{feat}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         {/* Billing Payments History */}
         <div className="bg-[#111827]/30 border border-white/6 rounded-3xl p-6 md:p-8 backdrop-blur-md">

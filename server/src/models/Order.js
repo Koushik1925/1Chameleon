@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  plan: { type: String, enum: ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'], required: true },
+  plan: { type: String, enum: ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'], required: true },
   amount: { type: Number, required: true }, // in paise
   currency: { type: String, default: 'INR' },
   gatewayOrderId: { type: String, required: true, unique: true, index: true },
