@@ -1,4 +1,5 @@
 import React from 'react';
+import { Zap, Star, Crown } from 'lucide-react';
 import SEOManager from '../../seo/SEOManager';
 import Breadcrumbs from '../../components/public/Breadcrumbs';
 import { getWebPageSchema } from '../../seo/schemaGenerators';
@@ -20,7 +21,7 @@ export default function PricingPage() {
       price: '₹349',
       duration: '24 Hours',
       dailyCost: '₹349/day',
-      icon: '⚡',
+      iconName: 'Zap',
       cta: 'Get Started',
       popular: false,
       badge: ''
@@ -31,7 +32,7 @@ export default function PricingPage() {
       price: '₹799',
       duration: '7 Days',
       dailyCost: '₹114/day',
-      icon: '⭐',
+      iconName: 'Star',
       cta: 'Choose Weekly',
       popular: true,
       badge: 'Most Popular'
@@ -42,7 +43,7 @@ export default function PricingPage() {
       price: '₹1,199',
       duration: '30 Days',
       dailyCost: '₹40/day',
-      icon: '👑',
+      iconName: 'Crown',
       cta: 'Go Monthly',
       popular: false,
       badge: 'Best Value'
@@ -50,7 +51,7 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
       <SEOManager
         title="Chameleon Pro Pricing — Flexible Remote Access Subscriptions"
         description="View pricing plans for Chameleon Pro: Daily, Weekly, and Monthly passes. Sub-100ms low-latency remote desktop streaming with end-to-end encryption."
@@ -63,64 +64,73 @@ export default function PricingPage() {
 
       {/* Centered Header Section */}
       <div className="text-center space-y-2 max-w-3xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100 tracking-tight animate-fade-in">
           Choose Your Plan
         </h1>
         <p className="text-sm text-slate-400">
-          Select the duration that works best for you.
+          One product. Three ways to access it.
         </p>
       </div>
 
-      {/* 3 Pricing Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 justify-center items-center max-w-5xl mx-auto">
-        {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 ${
-              plan.popular
-                ? 'bg-gradient-to-b from-[#0F172A]/90 to-[#070B14]/95 border-2 border-cyan-500/50 shadow-[0_15px_45px_rgba(6,182,212,0.18)] min-h-[360px] md:scale-[1.04]'
-                : 'bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/20 shadow-lg min-h-[340px]'
-            }`}
-          >
-            {plan.badge && (
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-cyan-500 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full shadow-lg">
-                {plan.badge}
-              </div>
-            )}
+      {/* Unified Settings Glass Panel */}
+      <div className="bg-white/[0.03] border border-white/8 backdrop-blur-2xl rounded-3xl shadow-2xl max-w-4xl mx-auto divide-y divide-white/8 overflow-hidden">
+        {plans.map((plan) => {
+          const PlanIcon = plan.iconName === 'Zap' ? Zap : plan.iconName === 'Star' ? Star : Crown;
 
-            <div className="flex flex-col items-center text-center space-y-5">
-              {/* Icon */}
-              <span className="text-4xl filter drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] select-none">
-                {plan.icon}
-              </span>
-
-              {/* Title */}
-              <h3 className="text-lg font-bold text-slate-100 tracking-wide">{plan.name}</h3>
-              
-              {/* Price */}
-              <div className="text-4xl font-extrabold text-white tracking-tight">
-                {plan.price}
-              </div>
-
-              {/* Duration & Daily Cost */}
-              <div className="space-y-1">
-                <p className="text-xs text-slate-400 font-medium tracking-wide">{plan.duration}</p>
-                <p className="text-[11px] text-cyan-400 font-mono font-bold tracking-wide">{plan.dailyCost}</p>
-              </div>
-            </div>
-
-            <a
-              href={`${CLIENT_URL}/billing?plan=${plan.id}`}
-              className={`w-full mt-8 py-3.5 px-4 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
-                plan.popular
-                  ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_4px_20px_rgba(6,182,212,0.35)]'
-                  : 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white'
+          return (
+            <div
+              key={plan.id}
+              className={`flex flex-col md:flex-row md:items-center justify-between p-6 md:p-8 transition-all duration-300 gap-6 group hover:bg-white/[0.02] ${
+                plan.popular ? 'relative bg-white/[0.01]' : ''
               }`}
             >
-              {plan.cta}
-            </a>
-          </div>
-        ))}
+              {/* Left: Icon, Name & Inline Badge */}
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/8 text-cyan-400 group-hover:text-cyan-300 group-hover:bg-white/10 group-hover:border-white/15 transition-all shadow-sm">
+                  <PlanIcon className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="font-bold text-slate-100 text-lg">{plan.name}</span>
+                  {plan.badge && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 max-w-fit uppercase">
+                      {plan.badge}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Middle: Details & Price */}
+              <div className="flex flex-wrap items-center gap-x-8 gap-y-2 md:ml-auto">
+                {/* Duration */}
+                <div className="flex flex-col text-left md:text-right">
+                  <span className="text-sm font-semibold text-slate-100">{plan.duration}</span>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Duration</span>
+                </div>
+                <div className="w-px h-8 bg-white/8 hidden sm:block" />
+                {/* Price & Daily Cost */}
+                <div className="flex flex-col text-left md:text-right">
+                  <span className="text-xl font-black text-white tracking-tight">{plan.price}</span>
+                  <span className="text-[11px] font-mono text-cyan-400 font-bold">{plan.dailyCost}</span>
+                </div>
+              </div>
+
+              {/* Right: Button */}
+              <div className="shrink-0 flex items-center">
+                <a
+                  href={`${CLIENT_URL}/billing?plan=${plan.id}`}
+                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-250 flex items-center gap-1 cursor-pointer ${
+                    plan.popular
+                      ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_4px_15px_rgba(6,182,212,0.25)] hover:scale-[1.02]'
+                      : 'bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/20 text-white hover:scale-[1.02]'
+                  }`}
+                >
+                  <span>{plan.cta}</span>
+                  <span className="text-sm transition-transform duration-250 group-hover:translate-x-0.5">→</span>
+                </a>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
