@@ -37,7 +37,9 @@
         // Generate a 100% permanent 6-digit numeric code based on device hardware specs
         function getPermanentSessionId() {
             try {
-                const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
+                const { getHardwareIds } = require('./platform/identity');
+                const { machineGuid, boardSerial } = getHardwareIds();
+                const identifier = `${machineGuid}-${boardSerial}`;
                 let hash = 0;
                 for (let i = 0; i < identifier.length; i++) {
                     hash = (hash * 31 + identifier.charCodeAt(i)) & 0xffffffff;
@@ -45,8 +47,19 @@
                 const code = Math.abs(hash) % 900000 + 100000;
                 return code.toString();
             } catch (e) {
-                // Fallback to random if hardware fetch fails
-                return Math.floor(100000 + Math.random() * 900000).toString();
+                console.error('[WebRTC] Error retrieving hardware IDs, using hostname fallback:', e.message);
+                try {
+                    const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
+                    let hash = 0;
+                    for (let i = 0; i < identifier.length; i++) {
+                        hash = (hash * 31 + identifier.charCodeAt(i)) & 0xffffffff;
+                    }
+                    const code = Math.abs(hash) % 900000 + 100000;
+                    return code.toString();
+                } catch (e2) {
+                    // Fallback to random if hardware fetch fails
+                    return Math.floor(100000 + Math.random() * 900000).toString();
+                }
             }
         }
 

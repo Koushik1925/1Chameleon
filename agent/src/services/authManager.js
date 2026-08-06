@@ -4,8 +4,9 @@ const { Api } = require('./api');
 
 function getPermanentDeviceId() {
   try {
-    const os = require('os');
-    const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
+    const { getHardwareIds } = require('../platform/identity');
+    const { machineGuid, boardSerial } = getHardwareIds();
+    const identifier = `${machineGuid}-${boardSerial}`;
     let hash = 0;
     for (let i = 0; i < identifier.length; i++) {
       hash = (hash * 31 + identifier.charCodeAt(i)) & 0xffffffff;
@@ -13,7 +14,18 @@ function getPermanentDeviceId() {
     const code = Math.abs(hash) % 900000 + 100000;
     return 'DEV-REAL-' + code.toString();
   } catch (e) {
-    return 'DEV-REAL-100000';
+    try {
+      const os = require('os');
+      const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
+      let hash = 0;
+      for (let i = 0; i < identifier.length; i++) {
+        hash = (hash * 31 + identifier.charCodeAt(i)) & 0xffffffff;
+      }
+      const code = Math.abs(hash) % 900000 + 100000;
+      return 'DEV-REAL-' + code.toString();
+    } catch (e2) {
+      return 'DEV-REAL-100000';
+    }
   }
 }
 
