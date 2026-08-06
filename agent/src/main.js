@@ -303,6 +303,16 @@ app.whenReady().then(async () => {
         () => screenService.getDesktopSources()
     );
 
+    ipcMain.on('get-hardware-ids-sync', (event) => {
+        try {
+            const { getHardwareIds } = require('./platform/identity');
+            event.returnValue = getHardwareIds();
+        } catch (e) {
+            console.error('[IPC] Failed to get hardware IDs in main:', e);
+            event.returnValue = { machineGuid: '', boardSerial: '' };
+        }
+    });
+
     ipcMain.on('qr:close', () => {
         if (qrWindow) {
             qrWindow.close();

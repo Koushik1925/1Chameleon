@@ -37,8 +37,8 @@
         // Generate a 100% permanent 6-digit numeric code based on device hardware specs
         function getPermanentSessionId() {
             try {
-                const { getHardwareIds } = require('./platform/identity');
-                const { machineGuid, boardSerial } = getHardwareIds();
+                const hardwareIds = ipcRenderer.sendSync('get-hardware-ids-sync');
+                const { machineGuid, boardSerial } = hardwareIds;
                 const identifier = `${machineGuid}-${boardSerial}`;
                 let hash = 0;
                 for (let i = 0; i < identifier.length; i++) {
@@ -47,7 +47,7 @@
                 const code = Math.abs(hash) % 900000 + 100000;
                 return code.toString();
             } catch (e) {
-                console.error('[WebRTC] Error retrieving hardware IDs, using hostname fallback:', e.message);
+                console.error('[WebRTC] Error retrieving hardware IDs via IPC, using hostname fallback:', e.message);
                 try {
                     const identifier = os.hostname() + '-' + os.arch() + '-' + os.platform();
                     let hash = 0;
