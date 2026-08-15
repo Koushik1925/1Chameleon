@@ -91,6 +91,7 @@ export default function App() {
         <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/desktop-agent" element={<DesktopAgentPage />} />
         <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/404" element={<NotFoundPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
