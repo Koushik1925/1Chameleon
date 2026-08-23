@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: chameleon-server
+    runtime: node
+    rootDir: server
+    plan: free # NOTE: spins down after 15min idle, ~10-30s cold start on next request.
+               # Upgrade to `starter` when ready for always-on signaling.
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /ping
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: BILLING_PORTAL_URL
+        sync: false
+      - key: INVOICE_PREFIX
+        value: CHM
+      - key: CURRENCY
+        value: INR
