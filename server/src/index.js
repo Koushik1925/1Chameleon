@@ -22,8 +22,29 @@ const app = express();
 const server = http.createServer(app);
 
 // CORS Config
+// Explicit allow-list (used by both Express and Socket.IO below) instead of a
+// blanket '*' so we can add/verify specific production/preview frontends.
+// Requests with no Origin header (curl, server-to-server, mobile webviews)
+// are allowed through, matching the previous '*' behavior for non-browser clients.
+const ALLOWED_ORIGINS = [
+  'https://chameleon-jet.vercel.app',        // production web client (viewer)
+  'https://chameleon-agent.online',          // production admin dashboard / marketing site
+  'https://www.chameleon-agent.online',
+  'https://1-chameleon-git-main-chamelom.vercel.app', // production Vercel deployment (reported CORS failure)
+  'http://localhost:5173',                   // local dev (client/frontend, Vite default port)
+  'http://localhost:5174'                    // local dev fallback port when 5173 is taken
+];
+
+const corsOriginCheck = (origin, callback) => {
+  if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  }
+};
+
 app.use(cors({
-  origin: '*',
+  origin: corsOriginCheck,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json({
@@ -98,7 +119,7 @@ app.get('/', (req, res) => {
 // Configure Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: corsOriginCheck,
     methods: ['GET', 'POST']
   }
 });
