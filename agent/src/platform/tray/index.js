@@ -35,27 +35,31 @@ function createTrayService({
          */
         createIcon(nativeImage, assetsDirectory, baseName) {
             try {
+                const extension = platform === 'darwin' ? 'png' : 'bmp';
                 let image = nativeImage.createFromPath(
-                    pathApi.join(assetsDirectory, `${baseName}.png`)
+                    pathApi.join(assetsDirectory, `${baseName}.${extension}`)
                 );
 
-                if (image.isEmpty()) {
+                if (image && typeof image.isEmpty === 'function' && image.isEmpty()) {
                     image = nativeImage.createFromPath(
-                        pathApi.join(__dirname, '..', '..', 'logo.png')
+                        pathApi.join(assetsDirectory, `${baseName}.png`)
                     );
                 }
 
-                if (!image.isEmpty()) {
+                if (image && typeof image.isEmpty === 'function' && !image.isEmpty() && typeof image.resize === 'function') {
                     image = image.resize({ width: 16, height: 16 });
                 }
 
-                if (platform === 'darwin') {
+                if (platform === 'darwin' && image && typeof image.setTemplateImage === 'function') {
                     image.setTemplateImage(true);
                 }
 
                 return image;
             } catch (e) {
-                return nativeImage.createEmpty();
+                if (nativeImage && typeof nativeImage.createEmpty === 'function') {
+                    return nativeImage.createEmpty();
+                }
+                return null;
             }
         }
     };

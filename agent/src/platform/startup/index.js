@@ -52,10 +52,9 @@ function createStartupService({
                         error.message
                     );
                 }
-            }
-
-            if (typeof openPairingWindow === 'function') {
-                openPairingWindow();
+                if (typeof openPairingWindow === 'function') {
+                    openPairingWindow();
+                }
             }
         },
 
