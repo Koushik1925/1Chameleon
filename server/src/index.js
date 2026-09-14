@@ -27,6 +27,7 @@ const server = http.createServer(app);
 // Requests with no Origin header (curl, server-to-server, mobile webviews)
 // are allowed through, matching the previous '*' behavior for non-browser clients.
 const ALLOWED_ORIGINS = [
+  'https://1-chameleon.vercel.app',          // primary production web client
   'https://chameleon-jet.vercel.app',        // production web client (viewer)
   'https://chameleon-agent.online',          // production admin dashboard / marketing site
   'https://www.chameleon-agent.online',
@@ -35,8 +36,20 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5174'                    // local dev fallback port when 5173 is taken
 ];
 
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) return true;
+  if (process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).includes(origin)) return true;
+  // Allow all Vercel deployments (*.vercel.app) for 1-chameleon and chameleon
+  if (/^https:\/\/[a-zA-Z0-9-]+(\.vercel\.app)$/.test(origin)) return true;
+  // Allow local development on localhost/127.0.0.1 on any port
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
+};
+
 const corsOriginCheck = (origin, callback) => {
-  if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+  if (isOriginAllowed(origin)) {
     callback(null, true);
   } else {
     callback(new Error(`CORS: origin ${origin} not allowed`));

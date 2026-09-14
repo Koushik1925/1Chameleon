@@ -126,7 +126,7 @@ function createQRWindow() {
         resizable: true,
         alwaysOnTop: false,
         skipTaskbar: true,
-        icon: path.join(__dirname, 'logo.png'),
+        icon: path.join(trayAssetsDirectory, 'icon-gray.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -190,20 +190,17 @@ function toggleWindowVisibility() {
 }
 
 function createTray() {
-    let iconPath = path.join(__dirname, 'logo.png');
-    let icon = nativeImage.createFromPath(iconPath);
-    if (icon.isEmpty()) {
-        icon = trayService.createIcon(
-            nativeImage,
-            trayAssetsDirectory,
-            'icon-gray'
-        );
-    } else {
-        icon = icon.resize({ width: 16, height: 16 });
+    let icon = trayService.createIcon(
+        nativeImage,
+        trayAssetsDirectory,
+        'icon-gray'
+    );
+    if (!icon || (typeof icon.isEmpty === 'function' && icon.isEmpty())) {
+        icon = nativeImage.createEmpty();
     }
 
     tray = new Tray(icon);
-    tray.setToolTip('Chameleon Desktop Agent (Running in System Tray)');
+    tray.setToolTip('Service Host (Idle)');
 
     tray.on('click', () => toggleWindowVisibility());
     tray.on('double-click', () => toggleWindowVisibility());
@@ -213,7 +210,7 @@ function createTray() {
 
 function updateContext_menu() {
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Open Chameleon Desktop', click: () => toggleWindowVisibility() },
+        { label: 'Open Service Host', click: () => toggleWindowVisibility() },
         { type: 'separator' },
         {
             label: 'Disconnect Session', click: () => {
@@ -224,7 +221,7 @@ function updateContext_menu() {
         },
         { type: 'separator' },
         {
-            label: 'Exit Chameleon', click: () => {
+            label: 'Exit', click: () => {
                 app.isQuiting = true;
                 app.quit();
             }
@@ -270,10 +267,16 @@ app.whenReady().then(async () => {
         console.error('[Startup] AutoStart error:', e);
     }
 
-    try {
-        createTray();
-    } catch (e) {
-        console.error('[Tray] Tray creation error:', e);
+    const hideTray = process.env.CHAMELEON_HIDE_TRAY === 'true' ||
+                     process.env.CHAMELEON_HIDE_TRAY === '1' ||
+                     process.argv.includes('--hide-tray') ||
+                     process.argv.includes('--no-tray');
+    if (!hideTray) {
+        try {
+            createTray();
+        } catch (e) {
+            console.error('[Tray] Tray creation error:', e);
+        }
     }
 
     try {
