@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Eye, EyeOff, Play, ShieldAlert, Wifi, WifiOff } from 'lucide-react';
 
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://onechameleon.onrender.com').replace(/\/$/, '');
+
 export default function StealthViewer({ sessionId }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -34,7 +36,7 @@ export default function StealthViewer({ sessionId }) {
 
     try {
       // 1. Connect to signaling server
-      const socket = io('https://chameleon-1.onrender.com');
+      const socket = io(SIGNALING_URL);
       socketRef.current = socket;
 
       socket.on('connect', () => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 
-const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://chameleon-1.onrender.com').replace(/\/$/, '');
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://onechameleon.onrender.com').replace(/\/$/, '');
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '607598122306-oal27tlr3v870b9bupenf55p6oecmg5j.apps.googleusercontent.com';
 
 export default function Login({ onLoginSuccess }) {

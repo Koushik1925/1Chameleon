@@ -31,7 +31,7 @@ function getPermanentDeviceId() {
 
 class AuthManager {
   constructor() {
-    const baseUrl = process.env.SIGNALING_URL || 'https://chameleon-1.onrender.com';
+    const baseUrl = process.env.SIGNALING_URL || 'https://onechameleon.onrender.com';
     this.api = new Api(baseUrl);
     this.pollInterval = null;
     this.setupIpcHandlers();
