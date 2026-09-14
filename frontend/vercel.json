@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://chameleon-1.onrender.com/api/:path*"
+      "destination": "https://onechameleon.onrender.com/api/:path*"
     },
     {
       "source": "/((?!api|assets|favicon.svg|robots.txt|sitemap.xml|manifest.json).*)",

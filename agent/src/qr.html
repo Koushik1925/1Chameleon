@@ -715,7 +715,7 @@
         async function fetchBillingStatus() {
             if (!localDeviceId) return;
             try {
-                const response = await fetch(`https://chameleon-1.onrender.com/api/billing/device-status?deviceId=${localDeviceId}`);
+                const response = await fetch(`https://onechameleon.onrender.com/api/billing/device-status?deviceId=${localDeviceId}`);
                 if (!response.ok) return;
                 const status = await response.json();
                 

@@ -7,6 +7,8 @@ import {
 import { Monitor, Play, Cpu, AlertTriangle, Terminal, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://onechameleon.onrender.com').replace(/\/$/, '');
+
 export default function Dashboard() {
   const [stats, setStats] = useState({
     totalDevices: 0,
@@ -26,7 +28,7 @@ export default function Dashboard() {
     fetchRecentLogs();
 
     // 2. Establish Socket.IO listener for live telemetry streams
-    const socket = io('https://chameleon-1.onrender.com');
+    const socket = io(SIGNALING_URL);
     socket.emit('join:admin');
 
     socket.on('telemetry:data', (data) => {

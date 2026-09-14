@@ -3,6 +3,8 @@ import { io } from 'socket.io-client';
 import { Ban, Zap, AlertTriangle, Monitor, Code, Video } from 'lucide-react';
 import StealthViewer from './StealthViewer';
 
+const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://onechameleon.onrender.com').replace(/\/$/, '');
+
 export default function Sessions() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,7 +15,7 @@ export default function Sessions() {
     const interval = setInterval(fetchSessions, 5000);
 
     // Socket.IO real-time telemetry stream listener
-    const socket = io('https://chameleon-1.onrender.com');
+    const socket = io(SIGNALING_URL);
     socket.emit('join:admin');
 
     socket.on('session:data', (data) => {

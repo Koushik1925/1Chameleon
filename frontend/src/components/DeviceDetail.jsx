@@ -27,7 +27,7 @@ export default function DeviceDetail() {
     const interval = setInterval(fetchDeviceDetails, 8000);
 
     // Socket listener for real-time telemetry streaming
-    const socket = io('https://chameleon-1.onrender.com');
+    const socket = io('https://onechameleon.onrender.com');
     socket.emit('join:admin');
 
     socket.on('telemetry:data', (data) => {
