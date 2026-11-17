@@ -15,6 +15,8 @@ import { perfBus } from './lib/perfBus';
 import { LatencyTuner } from './lib/latencyTuner';
 import { getStatsMonitor } from './lib/statsMonitor';
 import { ConnectionManager } from './lib/connectionManager';
+import { SessionChannels } from './lib/sessionChannels';
+import { bindPageLifecycle } from './lib/pageLifecycle';
 
 // Lazy-loaded SaaS pages
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
@@ -64,13 +66,12 @@ function ClientApp() {
 
   // Owns the signaling socket + RTCPeerConnection lifecycle, timeouts and retries (lib/connectionManager.js).
   const managerRef = useRef(null);
-  const peerRef = useRef(null);
   // Mirrors of the live peer / socket for rendering (refs must not be read while rendering).
   const [activePeer, setActivePeer] = useState(null);
   const [activeSocket, setActiveSocket] = useState(null);
-  // DUAL CHANNELS: mouse = unordered/unreliable, keyboard = ordered/reliable
-  const mouseChannelRef = useRef(null);
-  const keyboardChannelRef = useRef(null);
+  // The current peer + its DUAL CHANNELS (mouse = unordered/unreliable, keyboard = ordered/reliable). Releasing it is
+  // idempotent and events from a replaced peer's channels are ignored (lib/sessionChannels.js).
+  const [channels] = useState(() => new SessionChannels());
   // Outbound input pipeline (move coalescing, ordered reliable events, stuck-key release). One per page; the data
   // channels are attached to it as they arrive, so it survives renegotiations. Quality adaptation lives on the host.
   const [inputSender] = useState(() => new InputSender({
@@ -102,26 +103,16 @@ function ClientApp() {
     return () => clearInterval(pingInterval);
   }, []);
 
-  function cleanupWebRTC() {
+  // `closePeer: false` when the ConnectionManager has already closed the peer (its onPeerClosed hook).
+  function cleanupWebRTC({ closePeer = true } = {}) {
     // Release anything still held on the host while the channel is still open, then forget local state.
     inputSender.releaseAll();
     inputSender.reset();
     perfBus.reset();
     if (latencyTunerStopRef.current) { latencyTunerStopRef.current(); latencyTunerStopRef.current = null; }
-    if (mouseChannelRef.current) {
-      try { mouseChannelRef.current.close(); } catch(e) {}
-      mouseChannelRef.current = null;
-    }
-    if (keyboardChannelRef.current) {
-      try { keyboardChannelRef.current.close(); } catch(e) {}
-      keyboardChannelRef.current = null;
-    }
+    channels.release({ closePeer });
     inputSender.setChannel('mouse', null);
     inputSender.setChannel('keyboard', null);
-    if (peerRef.current) {
-      peerRef.current.close();
-      peerRef.current = null;
-    }
     setActivePeer(null);
     setRemoteStream(null);
     setIsControlPaused(false);
@@ -129,7 +120,7 @@ function ClientApp() {
 
   // Called by the ConnectionManager for every new RTCPeerConnection (the first one, and every renegotiation).
   function attachPeerHandlers(peer) {
-    peerRef.current = peer;
+    channels.setPeer(peer);
     setActivePeer(peer);
 
     peer.ontrack = (event) => {
@@ -150,15 +141,16 @@ function ClientApp() {
       console.log('[DC] Received channel:', ch.label);
 
       if (ch.label === 'mouse') {
-        mouseChannelRef.current = ch;
+        channels.setChannel('mouse', ch);
         inputSender.setChannel('mouse', ch);
         ch.onopen = () => console.log('[DC] Mouse channel open (client-side)');
-        ch.onclose = () => { console.log('[DC] Mouse channel closed'); inputSender.reset(); };
+        // A late 'close' from a channel that has been replaced must not reset the new session's input state.
+        ch.onclose = () => { console.log('[DC] Mouse channel closed'); if (channels.isCurrent('mouse', ch)) inputSender.reset(); };
         // Mouse channel receives nothing from agent — it's outbound only from client
       }
 
       if (ch.label === 'keyboard') {
-        keyboardChannelRef.current = ch;
+        channels.setChannel('keyboard', ch);
         inputSender.setChannel('keyboard', ch);
         ch.onopen = () => {
           console.log('[DC] Keyboard channel open (client-side)');
@@ -168,7 +160,7 @@ function ClientApp() {
             if (preset) inputSender.send({ type: 'quality_preset', preset });
           } catch { /* storage blocked */ }
         };
-        ch.onclose = () => { console.log('[DC] Keyboard channel closed'); inputSender.reset(); };
+        ch.onclose = () => { console.log('[DC] Keyboard channel closed'); if (channels.isCurrent('keyboard', ch)) inputSender.reset(); };
 
         ch.onmessage = async (msgEvent) => {
           try {
@@ -223,7 +215,7 @@ function ClientApp() {
 
   function handleJoinSession(sid) {
     // Dispose of any previous attempt first so there is never more than one socket / set of listeners.
-    managerRef.current?.disconnect();
+    managerRef.current?.disconnect('replaced');
     cleanupWebRTC();
 
     setSessionId(sid);
@@ -263,7 +255,7 @@ function ClientApp() {
           if (firstTime || !sessionStartTimeRef.current) sessionStartTimeRef.current = Date.now();
         },
         onPeerClosed: (closedPeer) => {
-          if (peerRef.current === closedPeer) cleanupWebRTC();
+          if (channels.isPeer(closedPeer)) cleanupWebRTC({ closePeer: false });
         },
       },
     });
@@ -284,21 +276,25 @@ function ClientApp() {
 
     // Leaving the page (Back to Home, route change, tab close, React re-mount) must never leave a ghost
     // socket attached to the session: the host would keep negotiating with a viewer that is gone.
-    const leave = () => {
-      inputSender.releaseAll();
-      managerRef.current?.disconnect();
-    };
-    window.addEventListener('pagehide', leave);
+    // A page that is merely frozen into the back/forward cache is NOT leaving (see lib/pageLifecycle.js), and
+    // coming back (visible / online / pageshow) nudges recovery of a link that dropped in the meantime.
+    const unbind = bindPageLifecycle({
+      win: window,
+      doc: document,
+      getManager: () => managerRef.current,
+      onUnload: () => inputSender.releaseAll(),
+    });
     return () => {
-      window.removeEventListener('pagehide', leave);
-      leave();
+      unbind();
+      inputSender.releaseAll();
+      managerRef.current?.disconnect('unmount');
       inputSender.destroy();
     };
   }, []);
 
   const handleDisconnect = () => {
     // Tells the host the viewer is leaving, closes the socket and the peer, and removes every listener.
-    managerRef.current?.disconnect();
+    managerRef.current?.disconnect('user');
     setActiveSocket(null);
     cleanupWebRTC();
 

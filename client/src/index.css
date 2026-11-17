@@ -228,3 +228,13 @@ body::after {
     linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
 }
+/* Remote desktop session: the page must never scroll, rubber-band, pull-to-refresh or swipe-navigate (browser Back
+   would leave the viewer and end the session). Only active while RemoteView is mounted. */
+html.remote-session-active,
+html.remote-session-active body {
+  overscroll-behavior: none;
+}
+.remote-container {
+  touch-action: none;
+  overscroll-behavior: none;
+}
