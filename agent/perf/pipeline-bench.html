@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>pipeline-bench</title>
+<style>html,body{margin:0;overflow:hidden;background:#101820}canvas{display:block;width:100vw;height:100vh}
+#hud{position:fixed;left:12px;bottom:12px;color:#7fe;font:16px monospace;background:#000a;padding:6px 10px}</style></head>
+<body><canvas id="c"></canvas><div id="hud">starting…</div>
+<script>
+const { ipcRenderer } = require('electron');
+const params = new URLSearchParams(location.search);
+const SECONDS = Number(params.get('seconds') || 8);
+const RAMP_SECONDS = Number(params.get('ramp') || 12);
+const only = (params.get('profiles') || '').split(',').filter(Boolean);
+const hud = document.getElementById('hud');
+
+// ── constant motion: scrolling text + moving blocks (document scroll / window drag style content) ──────────
+const canvas = document.getElementById('c');
+canvas.width = window.screen.width; canvas.height = window.screen.height;
+const g = canvas.getContext('2d', { alpha: false });
+const t0 = performance.now();
+const CONTENT = params.get('content') || 'typical';   // 'typical' = one scrolling window on a static desktop; 'stress' = whole screen moves
+const words = 'The quick brown fox jumps over the lazy dog 0123456789 remote desktop latency test '.split(' ');
+function textBlock(x0, y0, w, h, t) {
+  g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip();
+  g.fillStyle = '#16212c'; g.fillRect(x0, y0, w, h);
+  g.fillStyle = '#d8e6f0'; g.font = '18px Consolas, monospace';
+  const off = (t * 240) % 26;
+  for (let y = -1; y < h / 26 + 1; y++) {
+    let line = ''; for (let i = 0; i < w / 150; i++) line += words[(y * 7 + i * 3 + Math.floor(t * 8)) % words.length] + ' ';
+    g.fillText(line, x0 + 14, y0 + y * 26 + off);
+  }
+  g.restore();
+}
+(function draw() {
+  const t = (performance.now() - t0) / 1000;
+  const W = canvas.width, H = canvas.height;
+  g.fillStyle = '#101820'; g.fillRect(0, 0, W, H);
+  if (CONTENT === 'stress') {
+    textBlock(0, 0, W, H, t);
+    g.fillStyle = '#e94f37'; g.fillRect(200 + 300 * Math.sin(t * 2), 200 + 150 * Math.cos(t * 3), 260, 160);
+    g.fillStyle = '#3aa6ff'; g.fillRect(W - 500 + 200 * Math.cos(t * 1.3), 300 + 200 * Math.sin(t * 1.7), 300, 220);
+  } else {
+    // static chrome (taskbar, sidebar, title bar) + one document window scrolling + a moving cursor-sized marker
+    g.fillStyle = '#1f2d3a'; g.fillRect(0, H - 48, W, 48); g.fillRect(0, 0, 220, H - 48); g.fillRect(220, 0, W - 220, 36);
+    g.fillStyle = '#7fe'; g.font = '16px Segoe UI, sans-serif'; g.fillText('Chameleon remote desktop - typical content benchmark', 240, 24);
+    textBlock(260, 70, Math.round(W * 0.55), Math.round((H - 48) * 0.7), t);
+    g.fillStyle = '#e94f37'; g.fillRect(W * 0.8 + 120 * Math.sin(t * 2.2), 300 + 140 * Math.cos(t * 1.6), 14, 22);
+  }
+  requestAnimationFrame(draw);
+})();
+
+// ── profiles ───────────────────────────────────────────────────────────────────────────────────────────────
+// capture = getUserMedia mandatory constraints; codec = preferred codec; enc = sender encoding parameters;
+// targetHeight = encoder output height (applied as scaleResolutionDownBy); jitterBufferTarget = receiver hint (ms).
+const cap720_1080_60 = { minWidth: 1280, maxWidth: 1920, minHeight: 720, maxHeight: 1080, maxFrameRate: 60 };
+const capNative30 = { maxWidth: 1920, maxHeight: 1080, maxFrameRate: 30 };
+// Profile names are parsed: "before-h264" / "before-vp8" reproduce what the shipped agent (v1.5.3) does today
+// (1080p/60 capture, no encoder scaling, 4 Mbps cap, contentHint 'motion'). Anything else is
+// "<height>p<fps>-<bitrate>-<codec>[-<hint>][-jb<ms>]", e.g. "720p30-2m-vp8-detail-jb0":
+// capture native up to 1080p at <fps>, encoder scaled to <height>, maxBitrate, codec, contentHint, receiver jitter buffer target.
+const PROFILES = new Proxy({}, {
+  has: () => true,
+  get: (_t, name) => parseProfile(String(name)),
+});
+const hostStream = require('../src/lib/hostStream');   // the code the agent actually ships
+function parseProfile(name) {
+  // "after-<preset>[-vp8]": uses src/lib/hostStream.js unchanged (capture constraints, content hint, live StreamTuner).
+  const after = /^after-(performance|balanced|quality)(?:-(h264|vp8))?$/.exec(name);
+  if (after) return { preset: after[1], codec: (after[2] || 'h264').toUpperCase() };
+  if (name === 'before-h264') return { capture: cap720_1080_60, codec: 'H264', enc: { maxBitrate: 4000000 } };
+  if (name === 'before-vp8') return { capture: cap720_1080_60, codec: 'VP8', enc: { maxBitrate: 4000000 } };
+  const p = { capture: null, codec: 'H264', contentHint: 'motion', enc: {}, jitterBufferTarget: null };
+  let fps = 30;
+  let capH = 1080; // "cap720" = ask the capturer itself for 720p instead of scaling in the encoder
+  for (const tok of name.split('-')) {
+    let m;
+    if ((m = /^cap(\d+)$/.exec(tok))) capH = Number(m[1]);
+    else if ((m = /^(\d+)p(\d+)?$/.exec(tok))) { p.targetHeight = Number(m[1]); if (m[2]) fps = Number(m[2]); }
+    else if ((m = /^(\d+(?:\.\d+)?)m$/.exec(tok))) p.enc.maxBitrate = Math.round(Number(m[1]) * 1e6);
+    else if ((m = /^(\d+)k$/.exec(tok))) p.enc.maxBitrate = Number(m[1]) * 1000;
+    else if (/^(h264|vp8|vp9)$/.test(tok)) p.codec = tok.toUpperCase();
+    else if (/^(motion|detail|text)$/.test(tok)) p.contentHint = tok;
+    else if ((m = /^jb(\d+)$/.test(tok) && /^jb(\d+)$/.exec(tok))) p.jitterBufferTarget = Number(m[1]);
+  }
+  p.capture = { maxWidth: Math.round((capH * 16) / 9), maxHeight: capH, maxFrameRate: fps };
+  p.enc.maxFramerate = fps;
+  return p;
+}
+
+function preferCodec(sdp, name) {
+  const pts = [];
+  for (const line of sdp.split('\r\n')) {
+    const m = new RegExp('^a=rtpmap:(\\d+) ' + name + '/', 'i').exec(line);
+    if (m) pts.push(m[1]);
+  }
+  if (!pts.length) return { sdp, found: false };
+  return { found: true, sdp: sdp.replace(/(m=video \d+ [^\r\n]+)/, (m) => {
+    const p = m.split(' '); return [...p.slice(0, 3), ...pts, ...p.slice(3).filter((x) => !pts.includes(x))].join(' ');
+  }) };
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function snapshot(pc1, pc2) {
+  const s = {};
+  const codecs = {};
+  const out = await pc1.getStats(), inn = await pc2.getStats();
+  out.forEach((r) => {
+    if (r.type === 'outbound-rtp' && r.kind === 'video') s.out = r;
+    if (r.type === 'codec') codecs[r.id] = r;
+  });
+  inn.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'video') s.inn = r; });
+  if (s.out && s.out.codecId) s.codec = codecs[s.out.codecId];
+  return s;
+}
+const perFrameMs = (num, den) => (den > 0 ? +((num / den) * 1000).toFixed(2) : null);
+
+async function runProfile(name, p) {
+  hud.textContent = 'running ' + name;
+  const sources = await ipcRenderer.invoke('get-desktop-sources');
+  let stream;
+  if (p.preset) {
+    stream = await navigator.mediaDevices.getUserMedia(hostStream.buildCaptureConstraints(sources[0].id, hostStream.captureHeightForPreset(p.preset)));
+    stream.getVideoTracks().forEach(hostStream.configureTrack);
+  } else {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { mandatory: Object.assign({ chromeMediaSource: 'desktop', chromeMediaSourceId: sources[0].id }, p.capture) } });
+    stream.getVideoTracks()[0].contentHint = p.contentHint || 'motion';
+  }
+  const track = stream.getVideoTracks()[0];
+  const capSettings = track.getSettings();
+
+  const pc1 = new RTCPeerConnection({ bundlePolicy: 'max-bundle' });
+  const pc2 = new RTCPeerConnection({ bundlePolicy: 'max-bundle' });
+  pc1.onicecandidate = (e) => e.candidate && pc2.addIceCandidate(e.candidate);
+  pc2.onicecandidate = (e) => e.candidate && pc1.addIceCandidate(e.candidate);
+  const video = document.createElement('video'); video.muted = true; video.autoplay = true;
+  video.style.cssText = 'position:fixed;width:2px;height:2px;right:0;top:0;opacity:.01';
+  document.body.appendChild(video);
+  pc2.ontrack = (e) => {
+    if (p.jitterBufferTarget != null) { try { e.receiver.jitterBufferTarget = p.jitterBufferTarget; } catch (_) { /* unsupported */ } }
+    video.srcObject = e.streams[0];
+  };
+  const sender = pc1.addTrack(track, stream);
+  const offer = await pc1.createOffer();
+  const pref = preferCodec(offer.sdp, p.codec);
+  if (!pref.found) { stream.getTracks().forEach((t) => t.stop()); pc1.close(); pc2.close(); video.remove(); return { name, skipped: p.codec + ' not offered' }; }
+  offer.sdp = pref.sdp;
+  await pc1.setLocalDescription(offer); await pc2.setRemoteDescription(pc1.localDescription);
+  const answer = await pc2.createAnswer(); await pc2.setLocalDescription(answer); await pc1.setRemoteDescription(pc2.localDescription);
+
+  let tuner = null;
+  if (p.preset) {
+    // The shipped tuning loop, running live against Chromium's real stats for this loopback connection.
+    tuner = new hostStream.StreamTuner({ getPeer: () => pc1, preset: p.preset, log: () => {} });
+    if (capSettings.height) tuner.captureHeight = capSettings.height;
+    await tuner.start();
+  } else {
+    const sp = sender.getParameters();
+    if (!sp.encodings || !sp.encodings.length) sp.encodings = [{}];
+    Object.assign(sp.encodings[0], p.enc);
+    if (p.targetHeight && capSettings.height) sp.encodings[0].scaleResolutionDownBy = Math.max(1, capSettings.height / p.targetHeight);
+    try { await sender.setParameters(sp); } catch (e) { console.warn('setParameters', e.message); }
+  }
+
+  let frameCbCount = 0, rvfcSum = 0, rvfcN = 0;
+  const onFrame = (_now, md) => {
+    frameCbCount++;
+    if (md.receiveTime && md.presentationTime) { rvfcSum += md.presentationTime - md.receiveTime; rvfcN++; }
+    video.requestVideoFrameCallback(onFrame);
+  };
+  video.requestVideoFrameCallback(onFrame);
+
+  // Ramp timeline: WebRTC starts from a low bandwidth estimate, so the first seconds are sent small and blurry.
+  // Record what is actually being sent each second so "time to full quality" is measured, not assumed.
+  const timeline = [];
+  let prev = await snapshot(pc1, pc2); let prevT = performance.now();
+  for (let i = 0; i < RAMP_SECONDS; i++) {
+    await sleep(1000);
+    const cur = await snapshot(pc1, pc2); const now = performance.now();
+    timeline.push({ t: i + 1, w: cur.out.frameWidth, h: cur.out.frameHeight,
+      kbps: Math.round(((cur.out.bytesSent - prev.out.bytesSent) * 8) / ((now - prevT) / 1000) / 1000),
+      fps: Math.round((cur.out.framesEncoded - prev.out.framesEncoded) / ((now - prevT) / 1000)) });
+    prev = cur; prevT = now;
+  }
+  await ipcRenderer.invoke('cpu-sample');
+  const a = await snapshot(pc1, pc2); const tA = performance.now(); const cbA = frameCbCount;
+  const cpu = [];
+  for (let i = 0; i < SECONDS; i++) { await sleep(1000); cpu.push(await ipcRenderer.invoke('cpu-sample')); }
+  const b = await snapshot(pc1, pc2); const dt = (performance.now() - tA) / 1000;
+  const d = (k, o) => (b[o][k] || 0) - (a[o][k] || 0);
+
+  const res = {
+    name, codec: b.codec ? b.codec.mimeType : null, fmtp: b.codec ? b.codec.sdpFmtpLine : null,
+    rampTimeline: timeline,
+    captureSettings: { width: capSettings.width, height: capSettings.height, frameRate: capSettings.frameRate },
+    sent: { width: b.out.frameWidth, height: b.out.frameHeight },
+    encoderImplementation: b.out.encoderImplementation, powerEfficientEncoder: b.out.powerEfficientEncoder,
+    decoderImplementation: b.inn.decoderImplementation,
+    seconds: +dt.toFixed(1),
+    encodedFps: +(d('framesEncoded', 'out') / dt).toFixed(1),
+    decodedFps: +(d('framesDecoded', 'inn') / dt).toFixed(1),
+    renderedFps: +((frameCbCount - cbA) / dt).toFixed(1),
+    bitrateKbps: +((d('bytesSent', 'out') * 8) / dt / 1000).toFixed(0),
+    avgEncodeMsPerFrame: perFrameMs(d('totalEncodeTime', 'out'), d('framesEncoded', 'out')),
+    avgDecodeMsPerFrame: perFrameMs(d('totalDecodeTime', 'inn'), d('framesDecoded', 'inn')),
+    avgPacketSendDelayMs: perFrameMs(d('totalPacketSendDelay', 'out'), d('packetsSent', 'out')),
+    avgJitterBufferMs: perFrameMs(d('jitterBufferDelay', 'inn'), d('jitterBufferEmittedCount', 'inn')),
+    avgRenderPresentMs: rvfcN ? +(rvfcSum / rvfcN).toFixed(2) : null,
+    framesDroppedAtReceiver: d('framesDropped', 'inn'),
+    freezes: d('freezeCount', 'inn'),
+    keyFramesEncoded: d('keyFramesEncoded', 'out'),
+    nack: d('nackCount', 'out'), pli: d('pliCount', 'out'),
+    packetsLost: d('packetsLost', 'inn'),
+    qualityLimitationReason: b.out.qualityLimitationReason,
+    qualityLimitationDurationsSec: b.out.qualityLimitationDurations,
+    cpuPercentAllProcessesMean: +(cpu.reduce((s, v) => s + v, 0) / cpu.length).toFixed(1),
+    cpuPercentAllProcessesMax: +Math.max(...cpu).toFixed(1),
+  };
+  if (tuner) { res.tuner = tuner.summary(); tuner.stop(); }
+  stream.getTracks().forEach((t) => t.stop()); pc1.close(); pc2.close(); video.remove();
+  await sleep(500);
+  return res;
+}
+
+(async () => {
+  const names = only.length ? only : ['before-h264', 'before-vp8', '720p30-2m-h264', '720p30-2m-vp8'];
+  const results = [];
+  const os = require('os');
+  const env = { screen: window.screen.width + 'x' + window.screen.height, dpr: window.devicePixelRatio, chrome: process.versions.chrome, electron: process.versions.electron, logicalCpus: os.cpus().length, cpu: os.cpus()[0].model, time: new Date().toISOString() };
+  for (const n of names) {
+    try { results.push(await runProfile(n, PROFILES[n])); } catch (e) { results.push({ name: n, error: String((e && e.message) || e) }); }
+  }
+  ipcRenderer.send('bench:done', { env, seconds: SECONDS, results });
+})();
+</script></body></html>

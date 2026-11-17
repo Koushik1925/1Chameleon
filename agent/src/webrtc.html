@@ -17,6 +17,8 @@
             console.warn('[QR] Native qrcode module not found, will use fallback image generator');
         }
         const os = require('os');
+        // Capture/encoder configuration + adaptive quality loop (unit tested, shared with perf/pipeline-bench).
+        const hostStream = require('./lib/hostStream');
 
         const SIGNALING_URL = 'https://onechameleon.onrender.com';
 
@@ -111,14 +113,14 @@
         relayVideo.muted = true;
         let isRelayingFrame = false;
 
-        // Adaptive Bitrate (ABR) state
-        let abrInterval = null;
-        let lastAbrBytes = 0;
-        let lastAbrTime = Date.now();
-        // Target bitrate ramp: starts at 4 Mbps, adapts between 500 Kbps – 8 Mbps
-        let currentTargetBitrate = 4_000_000;
-        const MIN_BITRATE = 500_000;
-        const MAX_BITRATE = 8_000_000;
+        // Adaptive streaming. The host owns quality adaptation (it is the only side that sees the bandwidth estimate,
+        // encode time and quality-limitation reason). Starts at 720p / 30 fps / ~2 Mbps and adapts within the viewer's
+        // chosen preset; see lib/qualityController.js.
+        let streamTuner = null;
+        let selectedPreset = 'balanced';
+        // H.264 by default (hardware decode on phones). `CHAMELEON_VIDEO_CODEC=VP8` switches hosts whose software
+        // H.264 encoder is the bottleneck; run `npx electron perf/pipeline-bench.js` to compare on a given machine.
+        const VIDEO_CODEC = String(process.env.CHAMELEON_VIDEO_CODEC || 'H264').toUpperCase();
 
         // ─────────────────────────────────────────────────────────────────────
         // ICE SERVER CONFIG  (multiple STUN servers for fast gathering + TURN fallback)
@@ -239,7 +241,6 @@
             socket.on('relay:input', (inputData) => {
                 ipcRenderer.send('webrtc:remote_input', inputData);
             });
-
             socket.on('session:expired', () => {
                 console.log('[WS] Session expired');
                 currentSessionId = null;
@@ -405,27 +406,18 @@
         // ─────────────────────────────────────────────────────────────────────
         // SCREEN CAPTURE
         // ─────────────────────────────────────────────────────────────────────
-        async function getScreenStream() {
+        // Captures the primary screen at the size that is actually streamed: 720p/30 fps normally, 1080p/30 fps for the
+        // Quality preset. (It used to capture 1080p/60 and scale in the encoder: ~4-5 ms/frame more encode time, and
+        // the software H.264 encoder could not hold 60 fps.) The encoder is then steered with setParameters().
+        async function getScreenStream(height) {
             const sources = await ipcRenderer.invoke('get-desktop-sources');
             const primarySource = sources[0];
 
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
-                    video: {
-                        mandatory: {
-                            chromeMediaSource: 'desktop',
-                            chromeMediaSourceId: primarySource.id,
-                            // Start at 1080p; ABR loop will constraint down if bandwidth is tight
-                            minWidth: 1280,
-                            maxWidth: 1920,
-                            minHeight: 720,
-                            maxHeight: 1080,
-                            // 60 fps ceiling; ABR loop will reduce via applyConstraints
-                            maxFrameRate: 60
-                        }
-                    }
-                });
+                const stream = await navigator.mediaDevices.getUserMedia(
+                    hostStream.buildCaptureConstraints(primarySource.id, height || hostStream.captureHeightForPreset(selectedPreset))
+                );
+                stream.getVideoTracks().forEach(hostStream.configureTrack);
                 return stream;
             } catch (e) {
                 console.error('[CAPTURE] Error:', e);
@@ -433,33 +425,24 @@
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // H.264 CODEC PREFERENCE  (prefer hardware-accelerated H.264 over VP8)
-        // ─────────────────────────────────────────────────────────────────────
-        function preferH264(sdp) {
-            // Extract H264 payload types from SDP
-            const h264PayloadTypes = [];
-            const lines = sdp.split('\r\n');
-
-            for (const line of lines) {
-                // Match codec lines for H264 (case-insensitive)
-                if (/a=rtpmap:(\d+) H264/i.test(line)) {
-                    h264PayloadTypes.push(line.match(/a=rtpmap:(\d+)/)[1]);
-                }
+        // Preset change that needs a different capture size (Quality <-> Performance/Balanced): swap the capture track
+        // on every live peer with replaceTrack(), which needs no renegotiation.
+        async function restartCapture(height) {
+            const fresh = await getScreenStream(height);
+            if (!fresh) return;
+            const track = fresh.getVideoTracks()[0];
+            const peers = [peerConnection, ...adminConnections.values()].filter(Boolean);
+            for (const pc of peers) {
+                const sender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+                if (sender) { try { await sender.replaceTrack(track); } catch (e) { console.warn('[CAPTURE] replaceTrack failed:', e); } }
             }
-
-            if (h264PayloadTypes.length === 0) return sdp; // No H264 found, leave as-is
-
-            // Rewrite m=video line to put H264 payload types first
-            return sdp.replace(/(m=video \d+ [^\r\n]+)/g, (match) => {
-                const parts = match.split(' ');
-                // parts: ['m=video', port, proto, pt1, pt2, ...]
-                const header = parts.slice(0, 3);
-                const existingPts = parts.slice(3);
-                const h264First = [...h264PayloadTypes, ...existingPts.filter(p => !h264PayloadTypes.includes(p))];
-                return [...header, ...h264First].join(' ');
-            });
+            const previous = localStream;
+            localStream = fresh;
+            if (previous) previous.getTracks().forEach((t) => t.stop());
+            agentLog('capture_restarted', { height: (track.getSettings() || {}).height || height });
+            if (streamTuner) streamTuner.setCaptureHeight((track.getSettings() || {}).height || height);
         }
+
 
         // ─────────────────────────────────────────────────────────────────────
         // WEBRTC SETUP
@@ -494,12 +477,8 @@
                 iceTransportPolicy: 'all'
             });
 
-            // ── VIDEO TRACK: add with low-latency hints ──
+            // ── VIDEO TRACK ── (contentHint 'detail' was set at capture: keeps the requested resolution so text stays readable)
             localStream.getTracks().forEach(track => {
-                if (track.kind === 'video') {
-                    // 'motion' hint: prioritize frame rate over detail (exactly what we want for remote desktop)
-                    track.contentHint = 'motion';
-                }
                 peerConnection.addTrack(track, localStream);
             });
 
@@ -566,8 +545,8 @@
                 offerToReceiveVideo: false
             });
 
-            // Munge SDP to prefer H.264 before setting local description
-            offer.sdp = preferH264(offer.sdp);
+            // Prefer the configured codec (H.264 by default) before setting the local description.
+            offer.sdp = hostStream.preferCodec(offer.sdp, VIDEO_CODEC);
             await peerConnection.setLocalDescription(offer);
             if (gen !== negotiationGen || !peerConnection) return; // superseded while creating the offer
 
@@ -575,142 +554,58 @@
             agentLog('offer_sent', { bytes: (peerConnection.localDescription.sdp || '').length });
             diag('offer_sent', {});
 
-            // ── ENCODER PARAMETERS: set degradation preference + bitrate cap ──
-            // We must wait until the connection is established, so we apply them after ICE connects
-            peerConnection.addEventListener('connectionstatechange', async () => {
-                if (peerConnection.connectionState === 'connected') {
-                    await applyEncoderParameters(currentTargetBitrate);
-                    startAbrLoop();
-                }
+            // Encoder parameters can only be applied to a connected sender: start the tuner once ICE connects.
+            peerConnection.addEventListener('connectionstatechange', () => {
+                if (peerConnection && peerConnection.connectionState === 'connected') startStreamTuner();
             });
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // ENCODER PARAMETERS
-        // Apply low-latency encoder settings via RTCRtpSender.setParameters()
-        // This avoids re-negotiation and works on live connections
+        // ADAPTIVE STREAMING
+        // One host-side controller (lib/qualityController.js) reads getStats() once a second and steers the encoder
+        // through RTCRtpSender.setParameters(): maxBitrate, maxFramerate, scaleResolutionDownBy. It replaces the old
+        // ABR loop here AND the second controller that ran in the viewer; the two used to fight over the encoder.
         // ─────────────────────────────────────────────────────────────────────
-        async function applyEncoderParameters(targetBitrate) {
-            if (!peerConnection) return;
-            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-            if (!sender) return;
-
-            try {
-                const params = sender.getParameters();
-                if (!params.encodings || params.encodings.length === 0) {
-                    params.encodings = [{}];
-                }
-
-                params.encodings[0].maxBitrate = targetBitrate;
-                // CRITICAL: 'maintain-framerate' tells the encoder to DROP QUALITY (QP up)
-                // rather than drop FPS when bandwidth is constrained.
-                // This prevents the "slideshow" effect — we always prefer responsive motion.
-                params.degradationPreference = 'maintain-framerate';
-
-                await sender.setParameters(params);
-                console.log(`[ABR] Encoder bitrate set to ${(targetBitrate / 1000).toFixed(0)} Kbps`);
-            } catch (e) {
-                console.warn('[ABR] setParameters failed:', e);
-            }
+        function startStreamTuner() {
+            if (streamTuner) streamTuner.stop();
+            streamTuner = new hostStream.StreamTuner({
+                getPeer: () => peerConnection,
+                preset: selectedPreset,
+                sendToViewer: sendToViewer,
+                onCaptureHeightChange: restartCapture,
+                log: (event, fields) => agentLog(event, fields),
+                onMetrics: reportSessionMetrics
+            });
+            // The real captured height can be smaller than requested (small screens): scale from what we really have.
+            const track = localStream && localStream.getVideoTracks()[0];
+            const actualHeight = track && track.getSettings ? track.getSettings().height : 0;
+            if (actualHeight) streamTuner.captureHeight = actualHeight;
+            streamTuner.start();
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // ADAPTIVE BITRATE LOOP
-        // Reads RTCPeerConnection stats every second and adjusts encoder bitrate
-        // to track available bandwidth. Reacts aggressively to congestion signals.
-        // ─────────────────────────────────────────────────────────────────────
-        function startAbrLoop() {
-            if (abrInterval) clearInterval(abrInterval);
-
-            abrInterval = setInterval(async () => {
-                if (!peerConnection || peerConnection.connectionState !== 'connected') return;
-
-                try {
-                    const stats = await peerConnection.getStats();
-                    let rtt = 0;
-                    let packetLossRate = 0;
-                    let availableBitrate = 0;
-
-                    stats.forEach(report => {
-                        // Use the active candidate-pair for RTT and available outgoing bitrate
-                        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-                            rtt = report.currentRoundTripTime || 0; // seconds
-                            availableBitrate = report.availableOutgoingBitrate || 0;
-                        }
-                        // Outbound RTP gives us packet loss
-                        if (report.type === 'outbound-rtp' && report.kind === 'video') {
-                            const sent = report.packetsSent || 0;
-                            const lost = report.retransmittedPacketsSent || 0; // proxy for loss
-                            if (sent > 0) packetLossRate = lost / sent;
-                        }
-                    });
-
-                    let newBitrate = currentTargetBitrate;
-
-                    // AGGRESSIVE CONGESTION RESPONSE:
-                    // If RTT spikes above 150ms or packet loss > 2%: slash bitrate by 40%
-                    // This immediately reduces the pipeline load before the queue builds up.
-                    if (rtt > 0.15 || packetLossRate > 0.02) {
-                        newBitrate = Math.max(MIN_BITRATE, currentTargetBitrate * 0.6);
-                        console.log(`[ABR] Congestion detected (RTT=${(rtt * 1000).toFixed(0)}ms, Loss=${(packetLossRate * 100).toFixed(1)}%). Cutting bitrate to ${(newBitrate / 1000).toFixed(0)} Kbps`);
-                    }
-                    // BANDWIDTH RECOVERY:
-                    // If available bitrate (from REMB/TWCC) is significantly above our current
-                    // target, ramp up gently (+15%) to avoid oscillation
-                    else if (availableBitrate > currentTargetBitrate * 1.3) {
-                        newBitrate = Math.min(MAX_BITRATE, currentTargetBitrate * 1.15);
-                    }
-
-                    if (newBitrate !== currentTargetBitrate) {
-                        currentTargetBitrate = newBitrate;
-                        await applyEncoderParameters(currentTargetBitrate);
-
-                        // Also adapt frame rate capture constraints when on very low bandwidth
-                        const videoTrack = localStream?.getVideoTracks()[0];
-                        if (videoTrack) {
-                            const maxFps = newBitrate < 1_000_000 ? 20 : 60;
-                            const maxRes = newBitrate < 1_500_000 ? 1280 : 1920;
-                            await videoTrack.applyConstraints({
-                                width: { max: maxRes },
-                                frameRate: { max: maxFps }
-                            }).catch(() => {});
-                        }
-                    }
-
-                    // Emit metrics to signaling server for the admin dashboard
-                    if (socket && socket.connected && currentSessionId) {
-                        let currentFps = 60;
-                        let currentRes = '1920x1080';
-                        const videoTrack = localStream?.getVideoTracks()[0];
-                        if (videoTrack) {
-                            const settings = videoTrack.getSettings();
-                            currentFps = settings.frameRate || 60;
-                            if (settings.width && settings.height) {
-                                currentRes = `${settings.width}x${settings.height}`;
-                            }
-                        }
-
-                        socket.emit('session:metrics', {
-                            sessionId: currentSessionId,
-                            fps: Math.round(currentFps),
-                            bitrate: Math.round(currentTargetBitrate / 1000), // in kbps
-                            latency: Math.round(rtt * 1000), // in ms
-                            packetLoss: +(packetLossRate * 100).toFixed(1), // in %
-                            resolution: currentRes
-                        });
-                    }
-                } catch (e) {
-                    // Silently ignore stats errors (can happen during renegotiation)
-                }
-            }, 1000);
+        // Feeds the admin dashboard (session:metrics) with what is actually being sent.
+        function reportSessionMetrics(m) {
+            if (!socket || !socket.connected || !currentSessionId || m.sentFps === undefined) return;
+            socket.emit('session:metrics', {
+                sessionId: currentSessionId,
+                fps: Math.round(m.sentFps || 0),
+                bitrate: Math.round(m.sentKbps || 0),   // kbps
+                latency: Math.round(m.rttMs || 0),      // ms
+                packetLoss: m.lossPct || 0,             // %
+                resolution: (m.width && m.height) ? (m.width + 'x' + m.height) : ''
+            });
         }
+
 
         // ─────────────────────────────────────────────────────────────────────
         // DATA CHANNEL HANDLERS
         // ─────────────────────────────────────────────────────────────────────
         function setupMouseChannel(channel) {
             channel.onopen = () => console.log('[DC] Mouse channel open');
-            channel.onclose = () => console.log('[DC] Mouse channel closed');
+            channel.onclose = () => {
+                console.log('[DC] Mouse channel closed');
+                ipcRenderer.send('webrtc:release_all_input');
+            };
             channel.onmessage = (event) => {
                 try {
                     // Mouse events are tiny JSON blobs — parse and inject immediately
@@ -738,6 +633,7 @@
             channel.onclose = () => {
                 console.log('[DC] Keyboard channel closed');
                 if (channel.pingInterval) clearInterval(channel.pingInterval);
+                ipcRenderer.send('webrtc:release_all_input');
             };
             channel.onmessage = (event) => {
                 try {
@@ -748,62 +644,44 @@
             };
         }
 
+        // Deliver a small JSON message to the viewer on the reliable channel (probe replies, stats, clipboard).
+        function sendToViewer(message) {
+            if (keyboardChannel && keyboardChannel.readyState === 'open') {
+                try { keyboardChannel.send(JSON.stringify(message)); } catch (e) { /* channel closing */ }
+            }
+        }
+
+        let lastQualityPresetAt = 0;
         function handleRemoteInput(data) {
             if (data.type === 'clipboard_pull_request') {
                 ipcRenderer.invoke('webrtc:clipboard_pull').then(text => {
-                    if (keyboardChannel && keyboardChannel.readyState === 'open') {
-                        keyboardChannel.send(JSON.stringify({ type: 'clipboard_pull_response', text }));
-                    }
+                    sendToViewer({ type: 'clipboard_pull_response', text });
                 }).catch(err => console.error('[Clipboard] Agent read error', err));
+            } else if (data.type === 'quality_preset') {
+                lastQualityPresetAt = Date.now();
+                setQualityPreset(data.preset);
             } else if (data.type === 'update_resolution') {
-                // Client ABR controller sends: { resolution: '720p30', maxBitrate: 2500000 }
-                // or legacy: { resolution: '720p' }
-                updateResolution(data.resolution, data.maxBitrate);
+                // Older viewers send a resolution label (and used to run their own bitrate controller). Treat it as a
+                // request for a preset ceiling only: the host's controller stays in charge of the actual bitrate.
+                // The compatibility twin that a current viewer sends right after `quality_preset` is ignored.
+                const legacyPreset = hostStream.legacyResolutionToPreset(data.resolution, lastQualityPresetAt, Date.now());
+                if (legacyPreset) setQualityPreset(legacyPreset);
+            } else if (data.type === 'stats_subscribe') {
+                if (streamTuner) streamTuner.setStatsSubscribed(!!data.on);
+            } else if (data.type === 'input_probe') {
+                // Goes through the same ordered input queue as real input, so the reply time includes any queueing.
+                ipcRenderer.invoke('webrtc:input_probe', { id: data.id })
+                    .then((r) => sendToViewer({ type: 'input_probe_ack', id: data.id, hostMs: r && r.hostMs }))
+                    .catch(() => { /* probe is best-effort */ });
             } else {
                 ipcRenderer.send('webrtc:remote_input', data);
             }
         }
 
-        // Applies track capture constraints AND encoder bitrate from a quality rung.
-        // Called both from user-initiated resolution changes and from the ABR controller.
-        // The quality ladder labels are: '1080p60', '1080p30', '720p60', '720p30', '480p30', '360p20'
-        // Legacy labels ('720p', '480p', '1080p') are also accepted for backwards compat.
-        async function updateResolution(res, maxBitrate) {
-            if (!localStream) return;
-            const videoTrack = localStream.getVideoTracks()[0];
-            if (!videoTrack) return;
-
-            // ── Map quality label to capture constraints ──────────────────────
-            const RUNG_MAP = {
-                '1080p60': { width: 1920, height: 1080, fps: 60 },
-                '1080p30': { width: 1920, height: 1080, fps: 30 },
-                '720p60':  { width: 1280, height: 720,  fps: 60 },
-                '720p30':  { width: 1280, height: 720,  fps: 30 },
-                '480p30':  { width: 854,  height: 480,  fps: 30 },
-                '360p20':  { width: 640,  height: 360,  fps: 20 },
-                // Legacy labels
-                '1080p':   { width: 1920, height: 1080, fps: 60 },
-                '720p':    { width: 1280, height: 720,  fps: 30 },
-                '480p':    { width: 854,  height: 480,  fps: 30 },
-            };
-            const rung = RUNG_MAP[res] || RUNG_MAP['720p30'];
-
-            try {
-                await videoTrack.applyConstraints({
-                    width:     { max: rung.width  },
-                    height:    { max: rung.height },
-                    frameRate: { max: rung.fps    }
-                });
-                console.log('[CAPTURE] Applied constraints:', res);
-            } catch (err) {
-                console.warn('[CAPTURE] Failed to apply constraints:', err);
-            }
-
-            // ── Also update encoder bitrate if provided by ABR controller ─────
-            if (maxBitrate && maxBitrate > 0) {
-                currentTargetBitrate = maxBitrate;
-                await applyEncoderParameters(maxBitrate);
-            }
+        async function setQualityPreset(name) {
+            if (!hostStream.PRESETS[name]) return;
+            selectedPreset = name;
+            if (streamTuner) await streamTuner.setPreset(name);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -854,7 +732,9 @@
         // ─────────────────────────────────────────────────────────────────────
         function cleanupSession(preserveSession = false) {
             agentLog('session_cleanup', { preserveSession: preserveSession });
-            if (abrInterval) { clearInterval(abrInterval); abrInterval = null; }
+            if (streamTuner) { streamTuner.stop(); streamTuner = null; }
+            // Whatever the viewer was holding down (a key, a mouse button) must not stay held on this machine.
+            ipcRenderer.send('webrtc:release_all_input');
             if (relayInterval) { clearInterval(relayInterval); relayInterval = null; }
 
             if (mouseChannel) { try { mouseChannel.close(); } catch(e){} mouseChannel = null; }
@@ -876,8 +756,6 @@
 
             isRemoteDescriptionSet = false;
             iceCandidateQueue = [];
-            lastAbrBytes = 0;
-            currentTargetBitrate = 4_000_000;
         }
 
         // ─────────────────────────────────────────────────────────────────────

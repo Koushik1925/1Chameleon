@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import QRScanner from './components/QRScanner';
@@ -10,7 +10,10 @@ import Signup from './components/Signup';
 import DeviceApprove from './components/DeviceApprove';
 import MyDevices from './components/MyDevices';
 import { Power, ShieldCheck, ArrowLeft, Shield } from 'lucide-react';
-import { AdaptiveController } from './lib/adaptiveController';
+import { InputSender } from './lib/inputSender';
+import { perfBus } from './lib/perfBus';
+import { LatencyTuner } from './lib/latencyTuner';
+import { getStatsMonitor } from './lib/statsMonitor';
 import { ConnectionManager } from './lib/connectionManager';
 
 // Lazy-loaded SaaS pages
@@ -68,9 +71,12 @@ function ClientApp() {
   // DUAL CHANNELS: mouse = unordered/unreliable, keyboard = ordered/reliable
   const mouseChannelRef = useRef(null);
   const keyboardChannelRef = useRef(null);
-  // GCC-inspired ABR controller (one instance per session)
-  const abrControllerRef = useRef(null);
-  const abrIntervalRef   = useRef(null);
+  // Outbound input pipeline (move coalescing, ordered reliable events, stuck-key release). One per page; the data
+  // channels are attached to it as they arrive, so it survives renegotiations. Quality adaptation lives on the host.
+  const [inputSender] = useState(() => new InputSender({
+    onLatency: (latency) => perfBus.setInputLatency(latency),
+  }));
+  const latencyTunerStopRef = useRef(null);
 
   // 7-minute timer to auto-return to home
   useEffect(() => {
@@ -96,53 +102,12 @@ function ClientApp() {
     return () => clearInterval(pingInterval);
   }, []);
 
-  // ── GCC-Inspired ABR Loop ────────────────────────────────────────────────
-  // Reads WebRTC stats every second, feeds them to AdaptiveController,
-  // and applies the resulting quality rung to the encoder via setParameters().
-  function startAbrLoop(peer) {
-    if (abrIntervalRef.current) clearInterval(abrIntervalRef.current);
-
-    abrIntervalRef.current = setInterval(async () => {
-      if (!peer || peer.connectionState !== 'connected') return;
-      const abr = abrControllerRef.current;
-      if (!abr) return;
-
-      try {
-        const stats = await peer.getStats();
-        let rttSeconds = 0, packetLossRate = 0, availableBitrate = 0;
-
-        stats.forEach(r => {
-          if (r.type === 'candidate-pair' && r.state === 'succeeded') {
-            rttSeconds      = r.currentRoundTripTime || 0;
-            availableBitrate = r.availableOutgoingBitrate || 0;
-          }
-          if (r.type === 'inbound-rtp' && r.kind === 'video') {
-            // packetsLost / packetsReceived gives client-side loss rate
-            const total = (r.packetsReceived || 0) + (r.packetsLost || 0);
-            packetLossRate = total > 0 ? (r.packetsLost || 0) / total : 0;
-          }
-        });
-
-        const result = abr.update({ rttSeconds, packetLossRate, availableBitrate });
-
-        if (result.changed) {
-          // Signal the agent to update its encoder constraints
-          const ch = keyboardChannelRef.current;
-          if (ch && ch.readyState === 'open') {
-            ch.send(JSON.stringify({
-              type: 'update_resolution',
-              resolution: result.rung.label,
-              maxBitrate: result.rung.maxBitrate
-            }));
-          }
-        }
-      } catch (e) { /* ignore stats errors during renegotiation */ }
-    }, 1000);
-  }
-
   function cleanupWebRTC() {
-    if (abrIntervalRef.current) { clearInterval(abrIntervalRef.current); abrIntervalRef.current = null; }
-    abrControllerRef.current = null;
+    // Release anything still held on the host while the channel is still open, then forget local state.
+    inputSender.releaseAll();
+    inputSender.reset();
+    perfBus.reset();
+    if (latencyTunerStopRef.current) { latencyTunerStopRef.current(); latencyTunerStopRef.current = null; }
     if (mouseChannelRef.current) {
       try { mouseChannelRef.current.close(); } catch(e) {}
       mouseChannelRef.current = null;
@@ -151,6 +116,8 @@ function ClientApp() {
       try { keyboardChannelRef.current.close(); } catch(e) {}
       keyboardChannelRef.current = null;
     }
+    inputSender.setChannel('mouse', null);
+    inputSender.setChannel('keyboard', null);
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
@@ -168,6 +135,13 @@ function ClientApp() {
     peer.ontrack = (event) => {
       console.log('[RTC] Received remote video track');
       setRemoteStream(event.streams[0]);
+      if (event.track.kind === 'video' && event.receiver) {
+        // Ask for the smallest playout buffer the network allows (a remote desktop wants low delay over smooth motion);
+        // the tuner adds a small cushion only while jitter / freezes / drops say the buffer is starving.
+        if (latencyTunerStopRef.current) latencyTunerStopRef.current();
+        const tuner = new LatencyTuner(event.receiver);
+        latencyTunerStopRef.current = tuner.supported ? getStatsMonitor(peer).subscribe((m) => tuner.update(m)) : null;
+      }
     };
 
     // ── RECEIVE DUAL DATA CHANNELS FROM AGENT ──
@@ -177,19 +151,30 @@ function ClientApp() {
 
       if (ch.label === 'mouse') {
         mouseChannelRef.current = ch;
+        inputSender.setChannel('mouse', ch);
         ch.onopen = () => console.log('[DC] Mouse channel open (client-side)');
-        ch.onclose = () => console.log('[DC] Mouse channel closed');
+        ch.onclose = () => { console.log('[DC] Mouse channel closed'); inputSender.reset(); };
         // Mouse channel receives nothing from agent — it's outbound only from client
       }
 
       if (ch.label === 'keyboard') {
         keyboardChannelRef.current = ch;
-        ch.onopen = () => console.log('[DC] Keyboard channel open (client-side)');
-        ch.onclose = () => console.log('[DC] Keyboard channel closed');
+        inputSender.setChannel('keyboard', ch);
+        ch.onopen = () => {
+          console.log('[DC] Keyboard channel open (client-side)');
+          // Re-assert the quality preset the user picked earlier (the host starts every session on its default).
+          try {
+            const preset = localStorage.getItem('chameleon_quality_preset');
+            if (preset) inputSender.send({ type: 'quality_preset', preset });
+          } catch { /* storage blocked */ }
+        };
+        ch.onclose = () => { console.log('[DC] Keyboard channel closed'); inputSender.reset(); };
 
         ch.onmessage = async (msgEvent) => {
           try {
             const payload = JSON.parse(msgEvent.data);
+            if (inputSender.handleMessage(payload)) return; // input-latency probe reply
+            if (payload.type === 'host_stats') { perfBus.setHost(payload); return; }
             if (payload.type === 'ping') {
               if (ch.readyState === 'open') ch.send(JSON.stringify({ type: 'pong' }));
               return;
@@ -274,11 +259,8 @@ function ClientApp() {
       hooks: {
         onStatus: handleManagerStatus,
         onPeer: attachPeerHandlers,
-        onPeerConnected: (peer, { firstTime }) => {
+        onPeerConnected: (_peer, { firstTime }) => {
           if (firstTime || !sessionStartTimeRef.current) sessionStartTimeRef.current = Date.now();
-          // Initialise GCC-inspired ABR controller for this session
-          abrControllerRef.current = new AdaptiveController();
-          startAbrLoop(peer);
         },
         onPeerClosed: (closedPeer) => {
           if (peerRef.current === closedPeer) cleanupWebRTC();
@@ -302,11 +284,15 @@ function ClientApp() {
 
     // Leaving the page (Back to Home, route change, tab close, React re-mount) must never leave a ghost
     // socket attached to the session: the host would keep negotiating with a viewer that is gone.
-    const leave = () => managerRef.current?.disconnect();
+    const leave = () => {
+      inputSender.releaseAll();
+      managerRef.current?.disconnect();
+    };
     window.addEventListener('pagehide', leave);
     return () => {
       window.removeEventListener('pagehide', leave);
       leave();
+      inputSender.destroy();
     };
   }, []);
 
@@ -330,31 +316,9 @@ function ClientApp() {
     setStatus('disconnected_prompt');
   };
 
-  const sendInputEvent = (eventData) => {
-    const type = eventData.type;
-
-    // ── CHANNEL ROUTING ─────────────────────────────────────────────────────
-    // Mouse move / wheel → MOUSE channel (unordered, unreliable)
-    //   A dropped mouse packet is harmless — the next one corrects position.
-    //   This prevents a stale mouse queue from causing cursor lag.
-    //
-    // Everything else → KEYBOARD channel (ordered, reliable)
-    //   Keystrokes, clicks, clipboard — must arrive in order, must not drop.
-    // ────────────────────────────────────────────────────────────────────────
-    const isMouseMotion = (type === 'mouse_move' || type === 'mouse_wheel');
-
-    if (isMouseMotion) {
-      const ch = mouseChannelRef.current;
-      if (ch && ch.readyState === 'open') {
-        ch.send(JSON.stringify(eventData));
-      }
-    } else {
-      const ch = keyboardChannelRef.current;
-      if (ch && ch.readyState === 'open') {
-        ch.send(JSON.stringify(eventData));
-      }
-    }
-  };
+  // Stable identity (RemoteView's listeners and gesture handler depend on it) and routed through the InputSender:
+  // mouse moves -> unreliable channel (coalesced), clicks/keys/wheel -> reliable ordered channel.
+  const sendInputEvent = useCallback((eventData) => inputSender.send(eventData), [inputSender]);
 
   const handleScanSuccess = (url) => {
     try {
@@ -575,6 +539,7 @@ function ClientApp() {
             stream={remoteStream}
             peerConnection={activePeer}
             sendInputEvent={sendInputEvent}
+            inputSender={inputSender}
             isControlPaused={isControlPaused}
             socket={activeSocket}
             sessionId={lastSessionId}

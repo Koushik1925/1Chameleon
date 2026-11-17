@@ -5,6 +5,11 @@ import MobileFAB from './MobileFAB';
 import MobileStatsOverlay from './MobileStatsOverlay';
 import MobileQuickSettings from './MobileQuickSettings';
 import MobileContextMenu from './MobileContextMenu';
+import PerformanceOverlay from './PerformanceOverlay';
+import { getStatsMonitor, qualityFromRtt } from '../lib/statsMonitor';
+
+// Labels older agents understand (they ignore the newer `quality_preset` message).
+const LEGACY_PRESET_LABEL = { performance: '480p30', balanced: '720p30', quality: '1080p30' };
 
 /**
  * RemoteView — Renders the live remote desktop stream.
@@ -24,21 +29,19 @@ import MobileContextMenu from './MobileContextMenu';
  *     which costs 8–15 ms per frame — unacceptable at 20 FPS relay.
  *   - Worker queue depth capped at 2; stale frames are dropped before decode.
  *   - Frame deadline: frames older than 50 ms at decode time are discarded.
- *   - RAF-coalesced mouse movement: one network send per paint frame max.
+ *   - Mouse movement is coalesced by lib/inputSender.js (newest position per frame, unreliable channel);
+ *     clicks and keys go on the reliable ordered channel and are never dropped.
+ *   - ONE shared stats poll (lib/statsMonitor.js) feeds the overlay, toolbar and network badge.
  *   - bundlePolicy: 'max-bundle' is configured upstream in App.jsx.
  */
 
-export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, isControlPaused, sendInputEvent, socket, sessionId }) {
+export default function RemoteView({ stream, peerConnection, onDisconnect, relayMode, isControlPaused, sendInputEvent, inputSender, socket, sessionId }) {
     // ── Refs ─────────────────────────────────────────────────────────────────
     const videoRef     = useRef(null);
     const canvasRef    = useRef(null);  // relay rendering target
     const containerRef = useRef(null);
     const workerRef    = useRef(null);  // frameWorker instance
     const frameIdRef   = useRef(0);     // monotonic frame ID for worker correlation
-
-    // RAF mouse coalescing
-    const rafPendingRef       = useRef(false);
-    const latestMouseEventRef = useRef(null);
 
     // ── Mobile State ──────────────────────────────────────────────────────────
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -47,6 +50,29 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     const [networkQuality, setNetworkQuality] = useState('good');
     const [contextMenuState, setContextMenuState] = useState({ isOpen: false, x: 0, y: 0 });
     const gestureHandlerRef = useRef(null);
+
+    // Performance overlay (off by default; ?perf=1 or the toolbar button turns it on) and stream quality preset.
+    const [perfVisible, setPerfVisible] = useState(() => {
+        try {
+            return new URLSearchParams(window.location.search).get('perf') === '1' || localStorage.getItem('chameleon_perf_overlay') === '1';
+        } catch { return false; }
+    });
+    const [qualityPreset, setQualityPreset] = useState(() => {
+        try { return localStorage.getItem('chameleon_quality_preset') || 'balanced'; } catch { return 'balanced'; }
+    });
+    const togglePerf = useCallback(() => {
+        setPerfVisible((on) => {
+            try { localStorage.setItem('chameleon_perf_overlay', on ? '0' : '1'); } catch { /* storage blocked */ }
+            return !on;
+        });
+    }, []);
+    const handleQualityPreset = useCallback((preset) => {
+        try { localStorage.setItem('chameleon_quality_preset', preset); } catch { /* storage blocked */ }
+        setQualityPreset(preset);
+        if (!sendInputEvent) return;
+        sendInputEvent({ type: 'quality_preset', preset });
+        sendInputEvent({ type: 'update_resolution', resolution: LEGACY_PRESET_LABEL[preset] }); // agents that predate presets
+    }, [sendInputEvent]);
 
     // ── Fullscreen & Orientation ──────────────────────────────────────────────
     const toggleFullscreen = useCallback(async () => {
@@ -117,27 +143,12 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     }, []);
 
     useEffect(() => {
-        const updateNetworkQuality = async () => {
-            if (!peerConnection) return;
-            try {
-                const stats = await peerConnection.getStats();
-                let ping = Infinity;
-                stats.forEach(report => {
-                    if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-                        ping = Math.min(ping, report.currentRoundTripTime * 1000);
-                    }
-                });
-                if (ping < 80) setNetworkQuality('excellent');
-                else if (ping < 150) setNetworkQuality('good');
-                else if (ping < 300) setNetworkQuality('fair');
-                else setNetworkQuality('poor');
-            } catch (e) {
-                // Ignore stats error
-            }
-        };
-
-        const interval = setInterval(updateNetworkQuality, 2000);
-        return () => clearInterval(interval);
+        if (!peerConnection) return undefined;
+        // Shared once-per-second poll; state only changes when the badge bucket changes (no per-second re-render).
+        return getStatsMonitor(peerConnection).subscribe((m) => {
+            const quality = qualityFromRtt(m.rttMs);
+            setNetworkQuality((previous) => (previous === quality ? previous : quality));
+        });
     }, [peerConnection]);
 
     // ── Mobile Clipboard Handlers ──────────────────────────────────────────────
@@ -309,34 +320,36 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
         };
     }, [relayMode, socket]);
 
-    // ── RAF-coalesced mouse move ───────────────────────────────────────────────
+    // ── Mouse ─────────────────────────────────────────────────────────────────
+    // Coalescing, channel choice and ordering are the InputSender's job; here we only translate coordinates.
     const handleMouseMove = useCallback((e, type) => {
         e.stopPropagation();
+        if (!sendInputEvent) return;
         const pos = getPointerPosition(e);
         if (!pos) return;
-
-        const payload = { type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons };
-
-        if (type === 'mouse_move') {
-            latestMouseEventRef.current = payload;
-            if (!rafPendingRef.current) {
-                rafPendingRef.current = true;
-                requestAnimationFrame(() => {
-                    rafPendingRef.current = false;
-                    const evt = latestMouseEventRef.current;
-                    if (evt && sendInputEvent) sendInputEvent(evt);
-                    latestMouseEventRef.current = null;
-                });
-            }
-        } else {
-            if (sendInputEvent) sendInputEvent(payload);
-        }
+        sendInputEvent({ type, x: pos.x, y: pos.y, button: e.button, buttons: e.buttons });
     }, [getPointerPosition, sendInputEvent]);
+
+    // A button released OUTSIDE the video (drag that ended over the toolbar or off the window) never reaches the
+    // video's onMouseUp: without this the host would keep the button held down.
+    useEffect(() => {
+        const onWindowMouseUp = (e) => {
+            const target = relayMode ? canvasRef.current : videoRef.current;
+            if (inputSender && target && e.target !== target && inputSender.pressedButtons.has(e.button)) {
+                sendInputEvent({ type: 'mouse_up', button: e.button });
+            }
+        };
+        window.addEventListener('mouseup', onWindowMouseUp);
+        return () => window.removeEventListener('mouseup', onWindowMouseUp);
+    }, [relayMode, inputSender, sendInputEvent]);
 
     // ── Scroll wheel ──────────────────────────────────────────────────────────
     const handleMouseWheel = useCallback((e) => {
         e.preventDefault();
-        if (sendInputEvent) sendInputEvent({ type: 'mouse_wheel', deltaX: e.deltaX, deltaY: e.deltaY });
+        if (!sendInputEvent) return;
+        // Normalise to pixels (Firefox reports lines, some devices pages) so the host sees one unit.
+        const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1;
+        sendInputEvent({ type: 'mouse_wheel', deltaX: e.deltaX * unit, deltaY: e.deltaY * unit });
     }, [sendInputEvent]);
 
     // ── Touch → Mouse mapping ─────────────────────────────────────────────────
@@ -376,25 +389,19 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
         sendInputEvent({ type: 'key_up', key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey });
     }, [sendInputEvent]);
 
-    // ── Window Blur / Focus Loss ──────────────────────────────────────────────
-    // If the user triggers an OS shortcut (e.g. Win+D, Alt+Tab), the browser loses
-    // focus and never receives the key_up event. This leaves modifiers stuck in the 
-    // down state on the host, blocking all further input.
+    // ── Window Blur / Focus Loss / Hidden tab ─────────────────────────────────
+    // If the user triggers an OS shortcut (Win+D, Alt+Tab) or switches tab, the browser stops delivering key_up /
+    // mouse_up events. Release everything that is held so no key or button stays stuck down on the host.
     useEffect(() => {
-        const handleBlur = () => {
-            if (!sendInputEvent) return;
-            const modifiers = [
-                'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 
-                'MetaLeft', 'MetaRight', 'ShiftLeft', 'ShiftRight'
-            ];
-            modifiers.forEach(code => {
-                sendInputEvent({ type: 'key_up', code });
-            });
+        const releaseAll = () => { if (inputSender) inputSender.releaseAll(); };
+        const onVisibility = () => { if (document.hidden) releaseAll(); };
+        window.addEventListener('blur', releaseAll);
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            window.removeEventListener('blur', releaseAll);
+            document.removeEventListener('visibilitychange', onVisibility);
         };
-
-        window.addEventListener('blur', handleBlur);
-        return () => window.removeEventListener('blur', handleBlur);
-    }, [sendInputEvent]);
+    }, [inputSender]);
 
     // ── Shared pointer-event props ────────────────────────────────────────────
     const pointerProps = {
@@ -423,6 +430,18 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
                 onDisconnect={onDisconnect}
                 isFullscreen={isFullscreen}
                 toggleFullscreen={toggleFullscreen}
+                perfVisible={perfVisible}
+                onTogglePerf={togglePerf}
+                qualityPreset={qualityPreset}
+                onQualityPreset={handleQualityPreset}
+            />
+
+            <PerformanceOverlay
+                visible={perfVisible}
+                peerConnection={peerConnection}
+                videoRef={videoRef}
+                inputSender={inputSender}
+                sendInputEvent={sendInputEvent}
             />
 
             <MobileStatsOverlay 
@@ -504,8 +523,8 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
                         playsInline
                         muted
                         disablePictureInPicture
+                        disableRemotePlayback
                         className="w-full h-full object-contain cursor-default pointer-events-auto"
-                        style={{ willChange: 'contents' }}
                         {...pointerProps}
                     />
                 )}

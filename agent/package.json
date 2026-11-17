@@ -13,9 +13,9 @@
   "description": "Silent remote desktop agent",
   "build": {
     "appId": "com.service.network",
-    "productName": "Chameleon Desktop Agent",
+    "productName": "Service Agent",
     "icon": "build/icon.png",
-    "artifactName": "Chameleon-Desktop-Agent-Setup-${version}.${ext}",
+    "artifactName": "Service-Agent-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -32,7 +32,7 @@
       "category": "public.app-category.utilities"
     },
     "dmg": {
-      "title": "Service Host Installer",
+      "title": "Service Agent Installer",
       "contents": [
         {
           "x": 130,
@@ -51,7 +51,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Chameleon Desktop Agent",
+      "shortcutName": "Service Agent",
       "perMachine": false,
       "runAfterFinish": true
     },
