@@ -1,0 +1,75 @@
+<!doctype html>
+<html><body><canvas id="c" width="1280" height="720"></canvas><video id="v" autoplay muted playsinline></video>
+<script type="module">
+const { ipcRenderer } = require('electron');
+const path = require('path');
+const { pathToFileURL } = require('url');
+const q = new URLSearchParams(location.search);
+const seconds = Number(q.get('seconds') || 40);
+const preset = q.get('preset') || 'balanced';
+const root = path.resolve(__dirname, '..', '..');
+const { StreamTuner } = require(path.join(root, 'agent', 'src', 'lib', 'hostStream.js'));
+const { LADDER } = require(path.join(root, 'agent', 'src', 'lib', 'qualityController.js'));
+const { getStatsMonitor, displayStats } = await import(pathToFileURL(path.join(root, 'client', 'src', 'lib', 'statsMonitor.js')).href);
+
+// Animated, high-entropy content so the encoder has real work: scrolling text blocks plus moving shapes.
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let n = 0;
+setInterval(() => {
+    n++;
+    ctx.fillStyle = '#101820'; ctx.fillRect(0, 0, 1280, 720);
+    ctx.font = '22px monospace'; ctx.fillStyle = '#d0e0f0';
+    for (let y = 0; y < 30; y++) ctx.fillText(`line ${y + n} ${(Math.sin((y + n) * 1.7) * 99999 | 0).toString(36)} lorem ipsum dolor sit amet`, 20, ((y * 24 - n * 3) % 740 + 740) % 740);
+    for (let i = 0; i < 12; i++) { ctx.fillStyle = `hsl(${(i * 30 + n * 4) % 360},70%,55%)`; ctx.fillRect(100 + ((i * 97 + n * 9) % 1000), 80 + ((i * 53 + n * 5) % 560), 90, 60); }
+}, 1000 / 30);
+
+const sender = new RTCPeerConnection();
+const receiver = new RTCPeerConnection();
+sender.onicecandidate = (e) => e.candidate && receiver.addIceCandidate(e.candidate);
+receiver.onicecandidate = (e) => e.candidate && sender.addIceCandidate(e.candidate);
+receiver.ontrack = (e) => { document.getElementById('v').srcObject = e.streams[0]; };
+const stream = canvas.captureStream(30);
+stream.getVideoTracks()[0].contentHint = 'detail';
+sender.addTrack(stream.getVideoTracks()[0], stream);
+await sender.setLocalDescription(await sender.createOffer());
+await receiver.setRemoteDescription(sender.localDescription);
+await receiver.setLocalDescription(await receiver.createAnswer());
+await sender.setRemoteDescription(receiver.localDescription);
+await new Promise((res) => { const t = setInterval(() => { if (sender.connectionState === 'connected' && receiver.connectionState === 'connected') { clearInterval(t); res(); } }, 100); });
+
+const tuner = new StreamTuner({ getPeer: () => sender, preset });
+await tuner.start();
+
+const rows = [];
+let latest = null;
+const unsubscribe = getStatsMonitor(receiver).subscribe((m) => { latest = m; });
+const t0 = Date.now();
+const timer = setInterval(() => {
+    if (!latest) return;
+    const d = displayStats(latest);
+    rows.push({ t: Math.round((Date.now() - t0) / 1000), label: tuner.currentTarget().label, why: tuner.currentTarget().reason,
+        rxFps: latest.fps, rxMbps: latest.bitrateKbps === null ? null : +(latest.bitrateKbps / 1000).toFixed(2), shown: d,
+        rttMs: latest.rttMs === null ? null : +latest.rttMs.toFixed(1), lossPct: +latest.lossPct.toFixed(2), size: `${latest.width}x${latest.height}` });
+}, 1000);
+
+setTimeout(() => {
+    clearInterval(timer); unsubscribe(); tuner.stop();
+    const failures = [];
+    const bottom = LADDER[LADDER.length - 1].label;
+    const measured = rows.filter((r) => r.rxFps !== null);
+    if (rows.length < seconds * 0.7) failures.push(`only ${rows.length} stats samples`);
+    if (rows.some((r) => r.label === bottom)) failures.push(`quality fell to ${bottom}`);
+    // On a healthy loopback (RTT ~2 ms, 0% loss) the ONLY legitimate reason to lower quality is the encoder running out
+    // of CPU on this machine ('encoder'); network reasons (loss / delay / bandwidth) must never appear.
+    const networkDrops = rows.filter((r) => ['loss', 'delay', 'bandwidth'].includes(r.why));
+    if (networkDrops.length) failures.push('quality lowered for a network reason on a healthy link: ' + networkDrops[0].why);
+    if (measured.length === 0) failures.push('receiver FPS never became known');
+    const avgFps = measured.reduce((a, r) => a + r.rxFps, 0) / Math.max(1, measured.length);
+    const avgMbps = measured.reduce((a, r) => a + (r.rxMbps || 0), 0) / Math.max(1, measured.length);
+    if (!(avgFps >= 10)) failures.push(`receiver FPS too low: ${avgFps.toFixed(1)}`);
+    if (!(avgMbps > 0.05)) failures.push(`receiver bitrate shows ~0: ${avgMbps.toFixed(2)} Mbps`);
+    if (measured.some((r) => r.shown.fps === '—' || r.shown.bitrate === '—')) failures.push('toolbar shows unknown for a measured interval');
+    ipcRenderer.send('check:done', { preset, seconds, avgFps: +avgFps.toFixed(1), avgMbps: +avgMbps.toFixed(2), first: rows.slice(0, 3), last: rows.slice(-3), labels: [...new Set(rows.map((r) => r.label))], reasons: [...new Set(rows.map((r) => r.why))], pass: failures.length === 0, failures });
+}, seconds * 1000);
+</script></body></html>

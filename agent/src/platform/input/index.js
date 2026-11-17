@@ -93,6 +93,24 @@ function getMouseButton(button, Button) {
     return Button.LEFT;
 }
 
+/**
+ * Zero the artificial pauses nut-js inserts around native input calls.
+ *
+ * nut-js sleeps `config.autoDelayMs` BEFORE every pressKey / releaseKey / type character (default 300 ms) and
+ * before every pressButton / releaseButton / scroll (default 100 ms). That is meant for scripted automation; for a
+ * live remote session it made every key press arrive ~300 ms late (measured: a press+release pair took ~628 ms at the
+ * default and ~31 ms with the delay at 0 on the test machine) and every click ~100 ms late.
+ */
+function disableAutoDelay(...devices) {
+    for (const device of devices) {
+        if (device && device.config && typeof device.config === 'object' && 'autoDelayMs' in device.config) {
+            device.config.autoDelayMs = 0;
+        }
+    }
+}
+
+const WHEEL_PIXELS_PER_LINE = 100;
+
 function createInputController({
     mouse,
     Point,
@@ -100,105 +118,218 @@ function createInputController({
     screen,
     keyboard,
     Key,
-    clipboard
+    clipboard,
+    now = () => Date.now()
 }) {
+    disableAutoDelay(mouse, keyboard);
+
     const keyMap = buildKeyMap(Key);
     let ctrlDown = false;
     let altDown = false;
     let metaDown = false;
     let shiftDown = false;
 
-    return {
-        async handleRemoteInput(data) {
-            if (data.type === 'key_down' || data.type === 'key_up') {
-                const isDown = data.type === 'key_down';
-                const code = data.code;
-                let isModifier = false;
+    // What this controller has pressed on the host, so a dropped session can never leave a key or button stuck down.
+    const pressedKeys = new Map();   // nut key -> nut key
+    const pressedButtons = new Set();
+    let lastMoveSeq = -1;            // moves travel on an unordered channel: a late, older one must not win
+    let wheelRemainder = 0;
 
-                if (code === 'ControlLeft' || code === 'ControlRight') {
-                    ctrlDown = isDown;
-                    isModifier = true;
-                } else if (code === 'AltLeft' || code === 'AltRight') {
-                    altDown = isDown;
-                    isModifier = true;
-                } else if (code === 'MetaLeft' || code === 'MetaRight') {
-                    metaDown = isDown;
-                    isModifier = true;
-                } else if (code === 'ShiftLeft' || code === 'ShiftRight') {
-                    shiftDown = isDown;
-                    isModifier = true;
-                }
+    // ── Ordered execution ────────────────────────────────────────────────────────────────────────
+    // Events used to run concurrently (each IPC message started its own async handler), so a click could overtake
+    // the move before it, and key releases could overtake presses. Now everything runs strictly in arrival order.
+    // The one exception is mouse_move: when a move is still waiting behind slower work, a newer move REPLACES it
+    // (only the final position matters), which also stops stale moves piling up while the host is busy.
+    const queue = [];
+    let draining = false;
+    const metrics = { processed: 0, coalescedMoves: 0, staleMoves: 0, maxQueueDepth: 0, errors: 0 };
 
-                if (isModifier) {
-                    if (!isDown) {
-                        const nutKey = keyMap[code];
-                        if (nutKey !== undefined) {
-                            keyboard.releaseKey(nutKey).catch(() => {});
-                        }
-                    }
-                    return;
-                }
+    function push(data) {
+        const last = queue[queue.length - 1];
+        if (data.type === 'mouse_move' && last && last.data.type === 'mouse_move') {
+            last.data = data;
+            metrics.coalescedMoves += 1;
+            return last.promise;
+        }
+        const item = { data, queuedAt: now() };
+        item.promise = new Promise((resolve, reject) => {
+            item.resolve = resolve;
+            item.reject = reject;
+        });
+        queue.push(item);
+        if (queue.length > metrics.maxQueueDepth) metrics.maxQueueDepth = queue.length;
+        if (!draining) drain();
+        return item.promise;
+    }
 
-                if (ctrlDown || altDown || metaDown) {
-                    return;
-                }
+    async function drain() {
+        draining = true;
+        while (queue.length > 0) {
+            const item = queue.shift();
+            try {
+                await process(item.data);
+                metrics.processed += 1;
+                item.resolve({ queuedMs: now() - item.queuedAt });
+            } catch (error) {
+                metrics.errors += 1;
+                item.reject(error);
+            }
+        }
+        draining = false;
+    }
 
-                if (shiftDown && (!data.key || data.key.length !== 1)) {
-                    return;
-                }
+    async function moveTo(x, y) {
+        const screenWidth = await screen.width();
+        const screenHeight = await screen.height();
+        const targetX = Math.max(0, Math.min(Math.floor(x * screenWidth), screenWidth - 1));
+        const targetY = Math.max(0, Math.min(Math.floor(y * screenHeight), screenHeight - 1));
+        await mouse.setPosition(new Point(targetX, targetY));
+    }
+
+    const hasPosition = (data) => Number.isFinite(data.x) && Number.isFinite(data.y);
+
+    async function pressKey(nutKey) {
+        pressedKeys.set(nutKey, nutKey);
+        await keyboard.pressKey(nutKey);
+    }
+
+    async function releaseKey(nutKey) {
+        pressedKeys.delete(nutKey);
+        await keyboard.releaseKey(nutKey);
+    }
+
+    async function process(data) {
+        if (data.type === 'key_down' || data.type === 'key_up') {
+            const isDown = data.type === 'key_down';
+            const code = data.code;
+            let isModifier = false;
+
+            if (code === 'ControlLeft' || code === 'ControlRight') {
+                ctrlDown = isDown;
+                isModifier = true;
+            } else if (code === 'AltLeft' || code === 'AltRight') {
+                altDown = isDown;
+                isModifier = true;
+            } else if (code === 'MetaLeft' || code === 'MetaRight') {
+                metaDown = isDown;
+                isModifier = true;
+            } else if (code === 'ShiftLeft' || code === 'ShiftRight') {
+                shiftDown = isDown;
+                isModifier = true;
             }
 
-            if (
-                data.type.startsWith('mouse_') &&
-                (ctrlDown || altDown || metaDown)
-            ) {
+            if (isModifier) {
+                if (!isDown) {
+                    const nutKey = keyMap[code];
+                    if (nutKey !== undefined) {
+                        await releaseKey(nutKey).catch(() => {});
+                    }
+                }
                 return;
             }
 
-            if (data.type === 'mouse_move') {
-                const screenWidth = await screen.width();
-                const screenHeight = await screen.height();
-                const targetX = Math.max(
-                    0,
-                    Math.min(Math.floor(data.x * screenWidth), screenWidth - 1)
-                );
-                const targetY = Math.max(
-                    0,
-                    Math.min(Math.floor(data.y * screenHeight), screenHeight - 1)
-                );
-                mouse.setPosition(new Point(targetX, targetY)).catch(() => {});
-            } else if (data.type === 'mouse_down') {
-                await mouse.pressButton(getMouseButton(data.button, Button));
-            } else if (data.type === 'mouse_up') {
-                await mouse.releaseButton(getMouseButton(data.button, Button));
-            } else if (data.type === 'mouse_wheel') {
-                const lines = Math.round(data.deltaY / 100);
-                if (lines !== 0) {
-                    await mouse.scrollDown(
-                        Math.abs(lines) * (lines > 0 ? 1 : -1)
-                    );
-                }
-            } else if (data.type === 'key_down') {
-                if (shiftDown && data.key && data.key.length === 1) {
-                    await keyboard.type(data.key);
-                } else {
-                    const nutKey = keyMap[data.code];
-                    if (nutKey !== undefined) {
-                        await keyboard.pressKey(nutKey);
-                    } else if (data.key && data.key.length === 1) {
-                        await keyboard.type(data.key);
-                    }
-                }
-            } else if (data.type === 'key_up') {
-                if (!(shiftDown && data.key && data.key.length === 1)) {
-                    const nutKey = keyMap[data.code];
-                    if (nutKey !== undefined) {
-                        await keyboard.releaseKey(nutKey);
-                    }
-                }
-            } else if (data.type === 'clipboard_push') {
-                clipboard.writeText(data.text);
+            if (ctrlDown || altDown || metaDown) {
+                return;
             }
+
+            if (shiftDown && (!data.key || data.key.length !== 1)) {
+                return;
+            }
+        }
+
+        if (
+            typeof data.type === 'string' &&
+            data.type.startsWith('mouse_') &&
+            (ctrlDown || altDown || metaDown)
+        ) {
+            return;
+        }
+
+        if (data.type === 'mouse_move') {
+            if (typeof data.seq === 'number') {
+                if (data.seq < lastMoveSeq) {
+                    metrics.staleMoves += 1;
+                    return;
+                }
+                lastMoveSeq = data.seq;
+            }
+            await moveTo(data.x, data.y);
+        } else if (data.type === 'mouse_down') {
+            // The move that preceded this click travelled on a different (unordered) channel and may not have
+            // arrived yet: the click carries its own position, so it always lands where the user pointed.
+            if (hasPosition(data)) await moveTo(data.x, data.y);
+            const button = getMouseButton(data.button, Button);
+            pressedButtons.add(button);
+            await mouse.pressButton(button);
+        } else if (data.type === 'mouse_up') {
+            if (hasPosition(data)) await moveTo(data.x, data.y);
+            const button = getMouseButton(data.button, Button);
+            pressedButtons.delete(button);
+            await mouse.releaseButton(button);
+        } else if (data.type === 'mouse_wheel') {
+            // Keep the sub-line remainder: precision trackpads send many small deltas that each round to 0 lines.
+            wheelRemainder += Number(data.deltaY) || 0;
+            const lines = Math.trunc(wheelRemainder / WHEEL_PIXELS_PER_LINE);
+            if (lines !== 0) {
+                wheelRemainder -= lines * WHEEL_PIXELS_PER_LINE;
+                await mouse.scrollDown(lines);
+            }
+        } else if (data.type === 'key_down') {
+            if (shiftDown && data.key && data.key.length === 1) {
+                await keyboard.type(data.key);
+            } else {
+                const nutKey = keyMap[data.code];
+                if (nutKey !== undefined) {
+                    await pressKey(nutKey);
+                } else if (data.key && data.key.length === 1) {
+                    await keyboard.type(data.key);
+                }
+            }
+        } else if (data.type === 'key_up') {
+            if (!(shiftDown && data.key && data.key.length === 1)) {
+                const nutKey = keyMap[data.code];
+                if (nutKey !== undefined) {
+                    await releaseKey(nutKey);
+                }
+            }
+        } else if (data.type === 'clipboard_push') {
+            clipboard.writeText(data.text);
+        }
+        // 'input_probe' (and any unknown type) does nothing but still travels the queue: that is the point of a probe.
+    }
+
+    return {
+        /** Resolves once the event has been executed (in arrival order). */
+        handleRemoteInput(data) {
+            if (!data || typeof data.type !== 'string') return Promise.resolve();
+            return push(data);
+        },
+
+        /**
+         * Drop anything still queued and release every key/button this controller pressed. Call when a session
+         * ends or its input channel closes, so the host never keeps a stuck key or mouse button.
+         */
+        async releaseAll() {
+            const dropped = queue.splice(0);
+            for (const item of dropped) item.resolve({ queuedMs: 0, dropped: true });
+            const keys = [...pressedKeys.values()];
+            const buttons = [...pressedButtons];
+            pressedKeys.clear();
+            pressedButtons.clear();
+            ctrlDown = altDown = metaDown = shiftDown = false;
+            lastMoveSeq = -1;
+            wheelRemainder = 0;
+            for (const key of keys) {
+                try { await keyboard.releaseKey(key); } catch { /* best effort */ }
+            }
+            for (const button of buttons) {
+                try { await mouse.releaseButton(button); } catch { /* best effort */ }
+            }
+            return { keys: keys.length, buttons: buttons.length };
+        },
+
+        getMetrics() {
+            return { ...metrics, queueDepth: queue.length, pressedKeys: pressedKeys.size, pressedButtons: pressedButtons.size };
         }
     };
 }

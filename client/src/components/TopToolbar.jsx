@@ -9,15 +9,27 @@ import {
     Power,
     GripHorizontal,
     ChevronRight,
-    ChevronLeft
+    ChevronLeft,
+    Activity
 } from 'lucide-react';
+import { getStatsMonitor, displayStats, withUnit } from '../lib/statsMonitor';
+
+const PRESETS = [
+    { id: 'quality', name: 'Quality', detail: '1080p · 30 fps · ~4 Mbps' },
+    { id: 'balanced', name: 'Balanced', detail: '720p · 30 fps · ~2.5 Mbps' },
+    { id: 'performance', name: 'Performance', detail: '720p · 30 fps · ~1.5 Mbps' }
+];
 
 export default function TopToolbar({
     peerConnection,
     sendInputEvent,
     onDisconnect,
     isFullscreen,
-    toggleFullscreen
+    toggleFullscreen,
+    perfVisible = false,
+    onTogglePerf,
+    qualityPreset = 'balanced',
+    onQualityPreset
 }) {
     // --- Draggable & Compact State ---
     const MathMin = Math.min;
@@ -72,7 +84,7 @@ export default function TopToolbar({
             window.removeEventListener('mouseup', handleMouseUp);
         };
     }, [isDragging, handleMouseMove]);
-    const [stats, setStats] = useState({ ping: 0, fps: 0, bitrate: 0 });
+    const [stats, setStats] = useState({ ping: '—', fps: '—', bitrate: '—' });
     const [sessionTime, setSessionTime] = useState(0);
     const [showModifiers, setShowModifiers] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -84,50 +96,16 @@ export default function TopToolbar({
         MetaLeft: false
     });
 
-    const lastBytesRef = useRef(0);
-    const lastTimeRef = useRef(Date.now());
-
-    // --- Stats Polling Loop (Isolated to this component to prevent video re-renders) ---
+    // --- Live stats: subscribes to the single shared once-per-second poll (lib/statsMonitor.js) ---
+    // Re-renders only when a displayed number actually changed.
     useEffect(() => {
-        if (!peerConnection) return;
-
-        const interval = setInterval(async () => {
-            try {
-                const statsArray = await peerConnection.getStats();
-                let ping = 0;
-                let fps = 0;
-                let currentBytes = 0;
-
-                statsArray.forEach(report => {
-                    if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-                        ping = Math.round(report.currentRoundTripTime * 1000) || 0;
-                    }
-                    if (report.type === 'inbound-rtp' && report.kind === 'video') {
-                        fps = report.framesPerSecond || 0;
-                        currentBytes = report.bytesReceived || 0;
-                    }
-                });
-
-                const now = Date.now();
-                const timeDiff = (now - lastTimeRef.current) / 1000;
-                const bytesDiff = currentBytes - lastBytesRef.current;
-
-                let mbps = 0;
-                if (bytesDiff > 0 && timeDiff > 0) {
-                    const bitsPerSec = (bytesDiff * 8) / timeDiff;
-                    mbps = (bitsPerSec / 1000000).toFixed(1);
-                }
-
-                lastBytesRef.current = currentBytes;
-                lastTimeRef.current = now;
-
-                setStats({ ping, fps: Math.round(fps), bitrate: mbps });
-            } catch (err) {
-                // Ignore silent stats drops
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
+        // New / replaced peer: show "unknown" until its first measured interval instead of the previous peer's numbers.
+        setStats({ ping: '—', fps: '—', bitrate: '—' });
+        if (!peerConnection) return undefined;
+        return getStatsMonitor(peerConnection).subscribe((m) => {
+            const next = displayStats(m);
+            setStats((prev) => (prev.ping === next.ping && prev.fps === next.fps && prev.bitrate === next.bitrate ? prev : next));
+        });
     }, [peerConnection]);
 
     // --- Session Timer Loop ---
@@ -177,9 +155,9 @@ export default function TopToolbar({
         setShowClipboard(false);
     };
 
-    // --- Resolution Control ---
-    const changeResolution = (res) => {
-        sendInputEvent({ type: 'update_resolution', resolution: res });
+    // --- Stream quality preset (the host adapts bitrate / resolution / fps within the chosen preset) ---
+    const changePreset = (preset) => {
+        if (onQualityPreset) onQualityPreset(preset);
         setShowSettings(false);
     };
 
@@ -220,7 +198,7 @@ export default function TopToolbar({
                         <div className="flex items-center gap-4 px-2 shrink-0">
                             <div className="flex items-center gap-1.5 text-xs font-mono">
                                 <span className="text-slate-500 uppercase tracking-widest text-[10px]">Ping</span>
-                                <span className="text-white font-medium">{stats.ping}ms</span>
+                                <span className="text-white font-medium">{withUnit(stats.ping, 'ms')}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-xs font-mono">
                                 <span className="text-slate-500 uppercase tracking-widest text-[10px]">FPS</span>
@@ -228,7 +206,7 @@ export default function TopToolbar({
                             </div>
                             <div className="flex items-center gap-1.5 text-xs font-mono">
                                 <span className="text-slate-500 uppercase tracking-widest text-[10px]">Bitrate</span>
-                                <span className="text-white font-medium">{stats.bitrate} Mbps</span>
+                                <span className="text-white font-medium">{withUnit(stats.bitrate, 'Mbps', ' ')}</span>
                             </div>
                         </div>
                     </div>
@@ -291,6 +269,16 @@ export default function TopToolbar({
                         )}
                     </div>
 
+                    {/* Performance overlay toggle */}
+                    <button
+                        onClick={onTogglePerf}
+                        className={`p-2 rounded-lg transition-colors border ${perfVisible ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' : 'bg-transparent text-slate-400 border-transparent hover:text-white hover:bg-white/5'}`}
+                        title="Performance overlay (FPS, RTT, bitrate, loss, route, codec)"
+                        aria-pressed={perfVisible}
+                    >
+                        <Activity size={18} />
+                    </button>
+
                     {/* Settings Panel */}
                     <div className="relative">
                         <button
@@ -302,13 +290,21 @@ export default function TopToolbar({
                         </button>
 
                         {showSettings && (
-                            <div className="absolute top-full right-0 mt-2 bg-[#0b0f14] border border-slate-700 rounded-xl p-3 shadow-xl w-48 z-50">
-                                <span className="text-[10px] font-bold tracking-widest uppercase text-slate-500 mb-2 block">Resolution</span>
+                            <div className="absolute top-full right-0 mt-2 bg-[#0b0f14] border border-slate-700 rounded-xl p-3 shadow-xl w-56 z-50">
+                                <span className="text-[10px] font-bold tracking-widest uppercase text-slate-500 mb-2 block">Stream quality</span>
                                 <div className="flex flex-col gap-1">
-                                    <button onClick={() => changeResolution('1080p')} className="text-left px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-md">1080p (High)</button>
-                                    <button onClick={() => changeResolution('720p')} className="text-left px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-md">720p (Balanced)</button>
-                                    <button onClick={() => changeResolution('480p')} className="text-left px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-md">480p (Low Latency)</button>
+                                    {PRESETS.map((p) => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => changePreset(p.id)}
+                                            className={`text-left px-3 py-2 rounded-md transition-colors ${qualityPreset === p.id ? 'bg-cyan-500/15 text-cyan-300' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            <span className="block text-xs font-semibold">{p.name}</span>
+                                            <span className="block text-[10px] text-slate-500">{p.detail}</span>
+                                        </button>
+                                    ))}
                                 </div>
+                                <p className="mt-2 text-[10px] leading-snug text-slate-500">Adapts automatically to your connection within the chosen preset.</p>
                             </div>
                         )}
                     </div>

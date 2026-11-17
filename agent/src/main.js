@@ -104,6 +104,28 @@ function createBackgroundWindow() {
         }
     });
 
+    // Session ended / input channel closed / viewer re-joined: never leave a key or mouse button stuck down.
+    ipcMain.on('webrtc:release_all_input', async () => {
+        try {
+            const released = await nativeInput.releaseAll();
+            if (released.keys || released.buttons) {
+                console.log(`[INPUT] Released stuck input: ${released.keys} key(s), ${released.buttons} button(s)`);
+            }
+        } catch (e) {
+            console.error('[INPUT] releaseAll error:', e);
+        }
+    });
+
+    // Input-latency probe: travels the SAME ordered queue as real input, so the reply time reflects queueing plus
+    // the IPC hop, i.e. how long a click or key press would wait on the host. Replies with the time spent here.
+    ipcMain.handle('webrtc:input_probe', async (event, data) => {
+        const startedAt = Date.now();
+        try {
+            await nativeInput.handleRemoteInput({ type: 'input_probe', id: data && data.id });
+        } catch (e) { /* probe is best-effort */ }
+        return { hostMs: Date.now() - startedAt };
+    });
+
     // Handle pulling clipboard from agent to send to client
     ipcMain.handle('webrtc:clipboard_pull', () => {
         return clipboard.readText();
@@ -200,7 +222,7 @@ function createTray() {
     }
 
     tray = new Tray(icon);
-    tray.setToolTip('Service Host (Idle)');
+    tray.setToolTip('Service Agent (Idle)');
 
     tray.on('click', () => toggleWindowVisibility());
     tray.on('double-click', () => toggleWindowVisibility());
@@ -210,7 +232,7 @@ function createTray() {
 
 function updateContext_menu() {
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Open Service Host', click: () => toggleWindowVisibility() },
+        { label: 'Open Service Agent', click: () => toggleWindowVisibility() },
         { type: 'separator' },
         {
             label: 'Disconnect Session', click: () => {
@@ -231,21 +253,21 @@ function updateContext_menu() {
 }
 
 function updateTrayIcon(status) {
-    let tooltip = 'Service Host';
+    let tooltip = 'Service Agent';
     let iconBase = 'icon-gray';
 
     // Update icon colors based on status
     if (isControlPaused && status === 'connected') {
-        tooltip = 'Service Host (Paused by Host)';
+        tooltip = 'Service Agent (Paused by Host)';
         iconBase = 'icon-yellow';
     } else if (status === 'connected') {
-        tooltip = 'Service Host (Connected)';
+        tooltip = 'Service Agent (Connected)';
         iconBase = 'icon-green';
     } else if (status === 'pairing') {
-        tooltip = 'Service Host (Pairing...)';
+        tooltip = 'Service Agent (Pairing...)';
         iconBase = 'icon-yellow';
     } else {
-        tooltip = 'Service Host (Idle)';
+        tooltip = 'Service Agent (Idle)';
     }
 
     if (tray) {

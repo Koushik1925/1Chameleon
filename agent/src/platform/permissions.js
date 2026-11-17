@@ -72,7 +72,7 @@ async function checkAndRequestAccessibility() {
         _accessibilityDialogShown = true;
         await _showPermissionDialog({
             title: 'Accessibility Permission Required',
-            message: 'Chameleon needs Accessibility access to control this computer remotely.',
+            message: 'Service Agent needs Accessibility access to control this computer remotely.',
             detail: [
                 'Without this permission, keyboard and mouse input from the remote viewer will not work.',
                 '',
@@ -126,7 +126,7 @@ async function checkScreenRecording() {
                 _screenRecordingDialogShown = true;
                 await _showPermissionDialog({
                     title: 'Screen Recording Permission Required',
-                    message: 'Chameleon needs Screen Recording access to share your screen with the remote viewer.',
+                    message: 'Service Agent needs Screen Recording access to share your screen with the remote viewer.',
                     detail: [
                         'Without this permission, the remote viewer will see a black screen.',
                         '',
