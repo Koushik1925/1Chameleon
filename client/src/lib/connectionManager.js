@@ -136,6 +136,7 @@ export class ConnectionManager {
     this.useRelay = false;       // request it (fallback) - only after a direct attempt failed
     this.iceRestartTried = false; // one ICE restart per loss of an established link
     this.gatherLog = [];          // per-peer candidate gathering summary, for the failure diagnosis
+    this.remoteCands = { received: 0, applied: 0, rejected: 0, duplicates: 0, seen: new Set() }; // candidates FROM the host
     this.socketEverConnected = false;
     this.joined = false;
     this.joinAttempts = 0;
@@ -163,6 +164,7 @@ export class ConnectionManager {
     this.useRelay = false;
     this.iceRestartTried = false;
     this.gatherLog = [];
+    this.remoteCands = { received: 0, applied: 0, rejected: 0, duplicates: 0, seen: new Set() };
     this.joined = false;
     this.joinAttempts = 0;
     this.attempts = 0;
@@ -505,9 +507,13 @@ export class ConnectionManager {
   /** Apply queued remote candidates that belong to the freshly applied remote description (stale ones are dropped). */
   async drainIceQueue(peer) {
     const queued = this.iceQueue.filter((c) => this.candidateMatchesRemote(c));
+    this.remoteCands.rejected += this.iceQueue.length - queued.length; // stale: belonged to a previous host peer
     this.iceQueue = [];
     for (const candidate of queued) {
-      await peer.addIceCandidate(candidate).catch((e) => this.log('warn', 'queued_ice_rejected', { message: e && e.message }));
+      await peer.addIceCandidate(candidate).then(
+        () => { this.remoteCands.applied += 1; },
+        (e) => { this.remoteCands.rejected += 1; this.log('warn', 'queued_ice_rejected', { message: e && e.message }); }
+      );
     }
   }
 
@@ -551,12 +557,22 @@ export class ConnectionManager {
   }
 
   onRemoteIce(candidate) {
-    if (!candidate) return;
+    // A null/empty candidate is the host's end-of-candidates marker: trickle ICE needs nothing from us.
+    if (!candidate || !candidate.candidate) return;
+    this.remoteCands.received += 1;
+    const key = `${candidate.candidate}|${candidate.usernameFragment || ''}`;
+    if (this.remoteCands.seen.has(key)) { this.remoteCands.duplicates += 1; return; } // retransmitted: ignore safely
+    this.remoteCands.seen.add(key);
+    this.log('info', 'ice_candidate_received', { candidateType: (/\btyp\s+(\w+)/.exec(candidate.candidate) || [])[1] || 'unknown' });
     if (this.peer && this.remoteDescSet && this.candidateMatchesRemote(candidate)) {
       const peer = this.peer;
-      peer.addIceCandidate(candidate).catch((e) => {
-        if (peer === this.peer) this.log('warn', 'ice_candidate_rejected', { message: e && e.message });
-      });
+      peer.addIceCandidate(candidate).then(
+        () => { this.remoteCands.applied += 1; },
+        (e) => {
+          this.remoteCands.rejected += 1;
+          if (peer === this.peer) this.log('warn', 'ice_candidate_rejected', { message: e && e.message });
+        }
+      );
     } else if (this.iceQueue.length < MAX_QUEUED_CANDIDATES) {
       this.iceQueue.push(candidate); // remote description not applied yet (or it is for the host's next peer)
     }
@@ -669,8 +685,10 @@ export class ConnectionManager {
       const protocol = (local && local.protocol) || 'unknown';
       // For a relayed pair this is the transport to the TURN server: udp, tcp or tls (443).
       const relayProtocol = local && local.candidateType === 'relay' ? (local.relayProtocol || 'unknown') : undefined;
-      this.log('info', 'selected_pair', { pairType, protocol, relayProtocol });
-      this.diag('selected_pair', relayProtocol ? { pairType, protocol, relayProtocol } : { pairType, protocol });
+      // Direct unless either end of the nominated pair is a TURN relay candidate.
+      const route = (local && local.candidateType === 'relay') || (remote && remote.candidateType === 'relay') ? 'relayed' : 'direct';
+      this.log('info', 'selected_pair', { pairType, protocol, relayProtocol, route, remoteCandidates: this.remoteCands.received });
+      this.diag('selected_pair', relayProtocol ? { pairType, protocol, relayProtocol, route } : { pairType, protocol, route });
     } catch { /* stats are best-effort */ }
   }
 
@@ -734,11 +752,14 @@ export class ConnectionManager {
       for (const e of g.errors) if (!errors.includes(e)) errors.push(e);
     }
     const publicAddr = sum.srflx + sum.prflx;
+    const rc = this.remoteCands;
     let detail;
-    if (publicAddr === 0) {
+    if (rc.received === 0) {
+      detail = 'No network candidates were received from the host, so no connection could even be attempted. The host agent may be outdated or its signaling is being blocked.';
+    } else if (publicAddr === 0) {
       detail = 'No public network address could be discovered (STUN). UDP traffic appears to be blocked or filtered on this network.';
     } else if (!this.relayAvailable) {
-      detail = 'No direct path to the host worked, and no relay server is configured to fall back to.';
+      detail = 'Both devices exchanged network candidates but no direct path could be established, and no relay server is configured to fall back to. This is typical of symmetric or carrier-grade NAT, or a firewall.';
     } else if (relayTried && sum.relayed === 0) {
       detail = 'No direct path worked, and the relay server did not provide an address (unreachable, blocked, or its credentials were rejected).';
     } else if (relayTried) {
@@ -747,8 +768,8 @@ export class ConnectionManager {
       detail = 'No direct path to the host worked.';
     }
     const relayState = this.relayAvailable ? (relayTried ? 'tried' : 'available') : 'not-configured';
-    const technical = `candidates host=${sum.host} srflx=${sum.srflx + sum.prflx} relay=${sum.relayed}; relay=${relayState}${errors.length ? '; relay-errors=' + errors.join(',') : ''}`;
-    return { detail, technical, stats: { candHost: sum.host, candSrflx: publicAddr, candRelay: sum.relayed, iceErrors: errors.join(',') } };
+    const technical = `candidates host=${sum.host} srflx=${sum.srflx + sum.prflx} relay=${sum.relayed}; remote=${rc.received} (applied ${rc.applied}, rejected ${rc.rejected}, duplicate ${rc.duplicates}); relay=${relayState}${errors.length ? '; relay-errors=' + errors.join(',') : ''}`;
+    return { detail, technical, stats: { candHost: sum.host, candSrflx: publicAddr, candRelay: sum.relayed, candRemote: rc.received, iceErrors: errors.join(',') } };
   }
 
   fail(code, message) {
@@ -784,6 +805,7 @@ export class ConnectionManager {
     this.remoteDescSet = false;
     this.remoteFingerprint = null;
     this.remoteUfrag = null;
+    this.remoteCands.seen.clear();
     peer.onicecandidate = null;
     peer.onicecandidateerror = null;
     peer.oniceconnectionstatechange = null;

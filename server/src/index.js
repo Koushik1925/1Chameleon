@@ -10,7 +10,7 @@ const Log = require('./models/Log');
 const Session = require('./models/Session');
 const Device = require('./models/Device');
 const { logger, maskSessionId, describeCandidate, describeSdp } = require('./utils/signalingLog');
-const { buildIceServers, isTurnConfigured, describeTurnConfig, DEFAULT_STUN_URLS } = require('./services/iceServers');
+const { buildIceServers, isTurnConfigured, describeTurnConfig, createTurnProvider, DEFAULT_STUN_URLS } = require('./services/iceServers');
 
 // Route Imports
 const agentRoutes = require('./routes/agent');
@@ -178,6 +178,10 @@ app.set('isDeviceOnline', (deviceId) => {
   return false;
 });
 
+// Managed TURN (Cloudflare): credentials are fetched by the backend, cached and refreshed; a no-op unless
+// CLOUDFLARE_TURN_KEY_ID and CLOUDFLARE_TURN_API_TOKEN are set.
+const turnProvider = createTurnProvider(process.env, { logger });
+
 // Non-sensitive signaling status for ops (no session codes). `turnConfigured: false` explains
 // why peers on different restrictive networks cannot connect.
 app.get('/signaling-status', (req, res) => {
@@ -188,10 +192,11 @@ app.get('/signaling-status', (req, res) => {
     uptimeSec: Math.round(process.uptime()),
     activeSessions: activeSocketSessions.size,
     sessionsWithViewer: withViewer,
-    turnConfigured: isTurnConfigured(),
-    turnMode: isTurnConfigured() ? 'fallback-only' : 'not-configured',
-    turnTransports: describeTurnConfig().transports,
-    turnWarnings: describeTurnConfig().warnings,
+    turnConfigured: isTurnConfigured(process.env, turnProvider),
+    turnMode: isTurnConfigured(process.env, turnProvider) ? 'fallback-only' : 'not-configured',
+    turnTransports: describeTurnConfig(process.env, turnProvider).transports,
+    turnWarnings: describeTurnConfig(process.env, turnProvider).warnings,
+    turnProvider: turnProvider.status(),
     stunServers: DEFAULT_STUN_URLS.length,
     agentGraceMs: SIGNALING.agentGraceMs,
     clientGraceMs: SIGNALING.clientGraceMs
@@ -342,7 +347,7 @@ const DIAG_FIELDS = [
   'state', 'reason', 'code', 'phase', 'attempt', 'elapsedMs', 'candidateType', 'pairType', 'protocol', 'relay',
   // recovery method (ice_restart | renegotiate), relay transport that carried the media (udp | tcp | tls),
   // and the failure diagnosis: candidate COUNTS and relay error codes only, never addresses.
-  'method', 'relayProtocol', 'candHost', 'candSrflx', 'candRelay', 'iceErrors'
+  'method', 'relayProtocol', 'route', 'candHost', 'candSrflx', 'candRelay', 'candRemote', 'iceErrors'
 ];
 
 // Socket.IO serialises `undefined` as `null`, and these handlers destructure their first argument
@@ -449,7 +454,7 @@ io.on('connection', (socket) => {
         // If the viewer has no live peer connection, have the agent start a fresh negotiation.
         if (!existing.p2pConnected) {
           logger.info('peer.detected', { session: maskSessionId(sessionId), side: 'agent_returned' });
-          socket.emit('agent:client_joined', { sessionId, relay: !!existing.relay, iceServers: buildIceServers(process.env, Date.now(), { relay: !!existing.relay }) });
+          socket.emit('agent:client_joined', { sessionId, relay: !!existing.relay, iceServers: buildIceServers(process.env, Date.now(), { relay: !!existing.relay, provider: turnProvider }) });
         }
       }
     } else {
@@ -566,11 +571,11 @@ io.on('connection', (socket) => {
     const resumed = resume === true && peerState === 'connected';
     session.p2pConnected = resumed;
     const hostOnline = session.agentOnline !== false && isSocketConnected(session.agentSocketId);
-    const relayAvailable = isTurnConfigured();
+    const relayAvailable = isTurnConfigured(process.env, turnProvider);
     // TURN is a fallback: only honoured when requested AND configured. Otherwise both peers get plain STUN.
     const useRelay = relay === true && relayAvailable;
     session.relay = useRelay;
-    const iceServers = buildIceServers(process.env, Date.now(), { relay: useRelay });
+    const iceServers = buildIceServers(process.env, Date.now(), { relay: useRelay, provider: turnProvider });
 
     socket.emit('client:joined_success', { sessionId, hostOnline, resumed, iceServers, relayAvailable, relay: useRelay });
     logger.info('client.joined', { session: maskSessionId(sessionId), socketId: socket.id, hostOnline, resumed, relay: useRelay, relayAvailable });
@@ -709,9 +714,9 @@ io.on('connection', (socket) => {
   });
 });
 
-const turnInfo = describeTurnConfig();
+const turnInfo = describeTurnConfig(process.env, turnProvider);
 logger.info('signaling.config', {
-  turnConfigured: isTurnConfigured(),
+  turnConfigured: isTurnConfigured(process.env, turnProvider),
   turnTransports: turnInfo.transports.join('+') || 'none',
   stunServers: DEFAULT_STUN_URLS.length,
   agentGraceMs: SIGNALING.agentGraceMs,
@@ -719,7 +724,13 @@ logger.info('signaling.config', {
   pingIntervalMs: SIGNALING.pingIntervalMs
 });
 for (const warning of turnInfo.warnings) logger.warn('ice.turn_config', { warning });
-if (!isTurnConfigured()) {
+if (turnProvider.isEnabled()) {
+  // Managed TURN: the first credential fetch happens now; report the outcome so a bad key/token is obvious in the logs.
+  turnProvider.start().then((ok) => {
+    logger.info('ice.turn_provider', { ...turnProvider.status(), transports: describeTurnConfig(process.env, turnProvider).transports.join('+') });
+    if (!ok) logger.warn('ice.turn_config', { warning: 'Managed TURN credentials could not be fetched: relay fallback is DISABLED until this succeeds (check CLOUDFLARE_TURN_KEY_ID / CLOUDFLARE_TURN_API_TOKEN)' });
+  });
+} else if (!isTurnConfigured(process.env, turnProvider)) {
   // Informational only: TURN is optional. Direct (STUN) connections work without it.
   logger.info('ice.turn_not_configured', {
     mode: 'direct-only',

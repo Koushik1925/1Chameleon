@@ -37,6 +37,9 @@
         // Incremented for every negotiation. A slow startWebRTC() (screen capture can take a while) must not
         // overwrite a newer negotiation if the viewer re-joined meanwhile.
         let negotiationGen = 0;
+        // Candidate counters for the failure report (counts only, never addresses)
+        let candStats = { host: 0, srflx: 0, relay: 0, remote: 0, remoteDup: 0 };
+        const seenRemote = new Set();
 
         // ─────────────────────────────────────────────────────────────────────
         // STRUCTURED LIFECYCLE LOGGING
@@ -307,6 +310,10 @@
                 try {
                     if (!data.candidate) return;
                     agentLog('ice_candidate_received', { candidateType: candidateType(data.candidate) });
+                    const remoteKey = (data.candidate.candidate || '') + '|' + (data.candidate.usernameFragment || '');
+                    if (seenRemote.has(remoteKey)) { candStats.remoteDup++; return; } // retransmitted: ignore
+                    seenRemote.add(remoteKey);
+                    candStats.remote++;
                     const candidate = new RTCIceCandidate(data.candidate);
                     if (peerConnection && isRemoteDescriptionSet) {
                         await peerConnection.addIceCandidate(candidate);
@@ -458,6 +465,8 @@
         // WEBRTC SETUP
         // ─────────────────────────────────────────────────────────────────────
         async function startWebRTC(gen) {
+            candStats = { host: 0, srflx: 0, relay: 0, remote: 0, remoteDup: 0 };
+            seenRemote.clear();
             const stream = await getScreenStream();
             if (gen !== negotiationGen) {
                 // The viewer re-joined while we were capturing: a newer negotiation owns the session now.
@@ -517,7 +526,9 @@
 
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    agentLog('ice_candidate_sent', { candidateType: candidateType(event.candidate) });
+                    const ct = candidateType(event.candidate);
+                    if (ct === 'host' || ct === 'srflx' || ct === 'relay') candStats[ct]++;
+                    agentLog('ice_candidate_sent', { candidateType: ct });
                     socket.emit('signal:ice', { sessionId: currentSessionId, candidate: event.candidate, to: 'client' });
                 }
             };
@@ -537,7 +548,8 @@
                 if (state === 'connected') {
                     agentLog('connection_established', {});
                 } else if (state === 'failed') {
-                    agentLog('connection_failed', { reason: 'ice_or_dtls_failed' });
+                    agentLog('connection_failed', { reason: 'ice_or_dtls_failed', host: candStats.host, srflx: candStats.srflx, relay: candStats.relay, remote: candStats.remote });
+                    diag('failed', { code: 'ICE_FAILED', reason: 'host_side_connection_failed', candHost: candStats.host, candSrflx: candStats.srflx, candRelay: candStats.relay, candRemote: candStats.remote });
                 }
                 if (state === 'failed') {
                     console.warn('[RTC] Connection failed. Attempting ICE restart...');

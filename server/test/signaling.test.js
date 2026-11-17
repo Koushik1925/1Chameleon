@@ -17,7 +17,8 @@ const net = require('node:net');
 const path = require('node:path');
 const { io } = require('socket.io-client');
 
-const { buildIceServers, isTurnConfigured, describeTurnConfig, DEFAULT_STUN_URLS } = require('../src/services/iceServers');
+const { buildIceServers, isTurnConfigured, describeTurnConfig, createTurnProvider, DEFAULT_STUN_URLS } = require('../src/services/iceServers');
+const http = require('node:http');
 
 const SERVER_DIR = path.join(__dirname, '..');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -662,5 +663,184 @@ describe('signaling: TURN delivery and log hygiene', () => {
     intruder.emit('peer:diag', { sessionId: '400002', event: 'connection_state', state: 'connected' });
     await sleep(200);
     assert.ok(!server.logs.slice(marker).some((l) => l.includes('"event":"peer.diag"')));
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// Managed TURN (Cloudflare Realtime TURN): the response shape below is the one in Cloudflare's documentation.
+const CF_RESPONSE = {
+  iceServers: [
+    { urls: ['stun:stun.cloudflare.com:3478'] },
+    {
+      urls: [
+        'turn:turn.cloudflare.com:3478?transport=udp', 'turn:turn.cloudflare.com:443?transport=udp',
+        'turn:turn.cloudflare.com:3478?transport=tcp', 'turn:turn.cloudflare.com:80?transport=tcp',
+        'turns:turn.cloudflare.com:5349?transport=tcp', 'turns:turn.cloudflare.com:443?transport=tcp',
+        'turn:turn.cloudflare.com:53?transport=udp',
+      ],
+      username: 'CF_TEMP_USER_abc123',
+      credential: 'CF_TEMP_CRED_xyz789',
+    },
+  ],
+};
+
+const stubFetch = (status, body, calls = []) => async (url, opts) => {
+  calls.push({ url, opts });
+  return { ok: status >= 200 && status < 300, status, json: async () => body };
+};
+const cfEnv = { CLOUDFLARE_TURN_KEY_ID: 'KEY123', CLOUDFLARE_TURN_API_TOKEN: 'API_TOKEN_SECRET_VALUE' };
+
+describe('managed TURN provider (Cloudflare Realtime TURN)', () => {
+  test('requests short-lived credentials exactly as the API documents (POST, bearer token, JSON ttl)', async () => {
+    const calls = [];
+    const p = createTurnProvider({ ...cfEnv, CLOUDFLARE_TURN_TTL_SECONDS: '7200' }, { fetchImpl: stubFetch(201, CF_RESPONSE, calls) });
+    assert.equal(await p.start(), true);
+    p.stop();
+    assert.equal(calls[0].url, 'https://rtc.live.cloudflare.com/v1/turn/keys/KEY123/credentials/generate-ice-servers');
+    assert.equal(calls[0].opts.method, 'POST');
+    assert.equal(calls[0].opts.headers.Authorization, 'Bearer API_TOKEN_SECRET_VALUE');
+    assert.equal(calls[0].opts.headers['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(calls[0].opts.body), { ttl: 7200 });
+  });
+
+  test('keeps only usable TURN entries (credentials present, turn:/turns: URLs, no browser-blocked port 53)', async () => {
+    const p = createTurnProvider(cfEnv, { fetchImpl: stubFetch(201, CF_RESPONSE) });
+    await p.start(); p.stop();
+    const servers = p.getRelayServers();
+    assert.equal(servers.length, 1);
+    assert.equal(servers[0].username, 'CF_TEMP_USER_abc123');
+    assert.ok(!servers[0].urls.some((u) => /:53(\?|$)/.test(u)));
+    assert.deepEqual(describeTurnConfig({}, p).transports, ['udp', 'tcp', 'tls'], 'UDP + TCP + TLS(443) are all offered');
+    assert.equal(isTurnConfigured({}, p), true);
+  });
+
+  test('is a complete no-op when not configured (TURN stays optional)', async () => {
+    let called = false;
+    const p = createTurnProvider({}, { fetchImpl: async () => { called = true; } });
+    assert.equal(await p.start(), false);
+    assert.equal(called, false);
+    assert.equal(p.status().state, 'disabled');
+    assert.deepEqual(p.getRelayServers(), []);
+    assert.equal(isTurnConfigured({}, p), false);
+  });
+
+  test('rejected credentials/token: relay stays disabled and the status says why (no silent "relay available")', async () => {
+    const p = createTurnProvider(cfEnv, { fetchImpl: stubFetch(401, {}) });
+    assert.equal(await p.start(), false); p.stop();
+    assert.equal(p.status().state, 'error');
+    assert.equal(p.status().lastError, 'HTTP 401');
+    assert.equal(isTurnConfigured({}, p), false);
+    assert.match(describeTurnConfig({}, p).warnings.join(' '), /no credentials are available \(HTTP 401\)/);
+    assert.deepEqual(buildIceServers({}, Date.now(), { relay: true, provider: p }).flatMap((s) => [].concat(s.urls)), DEFAULT_STUN_URLS);
+  });
+
+  test('a response without TURN entries is an error, not an empty "success"', async () => {
+    const p = createTurnProvider(cfEnv, { fetchImpl: stubFetch(201, { iceServers: [{ urls: ['stun:x:3478'] }] }) });
+    assert.equal(await p.start(), false); p.stop();
+    assert.equal(p.status().lastError, 'response contained no TURN entries');
+  });
+
+  test('credentials are never served once (nearly) expired, and a failed refresh keeps valid ones', async () => {
+    let t = 1_000_000;
+    let status = 201;
+    const p = createTurnProvider({ ...cfEnv, CLOUDFLARE_TURN_TTL_SECONDS: '1000' }, { fetchImpl: async () => ({ ok: status === 201, status, json: async () => CF_RESPONSE }), now: () => t });
+    await p.start();
+    assert.equal(p.getRelayServers().length, 1);
+    status = 503; t += 500_000;
+    await p.refresh();
+    assert.equal(p.getRelayServers().length, 1, 'still valid: kept after a failed refresh');
+    assert.equal(p.status().state, 'ok');
+    t += 450_000; // 950s of 1000s used: inside the last 10%
+    assert.equal(p.getRelayServers().length, 0, 'nearly expired credentials are not handed out');
+    p.stop();
+  });
+
+  test('never leaks the API token or issued credentials through status, warnings or errors', async () => {
+    const p = createTurnProvider(cfEnv, { fetchImpl: async () => { throw new Error('connect ECONNREFUSED API_TOKEN_SECRET_VALUE'); } });
+    await p.start(); p.stop();
+    const text = JSON.stringify([p.status(), describeTurnConfig({}, p)]);
+    assert.ok(!text.includes('API_TOKEN_SECRET_VALUE'));
+    assert.equal(p.status().lastError, 'request failed');
+  });
+
+  test('relay credentials only come with a relay request; an explicit TURN_HOST/TURN_URLS config takes precedence', async () => {
+    const p = createTurnProvider(cfEnv, { fetchImpl: stubFetch(201, CF_RESPONSE) });
+    await p.start(); p.stop();
+    assert.deepEqual(buildIceServers({}, Date.now(), { relay: false, provider: p }).flatMap((s) => [].concat(s.urls)), DEFAULT_STUN_URLS, 'direct attempt: plain STUN');
+    assert.equal(buildIceServers({}, Date.now(), { relay: true, provider: p }).pop().username, 'CF_TEMP_USER_abc123');
+    const own = { TURN_HOST: 'own.example.com', TURN_USERNAME: 'u', TURN_CREDENTIAL: 'p' };
+    assert.equal(buildIceServers(own, Date.now(), { relay: true, provider: p }).pop().username, 'u');
+  });
+
+  describe('end to end against a mock of the Cloudflare API', () => {
+    let mock; let mockUrl; const requests = [];
+    let mockStatus = 201;
+    let server;
+
+    before(async () => {
+      mock = http.createServer((req, res) => {
+        let body = '';
+        req.on('data', (c) => { body += c; });
+        req.on('end', () => {
+          requests.push({ method: req.method, url: req.url, auth: req.headers.authorization, body });
+          res.writeHead(mockStatus, { 'content-type': 'application/json' });
+          res.end(mockStatus === 201 ? JSON.stringify(CF_RESPONSE) : '{}');
+        });
+      });
+      await new Promise((r) => mock.listen(0, '127.0.0.1', r));
+      mockUrl = `http://127.0.0.1:${mock.address().port}`;
+      server = await startServer({ ...cfEnv, CLOUDFLARE_TURN_API_BASE: mockUrl });
+      await sleep(400);
+    });
+    after(async () => { await server.stop(); mock.close(); });
+
+    test('the server fetched credentials at startup and reports an operational relay with UDP+TCP+TLS', async () => {
+      assert.equal(requests[0].method, 'POST');
+      assert.equal(requests[0].url, '/v1/turn/keys/KEY123/credentials/generate-ice-servers');
+      assert.equal(requests[0].auth, 'Bearer API_TOKEN_SECRET_VALUE');
+      const st = await (await fetch(`${server.url}/signaling-status`)).json();
+      assert.equal(st.turnConfigured, true);
+      assert.deepEqual(st.turnTransports, ['udp', 'tcp', 'tls']);
+      assert.equal(st.turnProvider.state, 'ok');
+      assert.ok(!JSON.stringify(st).includes('API_TOKEN_SECRET_VALUE'));
+    });
+
+    test('direct join gets plain STUN; the relay join gets the temporary credentials for BOTH peers', async () => {
+      const agent = await makeAgent(server.url, '500001');
+      const direct = await makeViewer(server.url, '500001', { clientId: 'd' });
+      assert.equal(direct.joined.relayAvailable, true);
+      assert.ok(!JSON.stringify(direct.joined.iceServers).includes('CF_TEMP_CRED'), 'no TURN credential on the direct attempt');
+      const relayed = await makeViewer(server.url, '500001', { clientId: 'd', relay: true });
+      const forAgent = (await waitLogged(agent, 'agent:client_joined', { nth: 1 })).iceServers;
+      for (const list of [relayed.joined.iceServers, forAgent]) {
+        const turn = list.find((x) => x.username === 'CF_TEMP_USER_abc123');
+        assert.ok(turn && turn.credential === 'CF_TEMP_CRED_xyz789');
+        assert.ok(turn.urls.some((u) => u.startsWith('turns:turn.cloudflare.com:443')));
+      }
+    });
+
+    test('server logs never contain the API token or the issued credentials', async () => {
+      await sleep(200);
+      const text = server.logs.join('\n');
+      for (const secret of ['API_TOKEN_SECRET_VALUE', 'CF_TEMP_USER_abc123', 'CF_TEMP_CRED_xyz789']) assert.ok(!text.includes(secret), `leaked ${secret}`);
+      assert.ok(server.logs.some((l) => l.includes('turn.provider_refreshed')), 'the refresh itself is logged (without secrets)');
+    });
+
+    test('a rejected token at startup yields relayAvailable=false and a clear status (not a silent claim)', async () => {
+      mockStatus = 401;
+      const bad = await startServer({ ...cfEnv, CLOUDFLARE_TURN_API_BASE: mockUrl });
+      try {
+        await sleep(400);
+        const st = await (await fetch(`${bad.url}/signaling-status`)).json();
+        assert.equal(st.turnConfigured, false);
+        assert.equal(st.turnProvider.state, 'error');
+        assert.equal(st.turnProvider.lastError, 'HTTP 401');
+        assert.ok(st.turnWarnings.some((w) => /no credentials are available/.test(w)));
+        await makeAgent(bad.url, '500002');
+        const v = await makeViewer(bad.url, '500002', { relay: true });
+        assert.equal(v.joined.relayAvailable, false);
+        assert.ok(bad.logs.some((l) => l.includes('relay fallback is DISABLED')), 'loud startup warning');
+      } finally { await bad.stop(); mockStatus = 201; }
+    });
   });
 });

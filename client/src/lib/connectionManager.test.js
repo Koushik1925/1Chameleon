@@ -723,6 +723,7 @@ describe('ConnectionManager', () => {
       const offerAndGather = async () => {
         r.sock().serverSend('client:joined_success', { hostOnline: true, relayAvailable, iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         r.sock().serverSend('signal:sdp', { sdp: offerSdp(`F${attempt}:00`) });
+        r.sock().serverSend('signal:ice', { candidate: { candidate: `candidate:${attempt} 1 udp 1 10.9.9.9 700${attempt} typ host` } }); // the host's own candidate
         await flush();
         const peer = r.peers[r.peers.length - 1];
         gatherPerAttempt[Math.min(attempt, gatherPerAttempt.length - 1)](peer);
@@ -784,6 +785,47 @@ describe('ConnectionManager', () => {
       assert.ok(!JSON.stringify(failed).includes('10.0.0.1'), 'no addresses are reported');
     });
 
+    test('the host never sent any candidates: says so (a different problem from "no path")', async () => {
+      const r = rig();
+      r.m.start();
+      r.sock().up();
+      for (let i = 0; i < 2; i++) {
+        r.sock().serverSend('client:joined_success', { hostOnline: true, relayAvailable: false });
+        r.sock().serverSend('signal:sdp', { sdp: offerSdp(`Z${i}:00`) });
+        await flush();
+        r.peers[r.peers.length - 1].onicecandidate({ candidate: cand('host') });
+        r.peers[r.peers.length - 1].onicecandidate({ candidate: cand('srflx') });
+        mock.timers.tick(DEFAULT_TIMEOUTS.iceMs);
+      }
+      assert.equal(r.last().status, 'error');
+      assert.match(r.last().detail, /No network candidates were received from the host/);
+      assert.match(r.last().technical, /remote=0/);
+    });
+
+    test('remote candidates are counted, duplicates ignored safely, end-of-candidates is a harmless no-op', async () => {
+      const r = rig();
+      r.m.start();
+      await r.joinAndOffer();
+      const c = { candidate: 'candidate:1 1 udp 1 10.1.1.1 5000 typ host' };
+      r.sock().serverSend('signal:ice', { candidate: c });
+      r.sock().serverSend('signal:ice', { candidate: { ...c } });   // retransmission
+      r.sock().serverSend('signal:ice', { candidate: null });        // end-of-candidates
+      r.sock().serverSend('signal:ice', { candidate: { candidate: '' } });
+      r.sock().serverSend('signal:ice', { candidate: { candidate: 'candidate:2 1 udp 1 10.1.1.2 5001 typ srflx' } });
+      await flush();
+      assert.equal(r.peers[0].candidates.length, 2, 'applied once each');
+      assert.deepEqual([r.m.remoteCands.received, r.m.remoteCands.applied, r.m.remoteCands.duplicates, r.m.remoteCands.rejected], [3, 2, 1, 0]);
+      assert.equal(r.errors().length, 0);
+    });
+
+    test('the failure report states how many host candidates arrived and how many were applied (counts only)', async () => {
+      const r = await failedRig({ relayAvailable: false, gatherPerAttempt: [(p) => { p.onicecandidate({ candidate: cand('host') }); p.onicecandidate({ candidate: cand('srflx') }); }] });
+      assert.ok(r.last().technical.includes('remote=2 (applied 2, rejected 0, duplicate 0)'), r.last().technical);
+      const failed = r.sockets[0].sent('peer:diag').find((d) => d.event === 'failed');
+      assert.equal(failed.candRemote, 2);
+      assert.ok(!JSON.stringify(failed).includes('10.9.9.9'), 'no addresses are reported');
+    });
+
     test('non-connectivity failures carry no network diagnosis', () => {
       const r = rig();
       r.m.start();
@@ -811,6 +853,7 @@ describe('ConnectionManager', () => {
       const sel = r.sock().sent('peer:diag').find((d) => d.event === 'selected_pair');
       assert.equal(sel.pairType, 'relay<->host');
       assert.equal(sel.relayProtocol, 'tls');
+      assert.equal(sel.route, 'relayed', 'the report says whether the connection is relayed');
     });
   });
 
