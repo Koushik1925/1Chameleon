@@ -7,6 +7,7 @@ import MobileQuickSettings from './MobileQuickSettings';
 import MobileContextMenu from './MobileContextMenu';
 import PerformanceOverlay from './PerformanceOverlay';
 import { getStatsMonitor, qualityFromRtt } from '../lib/statsMonitor';
+import { attachInputGuards } from '../lib/inputGuards';
 
 // Labels older agents understand (they ignore the newer `quality_preset` message).
 const LEGACY_PRESET_LABEL = { performance: '480p30', balanced: '720p30', quality: '1080p30' };
@@ -344,8 +345,8 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     }, [relayMode, inputSender, sendInputEvent]);
 
     // ── Scroll wheel ──────────────────────────────────────────────────────────
+    // Registered natively with { passive: false } (see the effect below): preventDefault() has already been called.
     const handleMouseWheel = useCallback((e) => {
-        e.preventDefault();
         if (!sendInputEvent) return;
         // Normalise to pixels (Firefox reports lines, some devices pages) so the host sees one unit.
         const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1;
@@ -354,7 +355,6 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
 
     // ── Touch → Mouse mapping ─────────────────────────────────────────────────
     const handleTouchStart = useCallback((e) => {
-        e.preventDefault();
         if (!sendInputEvent) return;
         const touch = e.touches[0];
         const pos = getPointerPosition({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
@@ -364,7 +364,6 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     }, [getPointerPosition, sendInputEvent]);
 
     const handleTouchMove = useCallback((e) => {
-        e.preventDefault();
         if (!sendInputEvent) return;
         const touch = e.touches[0];
         const pos = getPointerPosition({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
@@ -375,6 +374,28 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
     const handleTouchEnd = useCallback(() => {
         if (sendInputEvent) sendInputEvent({ type: 'mouse_up', button: 0 });
     }, [sendInputEvent]);
+
+    // touchstart / touchmove / wheel must be cancellable. React registers these as PASSIVE root listeners, where
+    // preventDefault() is ignored ("Unable to preventDefault inside passive event listener invocation") and the
+    // browser keeps its own gestures on top of the remote desktop: trackpad / edge swipes navigate Back (unmounting
+    // the viewer, which ends the session), a downward drag refreshes the page, taps become synthesized mouse events.
+    // So they are attached natively, non-passive, to the surface itself (lib/inputGuards.js).
+    const guardHandlersRef = useRef({});
+    useEffect(() => {
+        guardHandlersRef.current = { touchstart: handleTouchStart, touchmove: handleTouchMove, wheel: handleMouseWheel };
+    }, [handleTouchStart, handleTouchMove, handleMouseWheel]);
+    useEffect(() => {
+        const target = relayMode ? canvasRef.current : videoRef.current;
+        return attachInputGuards(target, () => guardHandlersRef.current);
+    }, [relayMode]);
+
+    // While the remote surface is on screen the page itself must not scroll, rubber-band, pull-to-refresh or
+    // swipe-navigate (CSS backstop to the cancelled events above; scoped so the rest of the site is unaffected).
+    useEffect(() => {
+        const root = document.documentElement;
+        root.classList.add('remote-session-active');
+        return () => root.classList.remove('remote-session-active');
+    }, []);
 
     // ── Keyboard ──────────────────────────────────────────────────────────────
     const handleKeyDown = useCallback((e) => {
@@ -405,13 +426,10 @@ export default function RemoteView({ stream, peerConnection, onDisconnect, relay
 
     // ── Shared pointer-event props ────────────────────────────────────────────
     const pointerProps = {
-        onTouchStart:  handleTouchStart,
-        onTouchMove:   handleTouchMove,
-        onTouchEnd:    handleTouchEnd,
+        onTouchEnd:    handleTouchEnd, // touchstart / touchmove / wheel: native non-passive listeners (see above)
         onMouseMove:   (e) => handleMouseMove(e, 'mouse_move'),
         onMouseDown:   (e) => handleMouseMove(e, 'mouse_down'),
         onMouseUp:     (e) => handleMouseMove(e, 'mouse_up'),
-        onWheel:       handleMouseWheel,
         onContextMenu: (e) => e.preventDefault(),
     };
 

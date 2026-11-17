@@ -194,15 +194,43 @@ export class ConnectionManager {
     });
   }
 
-  /** Viewer aborts / component unmounts / page is closing. Idempotent; leaves nothing behind. */
-  disconnect() {
+  /**
+   * Viewer aborts / component unmounts / page is closing. Idempotent; leaves nothing behind.
+   * This is the ONLY place that logs `disconnected_by_viewer`, and it is final: the peer connection (and both
+   * input data channels inside it) is closed for good. `reason` says who asked: 'user' (Disconnect / Cancel),
+   * 'unmount' (the viewer route was left, e.g. browser Back), 'pagehide' (real unload / refresh), 'replaced'
+   * (a new session is starting).
+   */
+  disconnect(reason = 'viewer') {
     if (this.destroyed) return;
     this.destroyed = true;
     this.gen += 1;
     this.clearAllTimers();
     this.teardownSocket(true);
     this.teardownPeer();
-    this.log('info', 'disconnected_by_viewer', {});
+    this.log('info', 'disconnected_by_viewer', { reason });
+  }
+
+  /**
+   * The page is visible / online / restored again. Mobile browsers throttle timers in the background, so a
+   * link that dropped meanwhile would wait for stale grace timers: start recovery now instead. Never ends or
+   * rebuilds a healthy session.
+   */
+  resume(trigger) {
+    if (this.destroyed || this.finished) return;
+    this.log('info', 'resume', { trigger });
+    const socket = this.socket;
+    if (socket && !socket.connected) {
+      socket.connect(); // no-op while Socket.IO is already (re)connecting; the 'connect' handler re-joins
+      return;
+    }
+    const peer = this.peer;
+    if (!peer || !this.connectedOnce) return;
+    const state = peer.connectionState;
+    if (state !== 'disconnected' && state !== 'failed') return; // healthy (or still negotiating): leave it alone
+    this.clearTimer('disconnect');
+    if (this.timers.iceRestart) return; // a restart is already in flight
+    this.recoverPeer('PEER_LOST');
   }
 
   getPeer() { return this.peer; }
