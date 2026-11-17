@@ -11,6 +11,7 @@ import DeviceApprove from './components/DeviceApprove';
 import MyDevices from './components/MyDevices';
 import { Power, ShieldCheck, ArrowLeft, Shield } from 'lucide-react';
 import { AdaptiveController } from './lib/adaptiveController';
+import { ConnectionManager } from './lib/connectionManager';
 
 // Lazy-loaded SaaS pages
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
@@ -31,6 +32,8 @@ const BillingFailedPage = lazy(() => import('./pages/BillingFailedPage'));
 // Use environment variable for production, fallback to local
 const SIGNALING_URL = (import.meta.env.VITE_SIGNALING_URL || 'https://onechameleon.onrender.com').replace(/\/$/, '');
 
+const nowMs = () => Date.now();
+
 function ClientApp() {
   const navigate = useNavigate();
   const [sessionId, setSessionId] = useState(null);
@@ -38,6 +41,10 @@ function ClientApp() {
   const [errorMsg, setErrorMsg] = useState('');
   const [remoteStream, setRemoteStream] = useState(null);
   const [isControlPaused, setIsControlPaused] = useState(false);
+  // Human-readable progress shown under "Establishing Link..." / on the reconnecting screen.
+  const [statusDetail, setStatusDetail] = useState('');
+  // Why every connection path failed (shown on the error screen): a sentence + a compact technical line.
+  const [errorDiagnosis, setErrorDiagnosis] = useState({ detail: '', technical: '' });
 
   const sessionStartTimeRef = useRef(null);
   const [sessionDuration, setSessionDuration] = useState('');
@@ -52,25 +59,18 @@ function ClientApp() {
   });
   const [manualSessionId, setManualSessionId] = useState('');
 
-  const socketRef = useRef(null);
+  // Owns the signaling socket + RTCPeerConnection lifecycle, timeouts and retries (lib/connectionManager.js).
+  const managerRef = useRef(null);
   const peerRef = useRef(null);
+  // Mirrors of the live peer / socket for rendering (refs must not be read while rendering).
+  const [activePeer, setActivePeer] = useState(null);
+  const [activeSocket, setActiveSocket] = useState(null);
   // DUAL CHANNELS: mouse = unordered/unreliable, keyboard = ordered/reliable
   const mouseChannelRef = useRef(null);
   const keyboardChannelRef = useRef(null);
-  const iceCandidateQueue = useRef([]);
-  const isRemoteDescriptionSet = useRef(false);
   // GCC-inspired ABR controller (one instance per session)
   const abrControllerRef = useRef(null);
   const abrIntervalRef   = useRef(null);
-
-  useEffect(() => {
-    // If we have a sessionId parsed from URL or manual entry (Phase 1 manual input)
-    const urlParams = new URLSearchParams(window.location.search);
-    const sid = urlParams.get('sess');
-    if (sid && status === 'scan') {
-      handleJoinSession(sid);
-    }
-  }, []);
 
   // 7-minute timer to auto-return to home
   useEffect(() => {
@@ -96,176 +96,74 @@ function ClientApp() {
     return () => clearInterval(pingInterval);
   }, []);
 
-  const handleJoinSession = (sid) => {
-    setSessionId(sid);
-    setStatus('connecting');
-    setErrorMsg('');
+  // ── GCC-Inspired ABR Loop ────────────────────────────────────────────────
+  // Reads WebRTC stats every second, feeds them to AdaptiveController,
+  // and applies the resulting quality rung to the encoder via setParameters().
+  function startAbrLoop(peer) {
+    if (abrIntervalRef.current) clearInterval(abrIntervalRef.current);
 
-    // Save session id to localStorage for fast reconnect
-    localStorage.setItem('chameleon_last_session', JSON.stringify({
-      id: sid,
-      timestamp: Date.now()
-    }));
-    setLastSessionId(sid);
+    abrIntervalRef.current = setInterval(async () => {
+      if (!peer || peer.connectionState !== 'connected') return;
+      const abr = abrControllerRef.current;
+      if (!abr) return;
 
-    // 1. Connect to signaling server with tight heartbeat
-    // Default 25 s ping interval means dead connections linger for 25 s.
-    // At 5 s we detect drops within one second of the keepalive window.
-    const socket = io(SIGNALING_URL, {
-      pingInterval: 5000,
-      pingTimeout: 10000,
-      reconnectionDelayMax: 5000
-    });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('Connected to signaling server');
-      socket.emit('client:join_session', { sessionId: sid });
-      
-
-    });
-
-    socket.on('client:joined_success', () => {
-      console.log('Successfully joined session');
-      // Wait for Agent to send SDP Offer
-    });
-
-    socket.on('error', (err) => {
-      setStatus('error');
-
-      // Calculate Duration
-      let durationStr = '';
-      if (sessionStartTimeRef.current) {
-        const diffMs = Date.now() - sessionStartTimeRef.current;
-        const mins = Math.floor(diffMs / 60000);
-        const secs = Math.floor((diffMs % 60000) / 1000);
-        durationStr = ` (Duration: ${mins}m ${secs}s)`;
-        setSessionDuration(`Session lasted ${mins}m ${secs}s`);
-      }
-
-      setErrorMsg((err.message || 'Unknown error') + durationStr);
-      socket.disconnect();
-      cleanupWebRTC();
-      sessionStartTimeRef.current = null;
-    });
-
-    socket.on('session:ended', (data) => {
-      if (data.reason === 'Agent disconnected') {
-          console.warn('Agent dropped. Attempting aggressive auto-reconnect...');
-          setStatus('reconnecting');
-          setRemoteStream(null);
-          cleanupWebRTC();
-          
-          let attempts = 0;
-          const retryInterval = setInterval(() => {
-              if (attempts > 15) { // 30 seconds max
-                  clearInterval(retryInterval);
-                  setStatus('error');
-                  setErrorMsg('Connection lost permanently. Host is offline.');
-                  socket.disconnect();
-                  sessionStartTimeRef.current = null;
-                  return;
-              }
-              attempts++;
-              socket.emit('client:join_session', { sessionId: sid });
-          }, 2000);
-          
-          socket.once('client:joined_success', () => {
-              clearInterval(retryInterval);
-          });
-      } else {
-          setStatus('error');
-          setRemoteStream(null);
-          setErrorMsg(`Connection closed: ${data.reason}`);
-          cleanupWebRTC();
-          sessionStartTimeRef.current = null;
-      }
-    });
-
-    // Relay frames: NO React state update.
-    // RemoteView handles relay:frame directly via the socket ref + frameWorker.
-    // We only need to flip status to 'connected' on the first frame.
-    socket.once('relay:frame', () => {
-      if (status !== 'connected') setStatus('connected');
-    });
-
-    // 2. WebRTC Signaling
-    socket.on('signal:sdp', async (data) => {
       try {
-        if (!peerRef.current) {
-          initWebRTC(socket, sid);
-        }
+        const stats = await peer.getStats();
+        let rttSeconds = 0, packetLossRate = 0, availableBitrate = 0;
 
-        const peer = peerRef.current;
-        await peer.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        isRemoteDescriptionSet.current = true;
+        stats.forEach(r => {
+          if (r.type === 'candidate-pair' && r.state === 'succeeded') {
+            rttSeconds      = r.currentRoundTripTime || 0;
+            availableBitrate = r.availableOutgoingBitrate || 0;
+          }
+          if (r.type === 'inbound-rtp' && r.kind === 'video') {
+            // packetsLost / packetsReceived gives client-side loss rate
+            const total = (r.packetsReceived || 0) + (r.packetsLost || 0);
+            packetLossRate = total > 0 ? (r.packetsLost || 0) / total : 0;
+          }
+        });
 
-        // Process queued ICE candidates
-        while (iceCandidateQueue.current.length > 0) {
-          const candidate = iceCandidateQueue.current.shift();
-          await peer.addIceCandidate(candidate).catch(e => console.error("Queued ICE error:", e));
-        }
+        const result = abr.update({ rttSeconds, packetLossRate, availableBitrate });
 
-        if (data.sdp.type === 'offer') {
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          socket.emit('signal:sdp', {
-            sessionId: sid,
-            sdp: peer.localDescription,
-            to: 'agent'
-          });
-        }
-      } catch (err) {
-        console.error('WebRTC SDP Error:', err);
-      }
-    });
-
-    socket.on('signal:ice', async (data) => {
-      try {
-        if (data.candidate) {
-          const candidate = new RTCIceCandidate(data.candidate);
-          if (peerRef.current && isRemoteDescriptionSet.current) {
-            await peerRef.current.addIceCandidate(candidate);
-          } else {
-            console.log('Queueing ICE candidate...');
-            iceCandidateQueue.current.push(candidate);
+        if (result.changed) {
+          // Signal the agent to update its encoder constraints
+          const ch = keyboardChannelRef.current;
+          if (ch && ch.readyState === 'open') {
+            ch.send(JSON.stringify({
+              type: 'update_resolution',
+              resolution: result.rung.label,
+              maxBitrate: result.rung.maxBitrate
+            }));
           }
         }
-      } catch (err) {
-        console.error('WebRTC ICE Error:', err);
-      }
-    });
+      } catch (e) { /* ignore stats errors during renegotiation */ }
+    }, 1000);
+  }
 
-    return () => {
-      socket.disconnect();
-      cleanupWebRTC();
-    };
-  };
+  function cleanupWebRTC() {
+    if (abrIntervalRef.current) { clearInterval(abrIntervalRef.current); abrIntervalRef.current = null; }
+    abrControllerRef.current = null;
+    if (mouseChannelRef.current) {
+      try { mouseChannelRef.current.close(); } catch(e) {}
+      mouseChannelRef.current = null;
+    }
+    if (keyboardChannelRef.current) {
+      try { keyboardChannelRef.current.close(); } catch(e) {}
+      keyboardChannelRef.current = null;
+    }
+    if (peerRef.current) {
+      peerRef.current.close();
+      peerRef.current = null;
+    }
+    setActivePeer(null);
+    setRemoteStream(null);
+    setIsControlPaused(false);
+  }
 
-  const initWebRTC = (socket, sid) => {
-    const ICE_SERVERS = [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:443' },
-      { urls: 'stun:stun2.l.google.com:443' },
-      { urls: 'stun:stun.cloudflare.com:3478' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-    ];
-
-    const peer = new RTCPeerConnection({
-      iceServers: ICE_SERVERS,
-      iceCandidatePoolSize: 4,   // Pre-gather candidates before negotiation starts
-      bundlePolicy: 'max-bundle',
-      rtcpMuxPolicy: 'require'
-    });
+  // Called by the ConnectionManager for every new RTCPeerConnection (the first one, and every renegotiation).
+  function attachPeerHandlers(peer) {
     peerRef.current = peer;
-
-    peer.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit('signal:ice', { sessionId: sid, candidate: event.candidate, to: 'agent' });
-      }
-    };
+    setActivePeer(peer);
 
     peer.ontrack = (event) => {
       console.log('[RTC] Received remote video track');
@@ -310,100 +208,112 @@ function ClientApp() {
         };
       }
     };
+  }
 
-    peer.onconnectionstatechange = () => {
-      const state = peer.connectionState;
-      console.log('[RTC] Connection state:', state);
-      if (state === 'connected') {
-        setStatus('connected');
-        sessionStartTimeRef.current = Date.now();
-        // Initialise GCC-inspired ABR controller for this session
-        abrControllerRef.current = new AdaptiveController();
-        startAbrLoop(peer, socket);
-      } else if (state === 'failed') {
-        console.warn('[RTC] Connection failed — attempting ICE restart');
-        peer.restartIce();
-      } else if (state === 'disconnected') {
-        const diffMs = sessionStartTimeRef.current ? Date.now() - sessionStartTimeRef.current : 0;
+  // Maps ConnectionManager status updates onto the existing screens (scan / connecting / connected / error / reconnecting).
+  const handleManagerStatus = ({ status: next, message, detail, technical }) => {
+    setStatusDetail(message || '');
+    if (next === 'connected') {
+      setStatus('connected');
+    } else if (next === 'error') {
+      // Calculate Duration
+      let durationStr = '';
+      if (sessionStartTimeRef.current) {
+        const diffMs = nowMs() - sessionStartTimeRef.current;
         const mins = Math.floor(diffMs / 60000);
         const secs = Math.floor((diffMs % 60000) / 1000);
-        const dur = diffMs > 0 ? ` (${mins}m ${secs}s)` : '';
-        setErrorMsg(`Peer connection lost${dur}`);
-        cleanupWebRTC();
-        sessionStartTimeRef.current = null;
+        durationStr = ` (Duration: ${mins}m ${secs}s)`;
+        setSessionDuration(`Session lasted ${mins}m ${secs}s`);
       }
+      cleanupWebRTC();
+      setActiveSocket(null);
+      sessionStartTimeRef.current = null;
+      setErrorMsg((message || 'Unknown error') + durationStr);
+      setErrorDiagnosis({ detail: detail || '', technical: technical || '' });
+      setStatus('error');
+    } else {
+      setStatus(next); // 'connecting' | 'reconnecting'
+    }
+  };
+
+  function handleJoinSession(sid) {
+    // Dispose of any previous attempt first so there is never more than one socket / set of listeners.
+    managerRef.current?.disconnect();
+    cleanupWebRTC();
+
+    setSessionId(sid);
+    setStatus('connecting');
+    setErrorMsg('');
+    setStatusDetail('');
+    setErrorDiagnosis({ detail: '', technical: '' });
+
+    // Save session id to localStorage for fast reconnect
+    localStorage.setItem('chameleon_last_session', JSON.stringify({
+      id: sid,
+      timestamp: nowMs()
+    }));
+    setLastSessionId(sid);
+
+    // Stable per-tab viewer id so the server can recognise a re-join of the same viewer.
+    let clientId;
+    try {
+      clientId = sessionStorage.getItem('chameleon_client_id');
+      if (!clientId) {
+        clientId = crypto.randomUUID();
+        sessionStorage.setItem('chameleon_client_id', clientId);
+      }
+    } catch {
+      clientId = undefined; // storage blocked: the manager generates one
+    }
+
+    const manager = new ConnectionManager({
+      signalingUrl: SIGNALING_URL,
+      sessionId: sid,
+      ioFactory: io,
+      clientId,
+      hooks: {
+        onStatus: handleManagerStatus,
+        onPeer: attachPeerHandlers,
+        onPeerConnected: (peer, { firstTime }) => {
+          if (firstTime || !sessionStartTimeRef.current) sessionStartTimeRef.current = Date.now();
+          // Initialise GCC-inspired ABR controller for this session
+          abrControllerRef.current = new AdaptiveController();
+          startAbrLoop(peer);
+        },
+        onPeerClosed: (closedPeer) => {
+          if (peerRef.current === closedPeer) cleanupWebRTC();
+        },
+      },
+    });
+    managerRef.current = manager;
+    manager.start();
+    setActiveSocket(manager.getSocket());
+  }
+
+  useEffect(() => {
+    // If we have a sessionId parsed from URL or manual entry (Phase 1 manual input)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sid = urlParams.get('sess');
+    if (sid && status === 'scan') {
+      // Deliberate: this effect starts the external signaling connection for a `?sess=` deep link on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleJoinSession(sid);
+    }
+
+    // Leaving the page (Back to Home, route change, tab close, React re-mount) must never leave a ghost
+    // socket attached to the session: the host would keep negotiating with a viewer that is gone.
+    const leave = () => managerRef.current?.disconnect();
+    window.addEventListener('pagehide', leave);
+    return () => {
+      window.removeEventListener('pagehide', leave);
+      leave();
     };
-  };
-
-  // ── GCC-Inspired ABR Loop ────────────────────────────────────────────────
-  // Reads WebRTC stats every second, feeds them to AdaptiveController,
-  // and applies the resulting quality rung to the encoder via setParameters().
-  const startAbrLoop = (peer, socket) => {
-    if (abrIntervalRef.current) clearInterval(abrIntervalRef.current);
-
-    abrIntervalRef.current = setInterval(async () => {
-      if (!peer || peer.connectionState !== 'connected') return;
-      const abr = abrControllerRef.current;
-      if (!abr) return;
-
-      try {
-        const stats = await peer.getStats();
-        let rttSeconds = 0, packetLossRate = 0, availableBitrate = 0;
-
-        stats.forEach(r => {
-          if (r.type === 'candidate-pair' && r.state === 'succeeded') {
-            rttSeconds      = r.currentRoundTripTime || 0;
-            availableBitrate = r.availableOutgoingBitrate || 0;
-          }
-          if (r.type === 'inbound-rtp' && r.kind === 'video') {
-            // packetsLost / packetsReceived gives client-side loss rate
-            const total = (r.packetsReceived || 0) + (r.packetsLost || 0);
-            packetLossRate = total > 0 ? (r.packetsLost || 0) / total : 0;
-          }
-        });
-
-        const result = abr.update({ rttSeconds, packetLossRate, availableBitrate });
-
-        if (result.changed) {
-          // Signal the agent to update its encoder constraints
-          const ch = keyboardChannelRef.current;
-          if (ch && ch.readyState === 'open') {
-            ch.send(JSON.stringify({
-              type: 'update_resolution',
-              resolution: result.rung.label,
-              maxBitrate: result.rung.maxBitrate
-            }));
-          }
-        }
-      } catch (e) { /* ignore stats errors during renegotiation */ }
-    }, 1000);
-  };
-
-  const cleanupWebRTC = () => {
-    if (abrIntervalRef.current) { clearInterval(abrIntervalRef.current); abrIntervalRef.current = null; }
-    abrControllerRef.current = null;
-    if (mouseChannelRef.current) {
-      try { mouseChannelRef.current.close(); } catch(e) {}
-      mouseChannelRef.current = null;
-    }
-    if (keyboardChannelRef.current) {
-      try { keyboardChannelRef.current.close(); } catch(e) {}
-      keyboardChannelRef.current = null;
-    }
-    if (peerRef.current) {
-      peerRef.current.close();
-      peerRef.current = null;
-    }
-    isRemoteDescriptionSet.current = false;
-    iceCandidateQueue.current = [];
-    setRemoteStream(null);
-    setIsControlPaused(false);
-  };
+  }, []);
 
   const handleDisconnect = () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
+    // Tells the host the viewer is leaving, closes the socket and the peer, and removes every listener.
+    managerRef.current?.disconnect();
+    setActiveSocket(null);
     cleanupWebRTC();
 
     // Calculate Duration for the 7-min prompt screen
@@ -566,6 +476,7 @@ function ClientApp() {
 
             <h2 className="text-2xl font-bold tracking-wide text-white mb-2">Establishing Link...</h2>
             <p className="text-cyan-400 font-mono tracking-widest bg-cyan-950/30 px-4 py-1.5 rounded border border-cyan-500/20">{sessionId}</p>
+            {statusDetail && <p className="mt-4 text-sm text-slate-400 max-w-xs leading-relaxed">{statusDetail}</p>}
 
             <button
               onClick={handleDisconnect}
@@ -616,6 +527,8 @@ function ClientApp() {
           </div>
           <h2 className="text-2xl font-bold tracking-wide mb-3 text-white">Connection Failed</h2>
           <p className="text-slate-400 text-sm mb-4 max-w-sm leading-relaxed">{errorMsg}</p>
+          {errorDiagnosis.detail && <p className="text-slate-300 text-sm mb-2 max-w-sm leading-relaxed">{errorDiagnosis.detail}</p>}
+          {errorDiagnosis.technical && <p className="text-slate-500 text-[11px] font-mono mb-4 max-w-sm leading-relaxed break-words">{errorDiagnosis.technical}</p>}
           {sessionDuration && <p className="text-cyan-400 font-mono tracking-widest text-sm mb-8 bg-cyan-950/20 px-3 py-1 rounded border border-cyan-500/20 inline-block">{sessionDuration}</p>}
 
           <div className="flex flex-col w-full gap-3">
@@ -649,7 +562,7 @@ function ClientApp() {
             <Shield className="absolute inset-0 m-auto text-slate-400 animate-pulse" size={28} />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Connection Dropped</h2>
-          <p className="text-slate-400 mb-6">The remote host temporarily went offline. Auto-reconnecting in background...</p>
+          <p className="text-slate-400 mb-6">{statusDetail || 'The remote host temporarily went offline. Auto-reconnecting in background...'}</p>
           <button onClick={handleDisconnect} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-medium">
             Cancel
           </button>
@@ -660,15 +573,12 @@ function ClientApp() {
         <div className="z-20 w-full h-full">
           <RemoteView
             stream={remoteStream}
-            peerConnection={peerRef.current}
+            peerConnection={activePeer}
             sendInputEvent={sendInputEvent}
             isControlPaused={isControlPaused}
-            socket={socketRef.current}
-            sessionId={sessionStartTimeRef.current ? lastSessionId : null}
-            onDisconnect={() => {
-              if (socketRef.current) socketRef.current.disconnect();
-              handleDisconnect();
-            }}
+            socket={activeSocket}
+            sessionId={lastSessionId}
+            onDisconnect={handleDisconnect}
           />
         </div>
       )}

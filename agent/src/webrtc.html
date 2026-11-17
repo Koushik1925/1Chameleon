@@ -34,6 +34,34 @@
         let localStream = null;
         let currentSessionId = null;
 
+        // Incremented for every negotiation. A slow startWebRTC() (screen capture can take a while) must not
+        // overwrite a newer negotiation if the viewer re-joined meanwhile.
+        let negotiationGen = 0;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // STRUCTURED LIFECYCLE LOGGING
+        // One JSON line per event. Never logs SDP bodies, ICE addresses, tokens or the full session code.
+        // diag() also reports the event to the signaling server so it shows up in the Render logs.
+        // ─────────────────────────────────────────────────────────────────────
+        function maskSession(id) {
+            const s = String(id == null ? '' : id);
+            return s.length <= 2 ? '**' : s.slice(0, 2) + '*'.repeat(Math.min(s.length - 2, 6));
+        }
+        function agentLog(event, fields) {
+            console.log('[Chameleon-Agent]', event, JSON.stringify(Object.assign({ ts: new Date().toISOString(), session: maskSession(currentSessionId) }, fields || {})));
+        }
+        function diag(event, fields) {
+            try {
+                if (socket && socket.connected && currentSessionId) {
+                    socket.emit('peer:diag', Object.assign({ sessionId: currentSessionId, event: event }, fields || {}));
+                }
+            } catch (e) { /* diagnostics are best-effort */ }
+        }
+        function candidateType(candidate) {
+            const m = / typ (\w+)/.exec((candidate && candidate.candidate) || '');
+            return m ? m[1] : 'unknown';
+        }
+
         // Generate a 100% permanent 6-digit numeric code based on device hardware specs
         function getPermanentSessionId() {
             try {
@@ -92,26 +120,16 @@
         // ─────────────────────────────────────────────────────────────────────
         // ICE SERVER CONFIG  (multiple STUN servers for fast gathering + TURN fallback)
         // ─────────────────────────────────────────────────────────────────────
-        const ICE_SERVERS = [
+        // The previous list pointed at openrelay.metered.ca (a free TURN service that has been shut down: its DNS
+        // now resolves to reserved addresses) and at stun1/stun2.l.google.com:443 (not real STUN endpoints), so
+        // peers behind restrictive NATs could never connect. The signaling server is now the single source of
+        // truth: it sends the current STUN/TURN list (incl. any configured TURN relay) with every
+        // "agent:client_joined". These are only the fallback for a server that does not send one.
+        let ICE_SERVERS = [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:443' },
-            { urls: 'stun:stun2.l.google.com:443' },
-            { urls: 'stun:stun.cloudflare.com:3478' },
-            {
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            {
-                urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' }
         ];
 
         // ─────────────────────────────────────────────────────────────────────
@@ -132,6 +150,7 @@
 
             socket.on('connect', () => {
                 console.log('[WS] Connected to signaling server');
+                agentLog('socket_connected', {});
                 const savedSessionId = getPermanentSessionId();
                 const version = '1.4.1';
 
@@ -148,6 +167,18 @@
                 });
             });
 
+            socket.on('disconnect', (reason) => {
+                agentLog('socket_disconnected', { reason: reason });
+            });
+
+            socket.on('connect_error', (err) => {
+                agentLog('socket_connect_error', { message: err && err.message });
+            });
+
+            socket.on('signal:undeliverable', (data) => {
+                agentLog('signal_undeliverable', { event: data && data.event, reason: data && data.reason });
+            });
+
             // Periodically emit heartbeat to update lastSeen in database and keep dashboard status online
             if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
             window.heartbeatInterval = setInterval(() => {
@@ -159,6 +190,7 @@
 
             socket.on('agent:session_created', async (data) => {
                 currentSessionId = data.sessionId;
+                agentLog('session_created', {});
                 const qrUrl = `https://chameleon-jet.vercel.app/?sess=${data.sessionId}`;
 
                 let qrDataUrl = '';
@@ -179,10 +211,21 @@
 
             socket.on('agent:client_joined', async (data) => {
                 console.log('[WS] Client joined session:', data.sessionId);
+                const gen = ++negotiationGen;
                 cleanupSession(true);
                 currentSessionId = data.sessionId;
+                if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+                    ICE_SERVERS = data.iceServers;
+                }
+                agentLog('peer_detected', { iceServers: ICE_SERVERS.length });
+                diag('host_waiting', {});
                 ipcRenderer.send('tray:update_status', 'connected');
-                await startWebRTC();
+                try {
+                    await startWebRTC(gen);
+                } catch (err) {
+                    agentLog('negotiation_error', { message: err && err.message });
+                    diag('failed', { code: 'NEGOTIATION_ERROR', reason: 'negotiation_error' });
+                }
             });
 
             socket.on('agent:start_relay', async () => {
@@ -216,9 +259,27 @@
             });
 
             // ── SDP Signaling ──
-            socket.on('signal:sdp', async (data) => {
+            // SDP and ICE messages are handled strictly one at a time, in arrival order. Otherwise a trickled
+            // candidate can race an in-flight setRemoteDescription(): during an ICE restart (a re-offer with a new
+            // ufrag) it would be rejected and lost.
+            let signalChain = Promise.resolve();
+            const inOrder = (handler) => (data) => {
+                signalChain = signalChain.then(() => handler(data)).catch((e) => console.error('[SIGNAL] handler error:', e));
+            };
+
+            socket.on('signal:sdp', inOrder(async (data) => {
                 try {
                     if (!peerConnection) return;
+                    if (data.sdp.type === 'answer') {
+                        // An answer is only valid for the offer we currently have outstanding. One that arrives for
+                        // a previous (replaced) peer must not be applied to the new one.
+                        if (peerConnection.signalingState !== 'have-local-offer') {
+                            agentLog('stale_answer_ignored', { signalingState: peerConnection.signalingState });
+                            return;
+                        }
+                        agentLog('answer_received', {});
+                        diag('answer_received', {});
+                    }
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                     isRemoteDescriptionSet = true;
 
@@ -229,18 +290,23 @@
                     iceCandidateQueue = [];
 
                     if (data.sdp.type === 'offer') {
+                        // A re-offer on a live peer is the viewer's ICE restart (network changed): answer it in place.
+                        agentLog('offer_received', { restart: peerConnection.connectionState === 'connected' || peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed' });
                         const answer = await peerConnection.createAnswer();
                         await peerConnection.setLocalDescription(answer);
                         socket.emit('signal:sdp', { sessionId: currentSessionId, sdp: peerConnection.localDescription, to: 'client' });
+                        agentLog('answer_sent', {});
+                        diag('answer_sent', {});
                     }
                 } catch (err) {
                     console.error('[SDP] Error:', err);
                 }
-            });
+            }));
 
-            socket.on('signal:ice', async (data) => {
+            socket.on('signal:ice', inOrder(async (data) => {
                 try {
                     if (!data.candidate) return;
+                    agentLog('ice_candidate_received', { candidateType: candidateType(data.candidate) });
                     const candidate = new RTCIceCandidate(data.candidate);
                     if (peerConnection && isRemoteDescriptionSet) {
                         await peerConnection.addIceCandidate(candidate);
@@ -250,7 +316,7 @@
                 } catch (err) {
                     console.error('[ICE] Error:', err);
                 }
-            });
+            }));
 
             // ── Admin Stealth Join listeners ──
             socket.on('admin:join', async ({ sessionId, adminSocketId }) => {
@@ -391,10 +457,20 @@
         // ─────────────────────────────────────────────────────────────────────
         // WEBRTC SETUP
         // ─────────────────────────────────────────────────────────────────────
-        async function startWebRTC() {
-            localStream = await getScreenStream();
+        async function startWebRTC(gen) {
+            const stream = await getScreenStream();
+            if (gen !== negotiationGen) {
+                // The viewer re-joined while we were capturing: a newer negotiation owns the session now.
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                agentLog('negotiation_superseded', {});
+                return;
+            }
+            localStream = stream;
             if (!localStream) {
                 console.error('[RTC] Failed to get screen stream');
+                // Without this the viewer waits forever: no offer will ever be produced. Say why.
+                agentLog('capture_failed', {});
+                diag('failed', { code: 'CAPTURE_FAILED', reason: 'screen_capture_unavailable' });
                 return;
             }
 
@@ -441,13 +517,28 @@
 
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
+                    agentLog('ice_candidate_sent', { candidateType: candidateType(event.candidate) });
                     socket.emit('signal:ice', { sessionId: currentSessionId, candidate: event.candidate, to: 'client' });
                 }
             };
 
+            peerConnection.oniceconnectionstatechange = () => {
+                if (!peerConnection) return;
+                agentLog('ice_connection_state', { state: peerConnection.iceConnectionState });
+                diag('ice_connection_state', { state: peerConnection.iceConnectionState });
+            };
+
             peerConnection.onconnectionstatechange = () => {
+                if (!peerConnection) return;
                 const state = peerConnection.connectionState;
                 console.log('[RTC] Connection state:', state);
+                agentLog('connection_state', { state: state });
+                diag('connection_state', { state: state });
+                if (state === 'connected') {
+                    agentLog('connection_established', {});
+                } else if (state === 'failed') {
+                    agentLog('connection_failed', { reason: 'ice_or_dtls_failed' });
+                }
                 if (state === 'failed') {
                     console.warn('[RTC] Connection failed. Attempting ICE restart...');
                     // Try ICE restart before full cleanup — this recovers from temporary network glitches
@@ -466,8 +557,11 @@
             // Munge SDP to prefer H.264 before setting local description
             offer.sdp = preferH264(offer.sdp);
             await peerConnection.setLocalDescription(offer);
+            if (gen !== negotiationGen || !peerConnection) return; // superseded while creating the offer
 
             socket.emit('signal:sdp', { sessionId: currentSessionId, sdp: peerConnection.localDescription, to: 'client' });
+            agentLog('offer_sent', { bytes: (peerConnection.localDescription.sdp || '').length });
+            diag('offer_sent', {});
 
             // ── ENCODER PARAMETERS: set degradation preference + bitrate cap ──
             // We must wait until the connection is established, so we apply them after ICE connects
@@ -747,6 +841,7 @@
         // CLEANUP
         // ─────────────────────────────────────────────────────────────────────
         function cleanupSession(preserveSession = false) {
+            agentLog('session_cleanup', { preserveSession: preserveSession });
             if (abrInterval) { clearInterval(abrInterval); abrInterval = null; }
             if (relayInterval) { clearInterval(relayInterval); relayInterval = null; }
 
